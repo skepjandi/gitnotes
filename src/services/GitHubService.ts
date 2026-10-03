@@ -1253,7 +1253,11 @@ class GitHubServiceClass {
       resolvedToken = override;
     } else if (opts?.credentialKind && opts?.hostId) {
       const { resolveGitHubRepoToken } = await import('./git/NativeCredentialBridge');
-      resolvedToken = (await resolveGitHubRepoToken({ repoId: opts.repoId!, hostId: opts.hostId! })).token;
+      resolvedToken = (await resolveGitHubRepoToken({
+        repoId: opts.repoId!,
+        hostId: opts.hostId!,
+        repoFullName: opts.repoFullName,
+      })).token;
     } else {
       resolvedToken = this.token;
     }
@@ -1375,6 +1379,7 @@ export interface TokenOpts {
    * Required when `credentialKind` is specified.
    */
   hostId?: string;
+  repoFullName?: string;
 }
 
 function parseNextLink(linkHeader: string | null | undefined): string | null {

@@ -685,6 +685,10 @@ export class AccountStorage {
     return readHostToken(hostId);
   }
 
+  static async clearHostToken(hostId: string): Promise<void> {
+    await deleteHostToken(hostId);
+  }
+
   static async getSshKey(hostId: string): Promise<{ privateKey: string; publicKey: string } | null> {
     const [privateKey, publicKey] = await Promise.all([readSshPrivateKey(hostId), readSshPublicKey(hostId)]);
     if (privateKey && publicKey) return { privateKey, publicKey };

@@ -328,6 +328,7 @@ export class GitHubAppService {
           avatarUrl: accountAvatarUrl,
           token: data.token,
         });
+        await AccountStorage.clearHostToken(host.id);
         const currentActiveHostId = await AccountStorage.getActiveHostId();
         if (!currentActiveHostId) {
           await AccountStorage.setActiveAccountId(account.id);

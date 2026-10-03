@@ -169,6 +169,87 @@ describe('GitEngine.pull', () => {
     });
     expect(AuthService.getToken).not.toHaveBeenCalled();
   });
+});
+
+describe('GitEngine.pull auth fallback chain', () => {
+  beforeEach(() => {
+    nativeModule.pull.mockReset();
+    nativeModule.getCredential.mockReset();
+    nativeModule.setCredential.mockReset();
+    jest.mocked(AuthService.getToken).mockReset();
+    jest.mocked(AccountStorage.getHostConnection).mockReset();
+    jest.mocked(AccountStorage.getHostToken).mockReset();
+    jest.mocked(AccountStorage.getGitHubAppCredential).mockReset();
+    jest.mocked(AccountStorage.getOAuthCredential).mockReset();
+    jest.mocked(StorageService.getSavedRepositories).mockReset();
+    nativeModule.pull.mockResolvedValue({ kind: 'UpToDate', message: 'up to date', conflicts: [] });
+    nativeModule.getCredential.mockResolvedValue(null);
+    nativeModule.setCredential.mockResolvedValue(undefined);
+    jest.mocked(AuthService.getToken).mockResolvedValue('new-token');
+    jest.mocked(StorageService.getSavedRepositories).mockResolvedValue([
+      {
+        id: 'github/owner/repo',
+        path: 'github/owner/repo',
+        name: 'repo',
+        provider: 'github',
+        hostId: 'github-host',
+      },
+    ]);
+    jest.mocked(AccountStorage.getHostConnection).mockResolvedValue({
+      id: 'github-host',
+      accountId: 'account',
+      provider: 'github',
+      instanceBaseUrl: 'https://github.com',
+      hostLogin: 'testuser',
+      hostUserId: 1,
+      name: 'GitHub',
+      email: null,
+      avatarUrl: null,
+      addedAt: 0,
+    });
+    jest.mocked(AccountStorage.getHostToken).mockResolvedValue(null);
+    jest.mocked(AccountStorage.getGitHubAppCredential).mockResolvedValue(null);
+    jest.mocked(AccountStorage.getOAuthCredential).mockResolvedValue(null);
+  });
+
+  it('retries with OAuth after GitHub App fails with too many redirects error', async () => {
+    nativeModule.pull
+      .mockResolvedValueOnce({
+        ok: false,
+        error: 'too many redirects or authentication replays',
+        message: 'too many redirects or authentication replays',
+        conflicts: [],
+      })
+      .mockResolvedValueOnce({ kind: 'UpToDate', message: 'up to date', conflicts: [] });
+
+    jest.mocked(AccountStorage.getGitHubAppCredential).mockResolvedValue({
+      kind: 'github_app' as const,
+      token: 'github-app-token',
+      appId: 1,
+      appName: 'GitNotes',
+      selectedRepositories: [{ owner: 'owner', repo: 'repo' }],
+    });
+    jest.mocked(AccountStorage.getOAuthCredential).mockResolvedValue({
+      kind: 'oauth' as const,
+      accessToken: 'oauth-token',
+      provider: 'github',
+    });
+
+    const result = await GitEngine.pull('/repo', 'origin', 'github/owner/repo');
+
+    expect(result).toEqual({ ok: true });
+    expect(nativeModule.pull).toHaveBeenCalledTimes(2);
+    expect(nativeModule.setCredential).toHaveBeenCalledWith('github/owner/repo', {
+      kind: 'userpass',
+      username: 'x-access-token',
+      password: 'github-app-token',
+    });
+    expect(nativeModule.setCredential).toHaveBeenLastCalledWith('github/owner/repo', {
+      kind: 'userpass',
+      username: 'x-access-token',
+      password: 'oauth-token',
+    });
+  });
 
   it('rejects a push when no credential source is available', async () => {
     jest.mocked(AuthService.getToken).mockResolvedValue(null);

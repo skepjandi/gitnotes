@@ -34,6 +34,7 @@ const loadService = async () => {
   const mockSetActiveAccountId = jest.fn<() => Promise<void>>();
   const mockSetActiveHostId = jest.fn<() => Promise<void>>();
   const mockGetActiveHostId = jest.fn<() => Promise<string | null>>();
+  const mockClearHostToken = jest.fn<() => Promise<void>>();
   mockGetActiveHostId.mockResolvedValue(null);
 
   jest.doMock('expo-web-browser', () => ({
@@ -58,6 +59,7 @@ const loadService = async () => {
       setActiveAccountId: mockSetActiveAccountId,
       setActiveHostId: mockSetActiveHostId,
       getActiveHostId: mockGetActiveHostId,
+      clearHostToken: mockClearHostToken,
     },
   }));
 
@@ -81,6 +83,7 @@ const loadService = async () => {
     mod, mockPost, mockSetGitHubAppCredential,
     mockAddAccount, mockUpsertHostConnection,
     mockSetActiveAccountId, mockSetActiveHostId, mockGetActiveHostId,
+    mockClearHostToken,
   };
 };
 
@@ -486,7 +489,7 @@ describe('GitHubAppService', () => {
     it('handleCallback() with null hostId creates account, host connection, and stores App credential under resolved hostId', async () => {
       const {
         mod, mockPost, mockAddAccount, mockUpsertHostConnection,
-        mockSetActiveAccountId, mockSetActiveHostId, mockGetActiveHostId, mockSetGitHubAppCredential,
+        mockSetActiveAccountId, mockSetActiveHostId, mockGetActiveHostId, mockSetGitHubAppCredential, mockClearHostToken,
       } = await loadService();
 
       const fakeState = 'callback-state-null-host';
@@ -544,6 +547,7 @@ describe('GitHubAppService', () => {
         installationId: 111222,
         accountAvatarUrl: 'https://avatars.githubusercontent.com/u/333',
       }));
+      expect(mockClearHostToken).toHaveBeenCalledWith('acc-app-456:github:default');
     });
 
     it('handleCallback() with null hostId does not set active account/host when one already exists', async () => {

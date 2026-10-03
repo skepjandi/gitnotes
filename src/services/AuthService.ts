@@ -1,4 +1,5 @@
 import AccountStorage, { HostConnection, StoredAccount } from './AccountStorage';
+import { GitHubAppService } from './GitHubAppService';
 import { gitLabService } from './git/GitLabService';
 import {
   giteaHostService,
@@ -369,11 +370,6 @@ export class AuthService {
 
       let anyHostsLeft = false;
       for (const host of hosts) {
-        const token = await AccountStorage.getHostToken(host.id);
-        if (!token) {
-          await AccountStorage.removeHostConnection(host.id);
-          continue;
-        }
         if (host.provider !== 'github') {
           // We don't currently revalidate non-GitHub tokens at boot; the
           // design treats them as user-managed and removes only on explicit
@@ -381,6 +377,26 @@ export class AuthService {
           anyHostsLeft = true;
           continue;
         }
+
+        const appCredential = await AccountStorage.getGitHubAppCredential(host.id);
+        if (appCredential) {
+          if (isInstallationTokenExpired(appCredential)) {
+            const renewal = await GitHubAppService.renewInstallationToken({ credential: appCredential });
+            if (!renewal.ok) {
+              anyHostsLeft = true;
+              continue;
+            }
+          }
+          anyHostsLeft = true;
+          continue;
+        }
+
+        const token = await AccountStorage.getHostToken(host.id);
+        if (!token) {
+          await AccountStorage.removeHostConnection(host.id);
+          continue;
+        }
+
         const result = await validateGitHubToken(token);
         if (!result.ok && result.reason === 'invalid') {
           await AccountStorage.removeHostConnection(host.id);

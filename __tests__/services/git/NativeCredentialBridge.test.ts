@@ -613,6 +613,10 @@ describe('isAuthFailure', () => {
     expect(isAuthFailure('error string')).toBe(false);
     expect(isAuthFailure({})).toBe(false);
   });
+
+  test('returns true for "too many redirects or authentication replays" (libgit2 native error)', () => {
+    expect(isAuthFailure(new Error('Git(message: "too many redirects or authentication replays", corruption: false)'))).toBe(true);
+  });
 });
 
 describe('getNextCredentialKind', () => {

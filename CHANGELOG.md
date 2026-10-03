@@ -10,6 +10,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-10-04
 
+### fix(auth): recover ForegroundSync after Git auth replay errors
+
+**What:** ForegroundSync could stop pulling after libgit2 reported `too many redirects or authentication replays`, even though the existing GitHub credential fallback could recover from a stale App token.
+
+**Fix:** Classify this exact native error as an authentication failure so GitEngine rotates to the next configured credential and retries the pull.
+
 ### fix(auth): restore GitHub App-only repository authorization
 
 **What:** GitHub App-only connections could retain a stale host token and fail repository sync because credential selection used a generated repository ID instead of the canonical `owner/repo` identity.

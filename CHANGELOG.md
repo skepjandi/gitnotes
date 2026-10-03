@@ -8,6 +8,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-10-04
+
+### fix(auth): restore GitHub App-only repository authorization
+
+**What:** GitHub App-only connections could retain a stale host token and fail repository sync because credential selection used a generated repository ID instead of the canonical `owner/repo` identity.
+
+**Fix:** Clear the stale token after App callback completion, persist the canonical repository name, and pass it through GitEngine and GitHub credential resolution.
+
 ## 2026-10-03
 
 ### fix(settings): preserve GitHub App install and host identity actions

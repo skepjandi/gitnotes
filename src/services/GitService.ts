@@ -71,6 +71,7 @@ export class GitService {
         id: `${provider}:${Date.now()}`,
         name: repoName,
         path: path,
+        full_name: path,
         branch,
         provider,
         hostId,

@@ -301,10 +301,15 @@ export function HostAuthProvider({ children }: HostAuthProviderProps) {
 
   const disconnectGitHubOAuth = useCallback(
     async (hostId: string) => {
-      const { AccountStorage } = await import('../services/AccountStorage');
-      await AccountStorage.deleteOAuthCredential(hostId);
-      const { clearHostCredentials } = await import('../services/git/NativeCredentialBridge');
-      await clearHostCredentials(hostId);
+      const { AuthService } = await import('../services/AuthService');
+      const { hostRemoved } = await AuthService.removeCredential(hostId, 'oauth');
+      if (hostRemoved) {
+        const { clearHostCredentials } = await import('../services/git/NativeCredentialBridge');
+        await clearHostCredentials(hostId);
+      } else {
+        const { clearCredentialKindForHost } = await import('../services/git/NativeCredentialBridge');
+        await clearCredentialKindForHost(hostId, 'oauth');
+      }
     },
     [],
   );
@@ -326,10 +331,15 @@ export function HostAuthProvider({ children }: HostAuthProviderProps) {
 
   const disconnectGitHubApp = useCallback(
     async (hostId: string) => {
-      const { AccountStorage } = await import('../services/AccountStorage');
-      await AccountStorage.deleteGitHubAppCredential(hostId);
-      const { clearHostCredentials } = await import('../services/git/NativeCredentialBridge');
-      await clearHostCredentials(hostId);
+      const { AuthService } = await import('../services/AuthService');
+      const { hostRemoved } = await AuthService.removeCredential(hostId, 'github_app');
+      if (hostRemoved) {
+        const { clearHostCredentials } = await import('../services/git/NativeCredentialBridge');
+        await clearHostCredentials(hostId);
+      } else {
+        const { clearCredentialKindForHost } = await import('../services/git/NativeCredentialBridge');
+        await clearCredentialKindForHost(hostId, 'github_app');
+      }
     },
     [],
   );

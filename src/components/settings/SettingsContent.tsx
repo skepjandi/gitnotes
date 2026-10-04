@@ -176,6 +176,11 @@ onRemoveAccount: (id: string, login: string) => void;
   appLoading: Record<string, boolean>;
   appError: Record<string, string | null>;
   appCredentials: Record<string, GitHubAppCredentialRecord | null>;
+  // GitHub PAT
+  hostCredentialKinds: Record<string, Array<'token' | 'oauth' | 'github_app' | 'ssh'>>;
+  onDisconnectPat: (hostId: string) => void;
+  patLoading: Record<string, boolean>;
+  patError: Record<string, string | null>;
 };
 
 function formatLfsBytes(bytes: number): string {
@@ -280,9 +285,14 @@ export function SettingsContent(props: SettingsContentProps) {
     oauthLoading = {},
     oauthError = {},
     onConnectGitHubApp,
+    onDisconnectGitHubApp,
     appLoading = {},
     appError = {},
     appCredentials = {},
+    hostCredentialKinds = {},
+    onDisconnectPat,
+    patLoading = {},
+    patError = {},
   } = props;
   // Tokens hook gives us spacing/radii/type so the styled disconnect
   // button matches the rest of the app without hardcoded values.
@@ -796,6 +806,16 @@ export function SettingsContent(props: SettingsContentProps) {
                                     <Text style={{ fontSize: type.xs, color: colors.primary }}>
                                       Installed
                                     </Text>
+                                    <TouchableOpacity
+                                      testID={`settings.button.remove-github-app.${host.id}`}
+                                      onPress={() => onDisconnectGitHubApp(host.id)}
+                                      disabled={appLoading[host.id]}
+                                      accessibilityRole="button"
+                                    >
+                                      <Text style={{ fontSize: type.xs, color: colors.error }}>
+                                        {t('common.remove')}
+                                      </Text>
+                                    </TouchableOpacity>
                                   </View>
                                 ) : (
                                   <TouchableOpacity
@@ -810,6 +830,28 @@ export function SettingsContent(props: SettingsContentProps) {
                                   </TouchableOpacity>
                                 )}
                               </View>
+                              {(hostCredentialKinds[host.id] ?? []).includes('token') ? (
+                                <View className="flex-row items-center gap-1.5">
+                                  <Text style={{ fontSize: type.xs, color: colors.textSecondary }}>PAT</Text>
+                                  {patLoading[host.id] ? (
+                                    <ActivityIndicator
+                                      size="small"
+                                      color={colors.primary}
+                                      testID={`settings.spinner.pat.${host.id}`}
+                                    />
+                                  ) : null}
+                                  <TouchableOpacity
+                                    testID={`settings.button.remove-pat.${host.id}`}
+                                    onPress={() => onDisconnectPat(host.id)}
+                                    disabled={patLoading[host.id]}
+                                    accessibilityRole="button"
+                                  >
+                                    <Text style={{ fontSize: type.xs, color: patError[host.id] ? colors.error : colors.primary }}>
+                                      {t('common.remove')}
+                                    </Text>
+                                  </TouchableOpacity>
+                                </View>
+                              ) : null}
                             </>
                           ) : null}
                           <TouchableOpacity

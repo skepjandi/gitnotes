@@ -10,6 +10,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-10-04
 
+### fix(auth): combine GitHub credential repository access
+
+**What:** GitHub repository discovery stopped at GitHub App selections and Settings could not remove PAT, OAuth, and App credentials independently.
+
+**Fix:** Union App-selected, OAuth, and PAT repositories with case-insensitive deduplication, preserve partial discovery results, and add per-credential status/removal controls while retaining the shared host until its final credential is removed.
+
 ### fix(auth): restore GitHub App-only repository authorization
 
 **What:** GitHub App-only connections could retain a stale host token and fail repository sync because credential selection used a generated repository ID instead of the canonical `owner/repo` identity.

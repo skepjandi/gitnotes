@@ -379,8 +379,8 @@
     "tokenInvalid": "잘못된 토큰입니다. 확인 후 다시 시도하세요.",
     "removeAccountTitle": "@{{login}}을(를) 제거하시겠습니까?",
     "removeAccountBody": "이 계정의 토큰이 이 기기에서 삭제됩니다. 이 계정으로 만든 노트/할 일은 로컬에 유지됩니다.",
-    "removeTokenTitle": "GitHub 토큰 제거",
-    "removeTokenBody": "GitHub 계정 연결이 해제됩니다. 계속하시겠습니까?",
+    "removeTokenTitle": "모든 호스트 연결을 해제하시겠습니까?",
+    "removeTokenBody": "연결된 모든 호스트와 자격 증명이 이 기기에서 삭제됩니다. 계속하시겠습니까?",
     "cascadeRemoveWarning": "동기화된 {{count}}개의 리포지토리도 이 기기에서 제거됩니다.",
     "resetOnboardingTitle": "온보딩 재설정",
     "resetOnboardingBody": "다음 앱 실행 시 온보딩 화면이 표시됩니다.",
@@ -576,7 +576,8 @@
       "aiPersonalization": "활성화하면 AI가 노트와 일기를 읽어 맞춤화된 응답을 제공합니다. 데이터 프라이버시를 위해 끄면 AI는 현재 채팅 컨텍스트만 사용합니다.",
       "githubTools": "활성화하면 AI 에이전트가 연결된 GitHub 계정으로 저장소 목록 보기, 이슈 생성, 풀 리퀘스트 열기, diff 변경 검토, 리뷰 게시를 할 수 있습니다. 이미 설정한 동일한 토큰을 사용합니다.",
       "dailyQuotePersonalization": "활성화하면 AI가 일기 노트를 읽어 홈 화면에 표시되는 명언을 개인화합니다. 비활성화하면 매일 임의의 명언이 표시됩니다.",
-      "dailyQuoteShowSources": "명언의 출처가 된 원서나 작품을 저자 이름 옆에 표시합니다."
+      "dailyQuoteShowSources": "명언의 출처가 된 원서나 작품을 저자 이름 옆에 표시합니다.",
+      "disconnectAllHosts": "저장된 모든 호스트 연결과 자격 증명을 이 기기에서 삭제합니다."
     },
     "title": "Hint"
   },
@@ -604,7 +605,7 @@
     "removeAccount": "Remove account",
     "disconnectTitle": "Disconnect host?",
     "disconnectBody": "The host connection will be removed.",
-    "removeActiveConnection": "Disconnect active host",
+    "disconnectAllHosts": "모든 호스트 연결 해제",
     "settings": {
       "accountsGroup": "계정"
     },

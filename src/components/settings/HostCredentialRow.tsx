@@ -164,7 +164,7 @@ export function HostCredentialRow({
                 {patLoading ? <ActivityIndicator size="small" color={colors.primary} testID={`settings.spinner.pat.${hostId}`} /> : null}
                 <ActionLabel
                   label={t('common.remove')}
-                  color={patError ? colors.error : colors.error}
+                  color={patError ? colors.error : colors.primary}
                   onPress={onPatPress}
                   disabled={patLoading}
                   testID={`settings.button.remove-pat.${hostId}`}

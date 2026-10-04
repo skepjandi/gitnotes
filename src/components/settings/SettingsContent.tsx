@@ -843,32 +843,34 @@ export function SettingsContent(props: SettingsContentProps) {
           </Group>
 
           <Group>
-            <GroupRow
-              testID={isPro ? 'settings.button.connect-host' : 'settings.row.connect-host-locked'}
-              onPress={isPro ? () => onAddHost() : onAddHostLocked}
-              leading={<Ionicons name="add-circle-outline" size={20} color={colors.primary} />}
-              trailing={
-                isPro ? (
-                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                ) : (
-                  <Ionicons name="lock-closed" size={18} color={colors.textSecondary} />
-                )
-              }
-            >
-              <Text style={[styles.settingLabel, { color: colors.primary }]}>
-                {t('connectHost.connectHost')}
-              </Text>
-            </GroupRow>
+            {accountSummaries.length > 0 ? (
+              <>
+                <GroupRow
+                  testID={isPro ? 'settings.button.connect-host' : 'settings.row.connect-host-locked'}
+                  onPress={isPro ? () => onAddHost() : onAddHostLocked}
+                  leading={<Ionicons name="add-circle-outline" size={20} color={colors.primary} />}
+                  trailing={
+                    isPro ? (
+                      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                    ) : (
+                      <Ionicons name="lock-closed" size={18} color={colors.textSecondary} />
+                    )
+                  }
+                >
+                  <Text style={[styles.settingLabel, { color: colors.primary }]}>
+                    {t('connectHost.connectHost')}
+                  </Text>
+                </GroupRow>
 
-            {accountSummaries.length < 2 && accountSummaries.every((s) => s.hosts.length <= 1) ? (
-              null
-            ) : (
-              <GroupRow testID="settings.button.remove-token" onPress={onRemoveToken} accessibilityRole="button">
-                <Text style={[styles.settingLabel, { color: colors.error }]}>
-                  {t('accounts.removeActiveConnection')}
-                </Text>
-              </GroupRow>
-            )}
+                {accountSummaries.length < 2 && accountSummaries.every((s) => s.hosts.length <= 1) ? null : (
+                  <GroupRow testID="settings.button.remove-token" onPress={onRemoveToken} accessibilityRole="button">
+                    <Text style={[styles.settingLabel, { color: colors.error }]}>
+                      {t('accounts.removeActiveConnection')}
+                    </Text>
+                  </GroupRow>
+                )}
+              </>
+            ) : null}
             {/* GitHub App install — always available */}
         <GroupRow
           testID="settings.button.install-github-app"

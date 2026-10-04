@@ -66,9 +66,14 @@ export async function resolveStageAuthor(): Promise<{ name: string; email: strin
 
   const user: GitHostUser | null = await activeHost.host.getAuthenticatedUser();
   const login = user?.login?.trim() || 'gitnotes';
+  const email = user?.email?.trim();
+  const githubNoreplyEmail =
+    activeHost.provider === 'github' && user
+      ? `${user.id}+${user.login}@users.noreply.github.com`
+      : '';
   return {
     name: user?.name?.trim() || login,
-    email: user?.email?.trim() || '',
+    email: email || githubNoreplyEmail,
   };
 }
 

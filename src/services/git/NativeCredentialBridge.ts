@@ -354,6 +354,22 @@ export function getNextCredentialKind(currentKind: CredentialKindForNative): Cre
   }
 }
 
+async function resolveOAuthOrPatToken(
+  repoId: string,
+  hostId: string,
+): Promise<{ token: string; kind: 'oauth' | 'token' }> {
+  const oauthCred = await AccountStorage.getOAuthCredential(hostId);
+  if (oauthCred) return { token: oauthCred.accessToken, kind: 'oauth' };
+
+  const pat = await AccountStorage.getHostToken(hostId);
+  if (pat) return { token: pat, kind: 'token' };
+
+  throw new NativeCredentialBridgeError(
+    `No OAuth or PAT credential can access ${repoId} on ${hostId}`,
+    'credential_not_found',
+  );
+}
+
 // ── 401 recovery ─────────────────────────────────────────────────────────────
 
 /**
@@ -435,13 +451,14 @@ async function nativeClearCredential(repoId: string): Promise<void> {
  *
  * Priority: GitHub App (if repo is in selection) > OAuth > PAT
  *
- * SECURITY INVARIANT — fail-closed on App:
- * - If an App credential exists for the host, the repo MUST be in the
- *   selected-repository list. If it is not, we throw `repo_not_in_selection`.
+ * SECURITY INVARIANT — App access is isolated:
+ * - If an App credential exists for the host and the repo is selected, its
+ *   token is preferred.
+ * - If the repo is outside the App selection, OAuth/PAT credentials are
+ *   consulted so each repository uses an auth that can access it.
  * - If the App token is expired, we renew it. If renewal fails, we THROW
  *   rather than silently falling through to OAuth/PAT — a failed App
  *   installation means the user must re-authorize, not silently degrade.
- * - OAuth/PAT are consulted ONLY when no App credential exists for the host.
  *
  * For OAuth credentials: returns the token directly (no refresh — GitHub
  * OAuth does not support refresh; expiry is handled by surfacing re-auth).
@@ -449,7 +466,6 @@ async function nativeClearCredential(repoId: string): Promise<void> {
  * For PAT: returns the token directly.
  *
  * Throws `NativeCredentialBridgeError` when:
- * - App credential exists but repo is not in selection (`repo_not_in_selection`)
  * - App credential exists but is expired and renewal fails (`renewal_failed`)
  * - No credential is available (`credential_not_found`)
  */
@@ -469,11 +485,17 @@ export async function resolveGitHubRepoToken(params: {
   // Check App credential first (highest priority).
   const appCred = await AccountStorage.getGitHubAppCredential(hostId);
   if (appCred) {
-    // App exists — enforce selected-repository membership FIRST (fail-closed).
-    // Use the canonical owner/repo name if provided; otherwise fall back to the raw repoId.
-    // The raw repoId may be a local numeric ID (e.g. "github:1790980499852") which
-    // does not match the "owner/repo" format in selectedRepositories.
-    enforceAppRepositorySelection(repoFullName ?? repoId, appCred);
+    try {
+      enforceAppRepositorySelection(repoFullName ?? repoId, appCred);
+    } catch (error) {
+      if (
+        !(error instanceof NativeCredentialBridgeError) ||
+        error.code !== 'repo_not_in_selection'
+      ) {
+        throw error;
+      }
+      return resolveOAuthOrPatToken(repoId, hostId);
+    }
 
     if (isInstallationTokenExpired(appCred)) {
       // Expired — attempt one renewal. Throw on failure; do NOT fall through.
@@ -490,22 +512,7 @@ export async function resolveGitHubRepoToken(params: {
     return { token, kind: 'github_app' as CredentialKindForNative };
   }
 
-  // No App credential — consult OAuth.
-  const oauthCred = await AccountStorage.getOAuthCredential(hostId);
-  if (oauthCred) {
-    return { token: oauthCred.accessToken, kind: 'oauth' as CredentialKindForNative };
-  }
-
-  // Fall back to PAT.
-  const pat = await AccountStorage.getHostToken(hostId);
-  if (pat) {
-    return { token: pat, kind: 'token' as CredentialKindForNative };
-  }
-
-  throw new NativeCredentialBridgeError(
-    `No credential available for ${repoId} on ${hostId}`,
-    'credential_not_found',
-  );
+  return resolveOAuthOrPatToken(repoId, hostId);
 }
 
 /**

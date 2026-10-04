@@ -481,7 +481,7 @@ describe('resolveGitHubRepoToken', () => {
     ).rejects.toThrow(NativeCredentialBridgeError);
   });
 
-  test('SECURITY: repo not in App selection throws — does NOT fall back to OAuth', async () => {
+  test('falls back to OAuth when repo is outside App selection', async () => {
     const cred = makeAppCred({
       token: 'inst_tok',
       expiresAt: Date.now() + 3600 * 1000,
@@ -496,13 +496,12 @@ describe('resolveGitHubRepoToken', () => {
     });
     (AccountStorage.getHostToken as jest.Mock).mockResolvedValue(null);
 
-    // Must throw repo_not_in_selection, not return OAuth token
     await expect(
       resolveGitHubRepoToken({ repoId: 'github.com/acme/repo-b', hostId: 'github.com' }),
-    ).rejects.toThrow(NativeCredentialBridgeError);
+    ).resolves.toEqual({ kind: 'oauth', token: 'oauth_tok' });
   });
 
-  test('SECURITY: repo not in App selection throws — does NOT fall back to PAT', async () => {
+  test('falls back to PAT when repo is outside App selection and OAuth is absent', async () => {
     const cred = makeAppCred({
       token: 'inst_tok',
       expiresAt: Date.now() + 3600 * 1000,
@@ -513,10 +512,9 @@ describe('resolveGitHubRepoToken', () => {
     (AccountStorage.getOAuthCredential as jest.Mock).mockResolvedValue(null);
     (AccountStorage.getHostToken as jest.Mock).mockResolvedValue('ghp_pat');
 
-    // Must throw repo_not_in_selection, not return PAT token
     await expect(
       resolveGitHubRepoToken({ repoId: 'github.com/acme/repo-b', hostId: 'github.com' }),
-    ).rejects.toThrow(NativeCredentialBridgeError);
+    ).resolves.toEqual({ kind: 'token', token: 'ghp_pat' });
   });
 
   test('OAuth is only consulted when no App credential exists', async () => {

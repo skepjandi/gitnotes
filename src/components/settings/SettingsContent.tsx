@@ -302,6 +302,23 @@ export function SettingsContent(props: SettingsContentProps) {
   const [showResetAIMemoryModal, setShowResetAIMemoryModal] = useState(false);
   const [oauthConnected, setOauthConnected] = useState<Record<string, boolean>>({});
   const [overflowHostId, setOverflowHostId] = useState<string | null>(null);
+  const [expandedHostIds, setExpandedHostIds] = useState<Set<string>>(new Set());
+  const totalHostCount = useMemo(
+    () => accountSummaries.reduce((count, summary) => count + summary.hosts.length, 0),
+    [accountSummaries],
+  );
+  const shouldCollapseHosts = totalHostCount > 1;
+  useEffect(() => {
+    setExpandedHostIds(new Set());
+  }, [totalHostCount]);
+  const toggleHostExpansion = useCallback((hostId: string) => {
+    setExpandedHostIds((current) => {
+      const next = new Set(current);
+      if (next.has(hostId)) next.delete(hostId);
+      else next.add(hostId);
+      return next;
+    });
+  }, []);
   // Drop providers whose `supportedPlatforms` excludes the current OS so a
   // provider that physically can't run here (e.g. on-device Llama on iOS) is
   // hidden entirely instead of showing as a permanently-disabled row.
@@ -686,6 +703,7 @@ export function SettingsContent(props: SettingsContentProps) {
                   </View>
                   {summary.hosts.map((host) => {
                     const isHostActive = host.id === summary.activeHostId;
+                    const isHostExpanded = !shouldCollapseHosts || expandedHostIds.has(host.id);
                     const hostLogin = host.hostLogin || GIT_HOST_LABELS[host.provider];
                     const idLabel = host.instanceBaseUrl
                       ? `${hostLogin}@${host.instanceBaseUrl.replace(/^https?:\/\//, '')}`
@@ -697,15 +715,32 @@ export function SettingsContent(props: SettingsContentProps) {
                           <GroupRow
                             leading={<Ionicons name="globe-outline" size={19} color={colors.textSecondary} />}
                             trailing={
-                              <TouchableOpacity
-                                testID={`settings.button.host-overflow.${host.id}`}
-                                onPress={() => setOverflowHostId(host.id)}
-                                accessibilityRole="button"
-                                accessibilityLabel={`${GIT_HOST_LABELS[host.provider]} actions`}
-                                hitSlop={8}
-                              >
-                                <Ionicons name="ellipsis-horizontal" size={22} color={colors.textSecondary} />
-                              </TouchableOpacity>
+                              <View className="flex-row items-center gap-2">
+                                {shouldCollapseHosts ? (
+                                  <TouchableOpacity
+                                    testID={`settings.button.host-collapse-toggle.${host.id}`}
+                                    onPress={() => toggleHostExpansion(host.id)}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={isHostExpanded ? 'Collapse credentials' : 'Expand credentials'}
+                                    hitSlop={8}
+                                  >
+                                    <Ionicons
+                                      name={isHostExpanded ? 'chevron-down' : 'chevron-forward'}
+                                      size={18}
+                                      color={colors.textSecondary}
+                                    />
+                                  </TouchableOpacity>
+                                ) : null}
+                                <TouchableOpacity
+                                  testID={`settings.button.host-overflow.${host.id}`}
+                                  onPress={() => setOverflowHostId(host.id)}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={`${GIT_HOST_LABELS[host.provider]} actions`}
+                                  hitSlop={8}
+                                >
+                                  <Ionicons name="ellipsis-horizontal" size={22} color={colors.textSecondary} />
+                                </TouchableOpacity>
+                              </View>
                             }
                           >
                             <View className="flex-row items-center gap-2">
@@ -726,26 +761,28 @@ export function SettingsContent(props: SettingsContentProps) {
                           </GroupRow>
                         </View>
 
-                        <HostCredentialRow
-                          kind="ssh"
-                          hostId={host.id}
-                          sshEnabled={hostUseSsh[host.id] ?? false}
-                          oauthConnected={false}
-                          oauthLoading={false}
-                          oauthError={null}
-                          appCredential={null}
-                          appLoading={false}
-                          appError={null}
-                          hasPat={false}
-                          patLoading={false}
-                          patError={null}
-                          onToggleSSH={() => onToggleSSH(host.id)}
-                          onOAuthPress={() => undefined}
-                          onAppPress={() => undefined}
-                          onPatPress={() => undefined}
-                        />
-                        {isGithubHost ? (
+                        {isHostExpanded ? (
                           <>
+                            <HostCredentialRow
+                              kind="ssh"
+                              hostId={host.id}
+                              sshEnabled={hostUseSsh[host.id] ?? false}
+                              oauthConnected={false}
+                              oauthLoading={false}
+                              oauthError={null}
+                              appCredential={null}
+                              appLoading={false}
+                              appError={null}
+                              hasPat={false}
+                              patLoading={false}
+                              patError={null}
+                              onToggleSSH={() => onToggleSSH(host.id)}
+                              onOAuthPress={() => undefined}
+                              onAppPress={() => undefined}
+                              onPatPress={() => undefined}
+                            />
+                            {isGithubHost ? (
+                              <>
                             <HostCredentialRow
                               kind="oauth"
                               hostId={host.id}
@@ -813,6 +850,8 @@ export function SettingsContent(props: SettingsContentProps) {
                               onAppPress={() => undefined}
                               onPatPress={() => onDisconnectPat(host.id)}
                             />
+                              </>
+                            ) : null}
                           </>
                         ) : null}
 

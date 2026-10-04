@@ -255,6 +255,15 @@ const makeAccountSummary = (overrides: Partial<{
   activeHostId: overrides.activeHostId ?? 'gh-1',
 });
 
+function makeAccountSummaryView(hostId: string, accountId: string) {
+  return {
+    accountId,
+    account: { id: accountId, login: accountId, name: accountId, avatarUrl: null },
+    hosts: [{ id: hostId, provider: 'github' as const, hostLogin: accountId, instanceBaseUrl: null }],
+    activeHostId: hostId,
+  };
+}
+
 function makeProps(overrides: Partial<TestSettingsContentProps> = {}): TestSettingsContentProps {
   return {
     colors: {
@@ -816,6 +825,43 @@ describe('Independent GitHub credential status and removal controls', () => {
       });
 
       expect(onDisconnectHost).toHaveBeenCalledWith('gh-1');
+    });
+
+    it('keeps a single host expanded without a collapse control', () => {
+      const props = makeProps({
+        accountSummaries: [makeAccountSummaryView('gh-1', 'account-1')],
+        hostCredentialKinds: { 'gh-1': ['ssh'] },
+        hostUseSsh: { 'gh-1': true },
+      });
+
+      const { getByTestId, queryByTestId } = render(<SettingsContent {...props} />);
+
+      expect(getByTestId('settings.row.host.gh-1.ssh')).toBeTruthy();
+      expect(queryByTestId('settings.button.host-collapse-toggle.gh-1')).toBeNull();
+    });
+
+    it('collapses credential rows for multiple hosts and expands one on demand', () => {
+      const props = makeProps({
+        accountSummaries: [
+          makeAccountSummaryView('gh-1', 'account-1'),
+          makeAccountSummaryView('gh-2', 'account-2'),
+        ],
+        hostCredentialKinds: { 'gh-1': ['ssh'], 'gh-2': ['ssh'] },
+        hostUseSsh: { 'gh-1': true, 'gh-2': true },
+      });
+
+      const { getByTestId, queryByTestId } = render(<SettingsContent {...props} />);
+
+      expect(queryByTestId('settings.row.host.gh-1.ssh')).toBeNull();
+      expect(queryByTestId('settings.row.host.gh-2.ssh')).toBeNull();
+      expect(getByTestId('settings.button.host-collapse-toggle.gh-1')).toBeTruthy();
+
+      fireEvent.press(getByTestId('settings.button.host-collapse-toggle.gh-1'));
+      expect(getByTestId('settings.row.host.gh-1.ssh')).toBeTruthy();
+      expect(queryByTestId('settings.row.host.gh-2.ssh')).toBeNull();
+
+      fireEvent.press(getByTestId('settings.button.host-collapse-toggle.gh-1'));
+      expect(queryByTestId('settings.row.host.gh-1.ssh')).toBeNull();
     });
   });
 });

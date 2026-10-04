@@ -537,8 +537,18 @@ export async function clone(url: string, dest: string, repoId?: string | null): 
   if (!GitEngineModule) {
     throw new Error('GitEngine native module unavailable: cannot clone');
   }
-  await ensureCredentialForOp(repoId);
-  return run(() => GitEngineModule!.clone(url, dest, repoId ?? null), '');
+  const repo = repoId
+    ? (await StorageService.getSavedRepositories()).find((entry) => entry.id === repoId)
+    : undefined;
+  const hostId = repo?.hostId;
+  const makeOp = () => run(() => GitEngineModule!.clone(url, dest, repoId ?? null), '');
+
+  if (!repoId || !hostId) {
+    await ensureCredentialForOp(repoId);
+    return makeOp();
+  }
+
+  return _attemptOpWithAuthFallback(repoId, hostId, makeOp, () => false);
 }
 
 /** Initialize a new repo (`bare = true` creates a push-ready local remote). */

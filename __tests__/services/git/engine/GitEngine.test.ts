@@ -3,6 +3,7 @@ import { requireNativeModule } from 'expo-modules-core';
 jest.mock('expo-modules-core', () => ({
   requireNativeModule: jest.fn(() => ({
     pull: jest.fn(),
+    clone: jest.fn(),
     pushWithIntegrate: jest.fn(),
     getCredential: jest.fn(),
     setCredential: jest.fn(),
@@ -45,6 +46,7 @@ import { StorageService } from '@/services/StorageService';
 
 const nativeModule = (requireNativeModule as jest.Mock).mock.results[0].value as {
   pull: jest.Mock;
+  clone: jest.Mock;
   pushWithIntegrate: jest.Mock;
   getCredential: jest.Mock;
   setCredential: jest.Mock;
@@ -168,6 +170,76 @@ describe('GitEngine.pull', () => {
       password: 'forgejo-token',
     });
     expect(AuthService.getToken).not.toHaveBeenCalled();
+  });
+});
+
+describe('GitEngine.clone auth fallback chain', () => {
+  beforeEach(() => {
+    nativeModule.clone.mockReset();
+    nativeModule.getCredential.mockReset();
+    nativeModule.setCredential.mockReset();
+    jest.mocked(AccountStorage.getHostConnection).mockReset();
+    jest.mocked(AccountStorage.getHostToken).mockReset();
+    jest.mocked(AccountStorage.getGitHubAppCredential).mockReset();
+    jest.mocked(AccountStorage.getOAuthCredential).mockReset();
+    jest.mocked(StorageService.getSavedRepositories).mockReset();
+    nativeModule.getCredential.mockResolvedValue(null);
+    nativeModule.setCredential.mockResolvedValue(undefined);
+    jest.mocked(StorageService.getSavedRepositories).mockResolvedValue([
+      {
+        id: 'github/owner/repo',
+        path: 'github/owner/repo',
+        name: 'repo',
+        provider: 'github',
+        hostId: 'github-host',
+      },
+    ]);
+    jest.mocked(AccountStorage.getHostConnection).mockResolvedValue({
+      id: 'github-host',
+      accountId: 'account',
+      provider: 'github',
+      instanceBaseUrl: 'https://github.com',
+      hostLogin: 'testuser',
+      hostUserId: 1,
+      name: 'GitHub',
+      email: null,
+      avatarUrl: null,
+      addedAt: 0,
+    });
+    jest.mocked(AccountStorage.getHostToken).mockResolvedValue(null);
+    jest.mocked(AccountStorage.getGitHubAppCredential).mockResolvedValue({
+      kind: 'github_app' as const,
+      token: 'github-app-token',
+      appId: 1,
+      appName: 'GitNotes',
+      selectedRepositories: [{ owner: 'owner', repo: 'repo' }],
+    });
+    jest.mocked(AccountStorage.getOAuthCredential).mockResolvedValue({
+      kind: 'oauth' as const,
+      accessToken: 'oauth-token',
+      provider: 'github',
+    });
+  });
+
+  it('retries with OAuth after GitHub App fails with too many redirects during clone', async () => {
+    nativeModule.clone
+      .mockRejectedValueOnce(new Error('Git(message: "too many redirects or authentication replays", corruption: false)'))
+      .mockResolvedValueOnce('/dest');
+
+    const result = await GitEngine.clone('https://github.com/owner/repo.git', '/dest', 'github/owner/repo');
+
+    expect(result).toBe('/dest');
+    expect(nativeModule.clone).toHaveBeenCalledTimes(2);
+    expect(nativeModule.setCredential).toHaveBeenCalledWith('github/owner/repo', {
+      kind: 'userpass',
+      username: 'x-access-token',
+      password: 'github-app-token',
+    });
+    expect(nativeModule.setCredential).toHaveBeenLastCalledWith('github/owner/repo', {
+      kind: 'userpass',
+      username: 'x-access-token',
+      password: 'oauth-token',
+    });
   });
 });
 

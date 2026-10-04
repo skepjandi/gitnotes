@@ -486,6 +486,38 @@ describe('AppFloatingGitButton — toast feedback', () => {
     );
   });
 
+  it('shows an error toast when commitAll reports a failure', async () => {
+    mockCommitAll.mockResolvedValue({
+      outcomes: [],
+      totalActed: 0,
+      failures: [
+        {
+          repoId: 'repo-1',
+          repoPath: '/test/repo-1',
+          repoName: 'Repo 1',
+          ok: false,
+          actedCount: 0,
+          error: 'Commit failed',
+        },
+      ],
+      ok: false,
+    });
+
+    const { default: AppFloatingGitButton } = require('@/components/git/AppFloatingGitButton');
+    render(<AppFloatingGitButton />);
+    await act(async () => { await Promise.resolve(); });
+
+    await act(async () => { getReleaseCallback()('commit'); });
+    await flushPromises();
+
+    expect(mockToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        placement: 'top',
+        duration: 4000,
+      }),
+    );
+  });
+
   it('shows partial-failure toast when some repos conflict', async () => {
     mockPushAll.mockResolvedValue({
       outcomes: [],

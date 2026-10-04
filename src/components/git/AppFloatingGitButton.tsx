@@ -103,7 +103,22 @@ export default function AppFloatingGitButton() {
           repos[0]?.id ?? '',
           stageResult.totalActed,
         );
-        await commitAll(repos, message, author);
+        const commitResult = await commitAll(repos, message, author);
+        if (!commitResult.ok) {
+          toast.show({
+            placement: 'top',
+            duration: 4000,
+            render: ({ id }: { id: string }) => (
+              <Toast action="error" nativeID={`gitbutton-commit-error-${id}`}>
+                <ToastTitle>Commit failed</ToastTitle>
+                <ToastDescription>
+                  {commitResult.failures.map((failure) => failure.error ?? failure.repoName).join(', ')}
+                </ToastDescription>
+              </Toast>
+            ),
+          });
+          return;
+        }
         if (segment === 'commit') {
           toast.show({
             placement: 'top',

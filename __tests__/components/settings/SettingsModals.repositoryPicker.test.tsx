@@ -184,6 +184,19 @@ describe('RepoPickerList (via SettingsModals)', () => {
     expect(getByText('me/my-repo')).toBeTruthy();
   });
 
+  it('renders OAuth repositories without PAT auth state', () => {
+    const { getByText } = render(
+      <SettingsModals
+        {...defaultProps}
+        authState={{ isAuthenticated: false }}
+        discoverableRepos={[availableGitHubRepo]}
+        hostCredentialKinds={{ 'github-host-1': ['oauth'] }}
+      />,
+    );
+
+    expect(getByText('me/my-repo')).toBeTruthy();
+  });
+
   it('search filters across fullName, name, owner, description', () => {
     const onSetRepoSearchQuery = jest.fn();
     const { getByTestId, queryByText } = render(

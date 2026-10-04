@@ -64,12 +64,19 @@ jest.mock('../../../src/services/AccountStorage', () => ({
     getHostToken: jest.fn(),
     getHostConnection: jest.fn(),
     getGitHubAppCredential: jest.fn(),
+    getOAuthCredential: jest.fn(),
   },
 }));
 
 describe('GitHostService.listRepositories()', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    const github = jest.requireMock('@/services/GitHubService');
+    const accountStorage = jest.requireMock('../../../src/services/AccountStorage');
+    github.GitHubService.getRepositories.mockReset();
+    accountStorage.AccountStorage.getHostToken.mockReset();
+    accountStorage.AccountStorage.getGitHubAppCredential.mockReset();
+    accountStorage.AccountStorage.getOAuthCredential.mockReset();
   });
 
   describe('GitHubHostService', () => {
@@ -124,12 +131,19 @@ describe('GitHostService.listRepositories()', () => {
       ]));
     });
 
-    it('returns unavailable on error', async () => {
-      const mock = jest.requireMock('@/services/GitHubService');
-      mock.GitHubService.getRepositories.mockRejectedValue(new Error('Network error'));
+    it('returns unavailable on error when getRepositories throws', async () => {
+      const { AccountStorage: mockAccountStorage } = jest.requireMock('../../../src/services/AccountStorage');
+      mockAccountStorage.getGitHubAppCredential.mockResolvedValue(null);
+      mockAccountStorage.getOAuthCredential.mockResolvedValue(null);
+      mockAccountStorage.getHostToken.mockResolvedValue('some-token');
+
+      const github = jest.requireMock('@/services/GitHubService');
+      github.GitHubService.getRepositories.mockImplementation(async () => {
+        throw new Error('Network error');
+      });
 
       const service = new GitHubHostService();
-      const result = await service.listRepositories();
+      const result = await service.listRepositories('test-host');
 
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
@@ -170,6 +184,257 @@ describe('GitHostService.listRepositories()', () => {
           hostId: 'github-host',
         }),
       ]);
+    });
+
+    it('returns union of App and OAuth repos when both are available', async () => {
+      const github = jest.requireMock('@/services/GitHubService');
+      const { AccountStorage: mockAccountStorage } = jest.requireMock('../../../src/services/AccountStorage');
+      const hostId = 'github-host-union';
+
+      mockAccountStorage.getGitHubAppCredential.mockResolvedValue({
+        kind: 'github_app',
+        selectedRepositories: [{ owner: 'acme', repo: 'app-repo' }],
+      });
+      mockAccountStorage.getOAuthCredential.mockResolvedValue({
+        kind: 'oauth',
+        accessToken: 'oauth-token',
+        expiresAt: Date.now() + 3600000,
+        renewal: { refreshToken: 'refresh', backendUrl: 'https://example.com' },
+        userId: 123,
+      });
+      mockAccountStorage.getHostToken.mockResolvedValue(null);
+
+      const oauthRepos = [{ id: 10, full_name: 'other/oauth-repo', name: 'oauth-repo', private: false, owner: { login: 'other' } }];
+      github.GitHubService.getRepositories.mockImplementation(async (opts?: { credentialKind?: string; hostId?: string }) => {
+        if (opts?.credentialKind === 'oauth' && opts?.hostId === hostId) return oauthRepos;
+        return [];
+      });
+
+      const service = new GitHubHostService();
+      const result = await service.listRepositories(hostId);
+
+      expect(result).toHaveLength(2);
+      expect(result).toEqual(expect.arrayContaining([
+        expect.objectContaining({ fullName: 'acme/app-repo', hostId }),
+        expect.objectContaining({ fullName: 'other/oauth-repo', hostId }),
+      ]));
+    });
+
+    it('returns union of App and PAT repos when both are available', async () => {
+      const github = jest.requireMock('@/services/GitHubService');
+      const { AccountStorage: mockAccountStorage } = jest.requireMock('../../../src/services/AccountStorage');
+      const hostId = 'github-host-app-pat';
+
+      mockAccountStorage.getGitHubAppCredential.mockResolvedValue({
+        kind: 'github_app',
+        selectedRepositories: [{ owner: 'acme', repo: 'app-repo' }],
+      });
+      mockAccountStorage.getOAuthCredential.mockResolvedValue(null);
+      mockAccountStorage.getHostToken.mockResolvedValue('pat-token');
+
+      const patRepos = [{ id: 20, full_name: 'other/pat-repo', name: 'pat-repo', private: true, owner: { login: 'other' } }];
+      github.GitHubService.getRepositories.mockImplementation(async (opts?: { tokenOverride?: string }) => {
+        if (opts?.tokenOverride === 'pat-token') return patRepos;
+        return [];
+      });
+
+      const service = new GitHubHostService();
+      const result = await service.listRepositories(hostId);
+
+      expect(result).toHaveLength(2);
+      expect(result).toEqual(expect.arrayContaining([
+        expect.objectContaining({ fullName: 'acme/app-repo', hostId }),
+        expect.objectContaining({ fullName: 'other/pat-repo', hostId }),
+      ]));
+    });
+
+    it('returns union of App, OAuth, and PAT repos (triple union)', async () => {
+      const github = jest.requireMock('@/services/GitHubService');
+      const { AccountStorage: mockAccountStorage } = jest.requireMock('../../../src/services/AccountStorage');
+      const hostId = 'github-host-triple';
+
+      mockAccountStorage.getGitHubAppCredential.mockResolvedValue({
+        kind: 'github_app',
+        selectedRepositories: [{ owner: 'acme', repo: 'app-repo' }],
+      });
+      mockAccountStorage.getOAuthCredential.mockResolvedValue({
+        kind: 'oauth',
+        accessToken: 'oauth-token',
+        expiresAt: Date.now() + 3600000,
+        renewal: { refreshToken: 'refresh', backendUrl: 'https://example.com' },
+        userId: 123,
+      });
+      mockAccountStorage.getHostToken.mockResolvedValue('pat-token');
+
+      const oauthRepos = [{ id: 10, full_name: 'other/oauth-repo', name: 'oauth-repo', private: false, owner: { login: 'other' } }];
+      const patRepos = [{ id: 20, full_name: 'other/pat-repo', name: 'pat-repo', private: true, owner: { login: 'other' } }];
+      github.GitHubService.getRepositories.mockImplementation(async (opts?: { credentialKind?: string; tokenOverride?: string; hostId?: string }) => {
+        if (opts?.credentialKind === 'oauth' && opts?.hostId === hostId) return oauthRepos;
+        if (opts?.tokenOverride === 'pat-token') return patRepos;
+        return [];
+      });
+
+      const service = new GitHubHostService();
+      const result = await service.listRepositories(hostId);
+
+      expect(result).toHaveLength(3);
+      expect(result).toEqual(expect.arrayContaining([
+        expect.objectContaining({ fullName: 'acme/app-repo', hostId }),
+        expect.objectContaining({ fullName: 'other/oauth-repo', hostId }),
+        expect.objectContaining({ fullName: 'other/pat-repo', hostId }),
+      ]));
+    });
+
+    it('deduplicates repos case-insensitively by fullName', async () => {
+      const { AccountStorage: mockAccountStorage } = jest.requireMock('../../../src/services/AccountStorage');
+      const hostId = 'github-host-dedupe';
+
+      mockAccountStorage.getGitHubAppCredential.mockResolvedValue({
+        kind: 'github_app',
+        selectedRepositories: [{ owner: 'Acme', repo: 'Shared-Repo' }],
+      });
+      mockAccountStorage.getOAuthCredential.mockResolvedValue({
+        kind: 'oauth',
+        accessToken: 'oauth-token',
+        expiresAt: Date.now() + 3600000,
+        renewal: { refreshToken: 'refresh', backendUrl: 'https://example.com' },
+        userId: 123,
+      });
+      mockAccountStorage.getHostToken.mockResolvedValue('different-pat-token');
+
+      const github = jest.requireMock('@/services/GitHubService');
+      const oauthRepos = [{ id: 10, full_name: 'acme/shared-repo', name: 'Shared-Repo', private: false, owner: { login: 'acme' } }];
+      const patRepos = [{ id: 20, full_name: 'other/pat-repo', name: 'pat-repo', private: true, owner: { login: 'other' } }];
+      github.GitHubService.getRepositories.mockImplementation(async (opts?: { credentialKind?: string; tokenOverride?: string; hostId?: string }) => {
+        if (opts?.credentialKind === 'oauth' && opts?.hostId === hostId) return oauthRepos;
+        if (opts?.tokenOverride === 'different-pat-token') return patRepos;
+        return [];
+      });
+
+      const service = new GitHubHostService();
+      const result = await service.listRepositories(hostId);
+
+      expect(result).toHaveLength(2);
+      const fullNames = result.map(r => r.fullName);
+      expect(fullNames).toContain('Acme/Shared-Repo');
+      expect(fullNames).toContain('other/pat-repo');
+    });
+
+    it('keeps richer metadata when duplicate sources describe the same repo', async () => {
+      const { AccountStorage: mockAccountStorage } = jest.requireMock('../../../src/services/AccountStorage');
+      const github = jest.requireMock('@/services/GitHubService');
+      const hostId = 'github-host-metadata';
+
+      mockAccountStorage.getGitHubAppCredential.mockResolvedValue({
+        kind: 'github_app',
+        selectedRepositories: [{ owner: 'acme', repo: 'shared-repo' }],
+      });
+      mockAccountStorage.getOAuthCredential.mockResolvedValue({
+        kind: 'oauth',
+        accessToken: 'oauth-token',
+        expiresAt: Date.now() + 3600000,
+        renewal: { refreshToken: 'refresh', backendUrl: 'https://example.com' },
+        userId: 123,
+      });
+      mockAccountStorage.getHostToken.mockResolvedValue(null);
+      github.GitHubService.getRepositories.mockResolvedValue([
+        {
+          id: 10,
+          full_name: 'ACME/shared-repo',
+          name: 'shared-repo',
+          private: true,
+          description: 'Shared repository',
+          size: 42,
+          owner: { login: 'ACME' },
+        },
+      ]);
+
+      const service = new GitHubHostService();
+      const result = await service.listRepositories(hostId);
+
+      expect(result).toEqual([
+        expect.objectContaining({
+          fullName: 'acme/shared-repo',
+          description: 'Shared repository',
+          sizeKb: 42,
+        }),
+      ]);
+    });
+
+    it('returns repos from successful source when one source fails', async () => {
+      const github = jest.requireMock('@/services/GitHubService');
+      const { AccountStorage: mockAccountStorage } = jest.requireMock('../../../src/services/AccountStorage');
+      const hostId = 'github-host-partial';
+
+      mockAccountStorage.getGitHubAppCredential.mockResolvedValue(null);
+      mockAccountStorage.getOAuthCredential.mockResolvedValue({
+        kind: 'oauth',
+        accessToken: 'oauth-token',
+        expiresAt: Date.now() + 3600000,
+        renewal: { refreshToken: 'refresh', backendUrl: 'https://example.com' },
+        userId: 123,
+      });
+      mockAccountStorage.getHostToken.mockResolvedValue('pat-token');
+
+      const oauthRepos = [{ id: 10, full_name: 'other/oauth-repo', name: 'oauth-repo', private: false, owner: { login: 'other' } }];
+      github.GitHubService.getRepositories.mockImplementation(async (opts?: { credentialKind?: string; tokenOverride?: string; hostId?: string }) => {
+        if (opts?.credentialKind === 'oauth' && opts?.hostId === hostId) return oauthRepos;
+        if (opts?.tokenOverride === 'pat-token') throw new Error('PAT failed');
+        return [];
+      });
+
+      const service = new GitHubHostService();
+      const result = await service.listRepositories(hostId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(expect.objectContaining({ fullName: 'other/oauth-repo', hostId }));
+    });
+
+    it('returns unavailable only when all sources fail', async () => {
+      const github = jest.requireMock('@/services/GitHubService');
+      const { AccountStorage: mockAccountStorage } = jest.requireMock('../../../src/services/AccountStorage');
+      const hostId = 'github-host-all-fail';
+
+      mockAccountStorage.getGitHubAppCredential.mockResolvedValue(null);
+      mockAccountStorage.getOAuthCredential.mockResolvedValue(null);
+      mockAccountStorage.getHostToken.mockResolvedValue(null);
+
+      github.GitHubService.getRepositories.mockRejectedValue(new Error('All failed'));
+
+      const service = new GitHubHostService();
+      const result = await service.listRepositories(hostId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ kind: 'unavailable', provider: 'github' });
+    });
+
+    it('queries OAuth-only host when getOAuthCredential is available', async () => {
+      const github = jest.requireMock('@/services/GitHubService');
+      const { AccountStorage: mockAccountStorage } = jest.requireMock('../../../src/services/AccountStorage');
+      const hostId = 'github-host-oauth-only';
+
+      mockAccountStorage.getGitHubAppCredential.mockResolvedValue(null);
+      mockAccountStorage.getOAuthCredential.mockResolvedValue({
+        kind: 'oauth',
+        accessToken: 'oauth-token',
+        expiresAt: Date.now() + 3600000,
+        renewal: { refreshToken: 'refresh', backendUrl: 'https://example.com' },
+        userId: 123,
+      });
+      mockAccountStorage.getHostToken.mockResolvedValue(null);
+
+      const oauthRepos = [{ id: 10, full_name: 'oauth/oauth-only-repo', name: 'oauth-only-repo', private: false, owner: { login: 'oauth' } }];
+      github.GitHubService.getRepositories.mockImplementation(async (opts?: { credentialKind?: string; hostId?: string }) => {
+        if (opts?.credentialKind === 'oauth' && opts?.hostId === hostId) return oauthRepos;
+        return [];
+      });
+
+      const service = new GitHubHostService();
+      const result = await service.listRepositories(hostId);
+
+      expect(github.GitHubService.getRepositories).toHaveBeenCalledWith({ credentialKind: 'oauth', hostId });
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(expect.objectContaining({ fullName: 'oauth/oauth-only-repo', hostId }));
     });
   });
 

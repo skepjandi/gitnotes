@@ -1290,7 +1290,17 @@ class GitHubServiceClass {
   }
 
   private async requestPaginated(url: string, opts?: TokenOpts): Promise<{ data: any; nextUrl: string | null }> {
-    const resolvedToken = opts?.tokenOverride ?? this.token;
+    let resolvedToken: string | null = null;
+
+    if (opts?.tokenOverride) {
+      resolvedToken = opts.tokenOverride;
+    } else if (opts?.credentialKind === 'oauth' && opts?.hostId) {
+      const oauthCred = await AccountStorage.getOAuthCredential(opts.hostId);
+      resolvedToken = oauthCred?.accessToken ?? null;
+    } else {
+      resolvedToken = this.token;
+    }
+
     if (!resolvedToken) throw new Error('GitHub token is not configured');
     const response = await http.get(url, { authOverride: resolvedToken });
     const linkHeader = response.headers['link'] as string | null;

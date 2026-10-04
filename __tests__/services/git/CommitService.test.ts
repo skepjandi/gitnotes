@@ -75,7 +75,7 @@ describe('resolveStageAuthor', () => {
     });
   });
 
-  it('returns empty email when API returns empty and no remembered email', async () => {
+  it('uses the GitHub noreply address when API returns empty and no remembered email', async () => {
     const getAuthenticatedUser = jest.fn<GitHostFullService['getAuthenticatedUser']>();
     getAuthenticatedUser.mockResolvedValue({
       id: 1,
@@ -98,7 +98,7 @@ describe('resolveStageAuthor', () => {
 
     await expect(resolveStageAuthor()).resolves.toEqual({
       name: 'The Octocat',
-      email: '',
+      email: '1+octocat@users.noreply.github.com',
     });
   });
 

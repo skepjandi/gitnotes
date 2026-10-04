@@ -7,6 +7,7 @@
  * it through a mock that exposes the callback.
  */
 import { act, render } from '@testing-library/react-native';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 let capturedOnReleaseSegment: ((segment: 'stage' | 'commit' | 'push') => void) | null = null;
 
@@ -73,7 +74,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
-const mockRefresh = jest.fn();
+const mockRefresh = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 jest.mock('@/hooks/useAllReposStatus', () => ({
   useAllReposStatus: () => ({
     perRepo: new Map(),
@@ -105,17 +106,17 @@ jest.mock('@/contexts/AccountsContext', () => ({
   }),
 }));
 
-const mockStageAllPending = jest.fn();
-const mockCommitAll = jest.fn();
-const mockPushAll = jest.fn();
+const mockStageAllPending = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockCommitAll = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockPushAll = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 jest.mock('@/services/git/multiRepoGitOps', () => ({
   stageAllPending: (...args: unknown[]) => mockStageAllPending(...args),
   commitAll: (...args: unknown[]) => mockCommitAll(...args),
   pushAll: (...args: unknown[]) => mockPushAll(...args),
 }));
 
-const mockResolveAuthor = jest.fn();
-const mockGenerateCommitMessage = jest.fn();
+const mockResolveAuthor = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockGenerateCommitMessage = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 jest.mock('@/services/git/CommitService', () => ({
   CommitService: {
     resolveAuthor: (...args: unknown[]) => mockResolveAuthor(...args),

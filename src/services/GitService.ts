@@ -12,6 +12,7 @@ import { fetchGitHubDefaultBranch, fetchGitLabDefaultBranch, fetchGiteaLikeDefau
 import type { GitHostProvider } from './git/GitHost';
 import { getGitHostService } from './git/gitHostFactory';
 import { getActiveGitHost } from './git/activeHost';
+import { resolveGitHubRepoToken } from './git/NativeCredentialBridge';
 
 export interface GitRepository {
   id: string;
@@ -56,7 +57,14 @@ export class GitService {
       // Use the active host's token so private repos authenticate consistently
       // throughout the addRepository flow (preflight + branch resolution).
       const activeHost = await getActiveGitHost();
-      const token = activeHost?.token ?? null;
+       let token = activeHost?.token ?? null;
+       if (provider === 'github' && hostId) {
+         token = (await resolveGitHubRepoToken({
+           repoId: path,
+           hostId,
+           repoFullName: path,
+         })).token;
+       }
       let branch: string | undefined;
       if (provider === 'gitlab') {
         branch = (await fetchGitLabDefaultBranch(path, token)) ?? undefined;

@@ -5,6 +5,7 @@ import { TemplateRepoPreferenceService } from '../services/TemplateRepoPreferenc
 import { LastUsedRepoService } from '../services/LastUsedRepoService';
 import { GitFsService } from '../services/git/GitFsService';
 import { AccountStorage } from '../services/AccountStorage';
+import { resolveGitHubRepoToken } from '../services/git/NativeCredentialBridge';
 import { useAIStore } from './aiStore';
 import { useNoteStore } from './noteStore';
 import { useCanvasStore } from './canvasStore';
@@ -83,7 +84,12 @@ export const useRepoStore = create<RepoState & RepoActions>()((set, get) => ({
       // Use the host's actual provider for the preflight decision — not the
       // passed-in resolvedProvider.  This prevents a Forgejo hostId from ever
       // triggering GitHub preflight even when GitHub is the active host.
-      if (hostConnection.provider === 'github' && hostToken) {
+      if (hostConnection.provider === 'github') {
+        hostToken = (await resolveGitHubRepoToken({
+          repoId: path,
+          hostId,
+          repoFullName: path,
+        })).token;
         const access = await checkGitHubRepoAccess(path, hostToken);
         switch (access.kind) {
           case 'ok':

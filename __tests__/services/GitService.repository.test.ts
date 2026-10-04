@@ -17,6 +17,10 @@ jest.mock('@/services/git/activeHost', () => ({
   getActiveGitHost: jest.fn(),
 }));
 
+jest.mock('@/services/git/NativeCredentialBridge', () => ({
+  resolveGitHubRepoToken: jest.fn().mockResolvedValue({ token: 'oauth-or-app-token', kind: 'oauth' }),
+}));
+
 describe('GitService.addRepository', () => {
   beforeEach(() => {
     jest.clearAllMocks();

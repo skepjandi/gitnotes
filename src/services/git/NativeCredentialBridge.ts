@@ -522,3 +522,33 @@ export async function clearHostCredentials(hostId: string): Promise<void> {
   }
   await Promise.all(repoIds.map((repoId) => clearRepoCredential(repoId)));
 }
+
+/**
+ * Clear only the credential registrations of a specific kind for a host.
+ *
+ * Used when removing one credential kind while preserving others — e.g., removing
+ * OAuth but keeping the GitHub App installation, or removing PAT but keeping OAuth.
+ * Only repo registrations whose kind matches `kind` are cleared; other kinds
+ * registered for the same repos are left intact.
+ *
+ * When `kind` is 'token' (PAT), clears registrations of kind 'token' only.
+ * When `kind` is 'oauth', clears 'oauth' registrations only.
+ * When `kind` is 'github_app', clears 'github_app' registrations only.
+ */
+export async function clearCredentialKindForHost(
+  hostId: string,
+  kind: CredentialKindForNative,
+): Promise<void> {
+  const repoIds: string[] = [];
+  for (const [key, registeredKind] of repoCredentialKinds.entries()) {
+    if (key.startsWith(`${hostId}::`) && registeredKind === kind) {
+      const repoId = key.slice(hostId.length + 2);
+      repoIds.push(repoId);
+    }
+  }
+  await Promise.all(repoIds.map((repoId) => clearRepoCredential(repoId)));
+}
+
+export function __clearRepoCredentialKindsForTest(): void {
+  repoCredentialKinds.clear();
+}

@@ -62,6 +62,8 @@ interface AccountsContextValue {
   connectGitHubApp: (hostId: string) => Promise<GitHubAppCredentialRecord | null>;
   /** Disconnect the GitHub App installation credential for a host (clears from storage + native engine). */
   disconnectGitHubApp: (hostId: string) => Promise<void>;
+  /** Disconnect the GitHub PAT credential for a host (clears from storage + native engine). */
+  disconnectGitHubPat: (hostId: string) => Promise<void>;
   /** Renew the GitHub App installation token for a host using its stored renewal grant.
    *  Re-registers the renewed token with the native Git engine. Returns renewed credential on success. */
   renewGitHubAppToken: (hostId: string) => Promise<GitHubAppCredentialRecord | null>;
@@ -391,8 +393,13 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
 
   const disconnectGitHubOAuth = useCallback(
     async (hostId: string): Promise<void> => {
-      await AccountStorage.deleteOAuthCredential(hostId);
-      await GitHubServiceStatic.clearNativeCredentialsForHost(hostId);
+      const { hostRemoved } = await AuthService.removeCredential(hostId, 'oauth');
+      if (hostRemoved) {
+        await GitHubServiceStatic.clearNativeCredentialsForHost(hostId);
+      } else {
+        const { clearCredentialKindForHost } = await import('../services/git/NativeCredentialBridge');
+        await clearCredentialKindForHost(hostId, 'oauth');
+      }
     },
     [],
   );
@@ -412,8 +419,26 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
 
   const disconnectGitHubApp = useCallback(
     async (hostId: string): Promise<void> => {
-      await AccountStorage.deleteGitHubAppCredential(hostId);
-      await GitHubServiceStatic.clearNativeCredentialsForHost(hostId);
+      const { hostRemoved } = await AuthService.removeCredential(hostId, 'github_app');
+      if (hostRemoved) {
+        await GitHubServiceStatic.clearNativeCredentialsForHost(hostId);
+      } else {
+        const { clearCredentialKindForHost } = await import('../services/git/NativeCredentialBridge');
+        await clearCredentialKindForHost(hostId, 'github_app');
+      }
+    },
+    [],
+  );
+
+  const disconnectGitHubPat = useCallback(
+    async (hostId: string): Promise<void> => {
+      const { hostRemoved } = await AuthService.removeCredential(hostId, 'token');
+      if (hostRemoved) {
+        await GitHubServiceStatic.clearNativeCredentialsForHost(hostId);
+      } else {
+        const { clearCredentialKindForHost } = await import('../services/git/NativeCredentialBridge');
+        await clearCredentialKindForHost(hostId, 'token');
+      }
     },
     [],
   );
@@ -461,6 +486,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       disconnectGitHubOAuth,
       connectGitHubApp,
       disconnectGitHubApp,
+      disconnectGitHubPat,
       renewGitHubAppToken,
     }),
     [
@@ -484,6 +510,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       disconnectGitHubOAuth,
       connectGitHubApp,
       disconnectGitHubApp,
+      disconnectGitHubPat,
       renewGitHubAppToken,
     ],
   );
@@ -519,6 +546,7 @@ export function useAccounts(): AccountsContextValue {
       disconnectGitHubOAuth: async () => {},
       connectGitHubApp: async () => null,
       disconnectGitHubApp: async () => {},
+      disconnectGitHubPat: async () => {},
       renewGitHubAppToken: async () => null,
     };
   }

@@ -492,6 +492,13 @@ export class AuthService {
     await AccountStorage.removeHostConnection(hostId);
   }
 
+  static async removeCredential(
+    hostId: string,
+    kind: 'token' | 'oauth' | 'github_app' | 'ssh',
+  ): Promise<{ hostRemoved: boolean }> {
+    return AccountStorage.removeCredential(hostId, kind);
+  }
+
   static async listAccountSummaries(): Promise<AccountSummary[]> {
     const accounts = await AccountStorage.listAccounts();
     const hosts = await AccountStorage.listHostConnections();

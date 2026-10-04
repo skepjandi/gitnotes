@@ -5,7 +5,6 @@ import type { GitHostProvider } from './git/GitHost';
 import type {
   GitHubOAuthCredentialRecord,
   GitHubAppCredentialRecord,
-  CredentialRecord,
   CredentialKind,
 } from './git/contracts';
 import { isKnownCredentialKind } from './git/contracts';
@@ -301,15 +300,13 @@ async function writeOAuthCredential(
 }
 
 async function deleteOAuthCredential(hostId: string): Promise<void> {
+  const credId = `${hostId}:oauth`;
+  await removeHostCredentialId(hostId, credId);
   const key = oauthCredKeyFor(hostId);
   if (Platform.OS === 'web') {
     await AsyncStorage.removeItem(key);
   } else {
     await SecureStore.deleteItemAsync(key).catch(() => undefined);
-  }
-  const existing = await readOAuthCredential(hostId);
-  if (existing) {
-    await removeHostCredentialId(hostId, existing.id);
   }
 }
 
@@ -351,15 +348,13 @@ async function writeGitHubAppCredential(
 }
 
 async function deleteGitHubAppCredential(hostId: string): Promise<void> {
+  const credId = `${hostId}:github_app`;
+  await removeHostCredentialId(hostId, credId);
   const key = githubAppCredKeyFor(hostId);
   if (Platform.OS === 'web') {
     await AsyncStorage.removeItem(key);
   } else {
     await SecureStore.deleteItemAsync(key).catch(() => undefined);
-  }
-  const existing = await readGitHubAppCredential(hostId);
-  if (existing) {
-    await removeHostCredentialId(hostId, existing.id);
   }
 }
 
@@ -885,6 +880,61 @@ export class AccountStorage {
    */
   static async deleteGitHubAppCredential(hostId: string): Promise<void> {
     await deleteGitHubAppCredential(hostId);
+  }
+
+  // ── Per-kind credential removal ─────────────────────────────────────────────
+
+  static async removeCredential(
+    hostId: string,
+    kind: CredentialKind,
+  ): Promise<{ hostRemoved: boolean }> {
+    switch (kind) {
+      case 'token': {
+        await deleteHostToken(hostId);
+        break;
+      }
+      case 'oauth': {
+        const credId = `${hostId}:oauth`;
+        await removeHostCredentialId(hostId, credId);
+        const key = oauthCredKeyFor(hostId);
+        if (Platform.OS === 'web') {
+          await AsyncStorage.removeItem(key);
+        } else {
+          await SecureStore.deleteItemAsync(key).catch(() => undefined);
+        }
+        break;
+      }
+      case 'github_app': {
+        const credId = `${hostId}:github_app`;
+        await removeHostCredentialId(hostId, credId);
+        const key = githubAppCredKeyFor(hostId);
+        if (Platform.OS === 'web') {
+          await AsyncStorage.removeItem(key);
+        } else {
+          await SecureStore.deleteItemAsync(key).catch(() => undefined);
+        }
+        break;
+      }
+      case 'ssh': {
+        await deleteSshKey(hostId);
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+
+    const hasOAuth = await readOAuthCredential(hostId);
+    const hasApp = await readGitHubAppCredential(hostId);
+    const hasToken = await readHostToken(hostId);
+    const hasSSH = await readSshPrivateKey(hostId);
+
+    if (!hasOAuth && !hasApp && !hasToken && !hasSSH) {
+      await this.removeHostConnection(hostId);
+      return { hostRemoved: true };
+    }
+
+    return { hostRemoved: false };
   }
 
   // ── Legacy ───────────────────────────────────────────────────────────

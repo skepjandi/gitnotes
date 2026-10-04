@@ -6,7 +6,6 @@ import {
   GitHubIssue,
   ShaResult,
 } from '../GitHubService';
-import type { TokenOpts } from '../GitHubService';
 import type {
   GitHostBranch,
   GitHostContent,
@@ -15,7 +14,6 @@ import type {
   GitHostPullRequest,
   GitHostRepository,
   GitHostRepositoryResult,
-  GitHostRepositoryUnavailable,
   GitHostService,
   GitHostShaResult,
   GitHostTreeEntry,
@@ -188,13 +186,39 @@ export class GitHubHostService implements GitHostService, GitHostWriteService {
   }
 
   async listRepositories(hostId?: string): Promise<GitHostRepositoryResult[]> {
-    // When a hostId is provided, check for a GitHub App credential first.
-    // App-only hosts store selected repositories separately from PAT/OAuth tokens.
+    const results: GitHostRepository[] = [];
+    const seen = new Map<string, number>();
+
+    const addRepo = (repo: GitHostRepository) => {
+      const key = repo.fullName.toLowerCase();
+      const existingIndex = seen.get(key);
+      if (existingIndex === undefined) {
+        seen.set(key, results.length);
+        results.push(repo);
+        return;
+      }
+
+      const existing = results[existingIndex];
+      results[existingIndex] = {
+        ...existing,
+        description: existing.description ?? repo.description,
+        defaultBranch: existing.defaultBranch ?? repo.defaultBranch,
+        sizeKb: existing.sizeKb ?? repo.sizeKb,
+      };
+    };
+
+    // Track which sources failed
+    let appSourceFailed = false;
+    let oauthSourceFailed = false;
+    let patSourceFailed = false;
+    let lastError: Error | null = null;
+
+    // 1. App repos (always include if available)
     if (hostId) {
       const appCred = await AccountStorage.getGitHubAppCredential(hostId);
       if (appCred && appCred.selectedRepositories.length > 0) {
-        return appCred.selectedRepositories.map(
-          (r): GitHostRepository => ({
+        for (const r of appCred.selectedRepositories) {
+          addRepo({
             provider: 'github',
             owner: r.owner,
             repo: r.repo,
@@ -203,31 +227,114 @@ export class GitHubHostService implements GitHostService, GitHostWriteService {
             description: null,
             isPrivate: true,
             hostId,
-          }),
-        );
+          });
+        }
+      } else {
+        appSourceFailed = true;
+      }
+    } else {
+      appSourceFailed = true;
+    }
+
+    // 2. OAuth repos via credentialKind='oauth'
+    if (hostId) {
+      const oauthCred = await AccountStorage.getOAuthCredential(hostId);
+      if (oauthCred) {
+        try {
+          const repos = await GitHubService.getRepositories({ credentialKind: 'oauth', hostId });
+          for (const r of repos) {
+            addRepo({
+              provider: 'github',
+              owner: r.owner.login,
+              repo: r.name,
+              fullName: r.full_name,
+              name: r.name,
+              description: r.description ?? null,
+              isPrivate: r.private,
+              sizeKb: r.size,
+              hostId,
+            });
+          }
+        } catch (error) {
+          oauthSourceFailed = true;
+          if (!lastError) {
+            lastError = error instanceof Error ? error : null;
+          }
+        }
+      } else {
+        oauthSourceFailed = true;
+      }
+    } else {
+      oauthSourceFailed = true;
+    }
+
+    // 3. PAT repos via getHostToken (if different from OAuth token)
+    if (hostId) {
+      const patToken = await AccountStorage.getHostToken(hostId);
+      const oauthCred = await AccountStorage.getOAuthCredential(hostId);
+      const oauthTokenValue = oauthCred?.accessToken ?? null;
+      if (patToken && patToken !== oauthTokenValue) {
+        try {
+          const repos = await GitHubService.getRepositories({ tokenOverride: patToken });
+          for (const r of repos) {
+            addRepo({
+              provider: 'github',
+              owner: r.owner.login,
+              repo: r.name,
+              fullName: r.full_name,
+              name: r.name,
+              description: r.description ?? null,
+              isPrivate: r.private,
+              sizeKb: r.size,
+              hostId,
+            });
+          }
+        } catch (error) {
+          patSourceFailed = true;
+          if (!lastError) {
+            lastError = error instanceof Error ? error : null;
+          }
+        }
+      } else if (!patToken) {
+        patSourceFailed = true;
       }
     }
-    const hostToken = hostId ? await AccountStorage.getHostToken(hostId) : null;
-    const tokenOptions: TokenOpts | undefined = hostToken ? { tokenOverride: hostToken } : undefined;
-    try {
-      const repos = await GitHubService.getRepositories(tokenOptions);
-      return repos.map(
-        (r): GitHostRepository => ({
-          provider: 'github',
-          owner: r.owner.login,
-          repo: r.name,
-          fullName: r.full_name,
-          name: r.name,
-          description: r.description ?? null,
-          isPrivate: r.private,
-          sizeKb: r.size,
-          hostId,
-        }),
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return [{ kind: 'unavailable', provider: 'github', reason: message }];
+
+    // 4. No hostId: use singleton token (preserve existing behavior)
+    if (!hostId) {
+      try {
+        const repos = await GitHubService.getRepositories();
+        for (const r of repos) {
+          addRepo({
+            provider: 'github',
+            owner: r.owner.login,
+            repo: r.name,
+            fullName: r.full_name,
+            name: r.name,
+            description: r.description ?? null,
+            isPrivate: r.private,
+            sizeKb: r.size,
+            hostId: undefined,
+          });
+        }
+      } catch (error) {
+        lastError = error instanceof Error ? error : null;
+      }
     }
+
+    // Return unavailable only when ALL sources failed
+    const allSourcesFailed =
+      appSourceFailed &&
+      oauthSourceFailed &&
+      patSourceFailed &&
+      results.length === 0;
+
+    if (allSourcesFailed) {
+      const reason = lastError?.message ?? 'No credential available';
+      return [{ kind: 'unavailable', provider: 'github', reason }];
+    }
+
+    return results;
   }
 
   // ── Write operations (GitHostWriteService) ──────────────────────

@@ -10,6 +10,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-10-04
 
+### fix(auth): combine GitHub credential repository access
+
+**What:** GitHub repository discovery stopped at GitHub App selections and Settings could not remove PAT, OAuth, and App credentials independently.
+
+**Fix:** Union App-selected, OAuth, and PAT repositories with case-insensitive deduplication, preserve partial discovery results, and add per-credential status/removal controls while retaining the shared host until its final credential is removed.
+
 ### fix(auth): recover ForegroundSync after Git auth replay errors
 
 **What:** ForegroundSync could stop pulling after libgit2 reported `too many redirects or authentication replays`, even though the existing GitHub credential fallback could recover from a stale App token.

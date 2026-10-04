@@ -116,7 +116,7 @@ export default function SettingsScreen() {
   const { clearAllNotes, refreshNotes } = useNotes();
   const { refreshCanvases } = useCanvases();
   const { refreshTodos } = useTodos();
-  const { authState, accounts, activeAccountId, accountSummaries, setToken, clearToken, addAccount, removeAccount, switchAccount, disconnectHost } = useAuth();
+  const { authState, accounts, activeAccountId, accountSummaries, setToken, clearToken, addAccount, removeAccount, switchAccount, disconnectHost, disconnectGitHubOAuth, disconnectGitHubApp, disconnectGitHubPat } = useAuth();
   const { repositories, addRepository: addRepo, removeRepository: removeRepo } = useRepos();
   const {
     isLockEnabled: isBiometricLockEnabled,
@@ -203,6 +203,8 @@ export default function SettingsScreen() {
   const [appError, setAppError] = useState<Record<string, string | null>>({});
   const [appCredentials, setAppCredentials] = useState<Record<string, GitHubAppCredentialRecord | null>>({});
   const [hostCredentialKinds, setHostCredentialKinds] = useState<Record<string, CredentialKind[]>>({});
+  const [patLoading, setPatLoading] = useState<Record<string, boolean>>({});
+  const [patError, setPatError] = useState<Record<string, string | null>>({});
   const pendingConfirmationRef = useRef(false);
 
   const loadHostUseSsh = useCallback(async (hosts: Array<{ id: string }>) => {
@@ -678,7 +680,8 @@ export default function SettingsScreen() {
           summary.hosts.map(async (host) => {
             const token = await AccountStorage.getHostToken(host.id);
             const appCred = await AccountStorage.getGitHubAppCredential(host.id);
-            return token || appCred ? { host } : null;
+            const oauthCred = await AccountStorage.getOAuthCredential(host.id);
+            return token || appCred || oauthCred ? { host } : null;
           }),
         ),
       );
@@ -1173,14 +1176,14 @@ export default function SettingsScreen() {
     setOauthLoading((prev) => ({ ...prev, [hostId]: true }));
     setOauthError((prev) => ({ ...prev, [hostId]: null }));
     try {
-      await AuthService.removeGitHubOAuthCredential(hostId);
+      await disconnectGitHubOAuth(hostId);
       HapticService.success();
     } catch (err) {
       setOauthError((prev) => ({ ...prev, [hostId]: err instanceof Error ? err.message : 'Unknown error' }));
     } finally {
       setOauthLoading((prev) => ({ ...prev, [hostId]: false }));
     }
-  }, []);
+  }, [disconnectGitHubOAuth]);
 
   const handleConnectGitHubApp = useCallback(async (hostId: string | null) => {
     const key = hostId ?? '__fresh__';
@@ -1220,14 +1223,37 @@ export default function SettingsScreen() {
     setAppLoading((prev) => ({ ...prev, [hostId]: true }));
     setAppError((prev) => ({ ...prev, [hostId]: null }));
     try {
-      await AuthService.removeGitHubAppCredential(hostId);
+      await disconnectGitHubApp(hostId);
+      setAppCredentials((prev) => {
+        const next = { ...prev };
+        next[hostId] = null;
+        return next;
+      });
       HapticService.success();
     } catch (err) {
       setAppError((prev) => ({ ...prev, [hostId]: err instanceof Error ? err.message : 'Unknown error' }));
     } finally {
       setAppLoading((prev) => ({ ...prev, [hostId]: false }));
     }
-  }, []);
+  }, [disconnectGitHubApp]);
+
+  const handleDisconnectPat = useCallback(async (hostId: string) => {
+    setPatLoading((prev) => ({ ...prev, [hostId]: true }));
+    setPatError((prev) => ({ ...prev, [hostId]: null }));
+    try {
+      await disconnectGitHubPat(hostId);
+      setHostCredentialKinds((prev) => {
+        const next = { ...prev };
+        next[hostId] = (next[hostId] ?? []).filter((k) => k !== 'token');
+        return next;
+      });
+      HapticService.success();
+    } catch (err) {
+      setPatError((prev) => ({ ...prev, [hostId]: err instanceof Error ? err.message : 'Unknown error' }));
+    } finally {
+      setPatLoading((prev) => ({ ...prev, [hostId]: false }));
+    }
+  }, [disconnectGitHubPat]);
 
   const handleResetOnboarding = useCallback(() => {
     HapticService.warning();
@@ -1318,6 +1344,10 @@ export default function SettingsScreen() {
         appLoading={appLoading}
         appError={appError}
         appCredentials={appCredentials}
+        hostCredentialKinds={hostCredentialKinds}
+        onDisconnectPat={handleDisconnectPat}
+        patLoading={patLoading}
+        patError={patError}
         onAddHost={(preset) => {
           setConnectHostPreset(preset);
           setShowConnectHostModal(true);

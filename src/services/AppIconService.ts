@@ -16,6 +16,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import {
   supportsAlternateIcons,
   getAppIconName,
@@ -64,6 +65,10 @@ export const APP_ICON_STORAGE_KEY = '@gitnotes:app_icon';
 
 const VALID_NAMES: ReadonlySet<string> = new Set(['Neon', 'Grayscale', 'Gold']);
 
+function isAppIconSwitchingSupported(): boolean {
+  return supportsAlternateIcons && !(Platform.OS === 'android' && __DEV__);
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -78,7 +83,7 @@ function isValidName(name: string | null): name is AppIconName {
 
 /** Returns `true` when the current platform supports alternate app icons. */
 export async function isSupported(): Promise<boolean> {
-  return supportsAlternateIcons;
+  return isAppIconSwitchingSupported();
 }
 
 // ---------------------------------------------------------------------------
@@ -94,7 +99,16 @@ export async function isSupported(): Promise<boolean> {
  * @returns AppIconHydration with current icon and support metadata
  */
 export async function hydrate(): Promise<AppIconHydration> {
-  const supported = supportsAlternateIcons;
+  const supported = isAppIconSwitchingSupported();
+
+  if (!supported) {
+    return {
+      success: true,
+      current: null,
+      isSupported: false,
+      isDefault: true,
+    };
+  }
 
   // 1. Read stored value
   const stored = await AsyncStorage.getItem(APP_ICON_STORAGE_KEY);
@@ -159,7 +173,7 @@ export async function current(): Promise<AppIconName | null> {
  *  - Native call succeeds → persists `name` to AsyncStorage; returns `{ success: true, current: name }`
  */
 export async function set(name: AppIconName): Promise<AppIconResult> {
-  if (!supportsAlternateIcons) {
+  if (!isAppIconSwitchingSupported()) {
     return { success: false, unavailable: true };
   }
 
@@ -194,7 +208,7 @@ export async function set(name: AppIconName): Promise<AppIconResult> {
  * Shorthand for `set(null)` with storage cleared.
  */
 export async function reset(): Promise<AppIconResult> {
-  if (!supportsAlternateIcons) {
+  if (!isAppIconSwitchingSupported()) {
     return { success: false, unavailable: true };
   }
 

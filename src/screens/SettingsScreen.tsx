@@ -53,6 +53,7 @@ import { Group, GroupRow, ScreenHeader, useScreenHeaderHeight, useTabBarHeight }
 import { SettingsContent } from '../components/settings/SettingsContent';
 import { SettingsModals } from '../components/settings/SettingsModals';
 import { SSHKeyModal } from '../components/settings/SettingsModals';
+import { OAuthPermissionModal, type OAuthScope } from '../components/settings/OAuthPermissionModal';
 import { CloneProgressModal, type CloneProgress } from '../components/settings/CloneProgressModal';
 import type { GitRepository } from '../services/GitService';
 import { reposAffectedByRemovedHosts, reposAffectedByRemovedCredential, buildProviderAccountCount, type RemovedHostRef } from '../services/git/repoRemovalCascade';
@@ -199,6 +200,7 @@ export default function SettingsScreen() {
   const [appIconLoading, setAppIconLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<Record<string, boolean>>({});
   const [oauthError, setOauthError] = useState<Record<string, string | null>>({});
+  const [oauthPermissionHostId, setOauthPermissionHostId] = useState<string | null | undefined>(undefined);
   const [appLoading, setAppLoading] = useState<Record<string, boolean>>({});
   const [appError, setAppError] = useState<Record<string, string | null>>({});
   const [appCredentials, setAppCredentials] = useState<Record<string, GitHubAppCredentialRecord | null>>({});
@@ -1149,7 +1151,7 @@ export default function SettingsScreen() {
       setAppIconLoading(false);
     }
   }, [t]);
-  const handleConnectOAuth = useCallback(async (hostId: string | null) => {
+  const startOAuthFlow = useCallback(async (hostId: string | null, scopes: OAuthScope[]) => {
     const key = hostId ?? '__fresh__';
     setOauthLoading((prev) => ({ ...prev, [key]: true }));
     setOauthError((prev) => ({ ...prev, [key]: null }));
@@ -1161,7 +1163,7 @@ export default function SettingsScreen() {
         return;
       }
       const redirectUri = OAUTH_CALLBACK_URL;
-      const result = await GitHubOAuthService.initiate({ backendUrl, redirectUri, clientId, hostId });
+      const result = await GitHubOAuthService.initiate({ backendUrl, redirectUri, clientId, hostId, scopes });
       if (!result.ok) {
         setOauthError((prev) => ({ ...prev, [key]: result.reason }));
         return;
@@ -1184,6 +1186,22 @@ export default function SettingsScreen() {
       setOauthLoading((prev) => ({ ...prev, [key]: false }));
     }
   }, [navigation]);
+
+  const handleConnectOAuth = useCallback(async (hostId: string | null) => {
+    const key = hostId ?? '__fresh__';
+    const clientId = process.env.EXPO_PUBLIC_GITHUB_OAUTH_CLIENT_ID;
+    if (!clientId) {
+      setOauthError((prev) => ({ ...prev, [key]: 'OAuth not configured on this device' }));
+      return;
+    }
+    setOauthPermissionHostId(hostId);
+  }, []);
+
+  const handleOAuthPermissionConfirm = useCallback((scopes: OAuthScope[]) => {
+    const hostId = oauthPermissionHostId;
+    setOauthPermissionHostId(undefined);
+    void startOAuthFlow(hostId ?? null, scopes);
+  }, [oauthPermissionHostId, startOAuthFlow]);
 
   const handleDisconnectOAuth = useCallback(async (hostId: string) => {
     setOauthLoading((prev) => ({ ...prev, [hostId]: true }));
@@ -1531,6 +1549,11 @@ export default function SettingsScreen() {
         onTestToken={() => void handleTestToken()}
         isTestingToken={isTestingToken}
         tokenTestResult={tokenTestResult}
+      />
+      <OAuthPermissionModal
+        visible={oauthPermissionHostId !== undefined}
+        onClose={() => setOauthPermissionHostId(undefined)}
+        onConfirm={handleOAuthPermissionConfirm}
       />
       <ModelSelector visible={showModelSelector} onClose={() => setShowModelSelector(false)} />
       <ProviderConfigModal visible={showProviderConfig} provider={editingProvider} onClose={() => { setShowProviderConfig(false); setEditingProvider(undefined); }} />

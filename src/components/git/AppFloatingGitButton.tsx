@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, type NavigationProp } from '@react-navigation/native';
 import { useToast, Toast, ToastDescription, ToastTitle } from '@/components/ui/toast';
@@ -8,7 +8,6 @@ import { useGitButtonActionStore } from '@/stores/gitButtonActionStore';
 import { stageAllPending, commitAll, pushAll, type RepoOpOutcome } from '@/services/git/multiRepoGitOps';
 import { CommitService } from '@/services/git/CommitService';
 import type { Author } from '@/services/git/engine/GitEngine';
-import { useAccounts } from '@/contexts/AccountsContext';
 import { emitGitContentRefresh, emitGitRefresh } from '@/hooks/useGitRefreshEvent';
 import FloatingGitButton from './FloatingGitButton';
 import type { ReleaseSegment } from './useFloatingGitButtonAffordances';
@@ -37,13 +36,6 @@ export default function AppFloatingGitButton() {
   const setPending = useGitButtonActionStore((s) => s.setPending);
   const toast = useToast();
   const hintFiredRef = useRef(false);
-  const { accounts, activeAccountId } = useAccounts();
-
-  const author = useMemo<Author | null>(() => {
-    const account = accounts.find((a) => a.id === activeAccountId) ?? null;
-    if (!account) return null;
-    return { name: account.name, email: account.email ?? '' };
-  }, [accounts, activeAccountId]);
 
   const hasAnyAction =
     aggregatedState.totalUncommitted > 0 ||
@@ -75,20 +67,6 @@ export default function AppFloatingGitButton() {
           });
           return;
         }
-        if (!author) {
-          toast.show({
-            placement: 'top',
-            duration: 3000,
-            render: ({ id }: { id: string }) => (
-              <Toast action="error" nativeID={`gitbutton-noauthor-${id}`}>
-                <ToastTitle>Cannot commit</ToastTitle>
-                <ToastDescription>No active account found. Add an account in Settings.</ToastDescription>
-              </Toast>
-            ),
-          });
-          return;
-        }
-
         const stageResult = await stageAllPending(repos);
         if (segment === 'stage') {
           toast.show({
@@ -103,6 +81,21 @@ export default function AppFloatingGitButton() {
           void aggregatedState.refresh();
           emitGitRefresh();
           emitGitContentRefresh();
+          return;
+        }
+
+        const author: Author = await CommitService.resolveAuthor();
+        if (!author.email.trim()) {
+          toast.show({
+            placement: 'top',
+            duration: 3000,
+            render: ({ id }: { id: string }) => (
+              <Toast action="error" nativeID={`gitbutton-noauthor-${id}`}>
+                <ToastTitle>Cannot commit</ToastTitle>
+                <ToastDescription>No commit email found. Enter one in the staging page.</ToastDescription>
+              </Toast>
+            ),
+          });
           return;
         }
 
@@ -201,7 +194,7 @@ export default function AppFloatingGitButton() {
         isOperationActiveRef.current = false;
       }
     },
-    [repos, author, toast, aggregatedState, navigation],
+    [repos, toast, aggregatedState, navigation],
   );
 
   /**

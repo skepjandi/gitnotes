@@ -8,6 +8,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-10-05
+
+### fix(git): fail fast when a commit repository is busy
+
+**What:** Floating Git commits could remain stuck while waiting indefinitely for another native Git operation to release the repository lock.
+
+**Fix:** Return the existing busy error immediately for contended commits, add lock-contention regression coverage, and document the retry behavior.
+
 ## 2026-10-04
 
 ### fix(auth): combine GitHub credential repository access

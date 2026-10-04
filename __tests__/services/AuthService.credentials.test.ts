@@ -27,6 +27,8 @@ import {
   isInstallationTokenExpired,
   hasEmptyRepositorySelection,
 } from '@/services/git/contracts';
+import { AuthService } from '@/services/AuthService';
+import * as AccountStorage from '@/services/AccountStorage';
 
 // ── CredentialKind discriminator tests ───────────────────────────────────────
 
@@ -500,5 +502,54 @@ describe('Cross-kind reuse rejection', () => {
     const result = validateGitHubAppCredential(oauthRecord as unknown as GitHubAppCredentialRecord);
     expect(result.valid).toBe(false);
     expect(['invalid_installation_id', 'invalid_app_id', 'empty_token']).toContain(result.reason);
+  });
+});
+
+describe('AuthService.removeCredential', () => {
+  const HOST_ID = 'github:acc-test:github.com';
+  let removeCredentialSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    removeCredentialSpy = jest.spyOn(AccountStorage.AccountStorage, 'removeCredential').mockResolvedValue({ hostRemoved: false });
+  });
+
+  afterEach(() => {
+    removeCredentialSpy.mockRestore();
+  });
+
+  it('delegates to AccountStorage.removeCredential with correct args for oauth', async () => {
+    await AuthService.removeCredential(HOST_ID, 'oauth');
+    expect(removeCredentialSpy).toHaveBeenCalledTimes(1);
+    expect(removeCredentialSpy).toHaveBeenCalledWith(HOST_ID, 'oauth');
+  });
+
+  it('delegates to AccountStorage.removeCredential with correct args for github_app', async () => {
+    await AuthService.removeCredential(HOST_ID, 'github_app');
+    expect(removeCredentialSpy).toHaveBeenCalledTimes(1);
+    expect(removeCredentialSpy).toHaveBeenCalledWith(HOST_ID, 'github_app');
+  });
+
+  it('delegates to AccountStorage.removeCredential with correct args for token', async () => {
+    await AuthService.removeCredential(HOST_ID, 'token');
+    expect(removeCredentialSpy).toHaveBeenCalledTimes(1);
+    expect(removeCredentialSpy).toHaveBeenCalledWith(HOST_ID, 'token');
+  });
+
+  it('delegates to AccountStorage.removeCredential with correct args for ssh', async () => {
+    await AuthService.removeCredential(HOST_ID, 'ssh');
+    expect(removeCredentialSpy).toHaveBeenCalledTimes(1);
+    expect(removeCredentialSpy).toHaveBeenCalledWith(HOST_ID, 'ssh');
+  });
+
+  it('returns hostRemoved:true when AccountStorage reports last credential removed', async () => {
+    removeCredentialSpy.mockResolvedValueOnce({ hostRemoved: true });
+    const result = await AuthService.removeCredential(HOST_ID, 'oauth');
+    expect(result).toEqual({ hostRemoved: true });
+  });
+
+  it('returns hostRemoved:false when other credentials remain', async () => {
+    removeCredentialSpy.mockResolvedValueOnce({ hostRemoved: false });
+    const result = await AuthService.removeCredential(HOST_ID, 'oauth');
+    expect(result).toEqual({ hostRemoved: false });
   });
 });

@@ -10,10 +10,12 @@ import {
   recoverFromApp401,
   resolveGitHubRepoToken,
   clearHostCredentials,
+  clearCredentialKindForHost,
   initNativeCredentialBridge,
   NativeCredentialBridgeError,
   isAuthFailure,
   getNextCredentialKind,
+  __clearRepoCredentialKindsForTest,
 } from '@/services/git/NativeCredentialBridge';
 import type { GitHubAppCredentialRecord } from '@/services/git/contracts';
 
@@ -74,6 +76,7 @@ jest.mock('@/services/AccountStorage', () => ({
 beforeEach(() => {
   jest.clearAllMocks();
   lastNativeCredential = null;
+  __clearRepoCredentialKindsForTest();
   initNativeCredentialBridge({ setCredential: mockSetCredential, clearCredential: mockClearCredential });
 });
 
@@ -161,6 +164,48 @@ describe('clearHostCredentials', () => {
     expect(await getRegisteredCredentialKind('github.com/acme/repo-a', 'host-1')).toBeNull();
     expect(await getRegisteredCredentialKind('github.com/acme/repo-b', 'host-1')).toBeNull();
     expect(await getRegisteredCredentialKind('github.com/acme/repo-c', 'host-2')).toBe('oauth');
+  });
+});
+
+describe('clearCredentialKindForHost', () => {
+  test('clears only repos with matching kind for host, preserves other kinds', async () => {
+    await registerGitHubOAuthCredential('github.com/acme/repo-a', 'host-1', 'oauth_tok');
+    await registerPatCredential('github.com/acme/repo-b', 'host-1', 'pat_tok');
+    await registerGitHubOAuthCredential('github.com/acme/repo-c', 'host-2', 'oauth_tok');
+    await clearCredentialKindForHost('host-1', 'oauth');
+    expect(await getRegisteredCredentialKind('github.com/acme/repo-a', 'host-1')).toBeNull();
+    expect(await getRegisteredCredentialKind('github.com/acme/repo-b', 'host-1')).toBe('token');
+    expect(await getRegisteredCredentialKind('github.com/acme/repo-c', 'host-2')).toBe('oauth');
+  });
+
+  test('clearing oauth does not affect github_app repos', async () => {
+    await registerGitHubOAuthCredential('github.com/acme/repo-a', 'host-1', 'oauth_tok');
+    await registerGitHubAppCredential('github.com/acme/repo-b', 'host-1', 'app_tok');
+    await clearCredentialKindForHost('host-1', 'oauth');
+    expect(await getRegisteredCredentialKind('github.com/acme/repo-a', 'host-1')).toBeNull();
+    expect(await getRegisteredCredentialKind('github.com/acme/repo-b', 'host-1')).toBe('github_app');
+  });
+
+  test('clearing token does not affect oauth repos', async () => {
+    await registerPatCredential('github.com/acme/repo-a', 'host-1', 'pat_tok');
+    await registerGitHubOAuthCredential('github.com/acme/repo-b', 'host-1', 'oauth_tok');
+    await clearCredentialKindForHost('host-1', 'token');
+    expect(await getRegisteredCredentialKind('github.com/acme/repo-a', 'host-1')).toBeNull();
+    expect(await getRegisteredCredentialKind('github.com/acme/repo-b', 'host-1')).toBe('oauth');
+  });
+
+  test('clearing ssh does not affect token', async () => {
+    await registerPatCredential('github.com/acme/repo-a', 'host-1', 'pat_tok');
+    await registerGitHubOAuthCredential('github.com/acme/repo-b', 'host-1', 'oauth_tok');
+    await clearCredentialKindForHost('host-1', 'ssh');
+    expect(await getRegisteredCredentialKind('github.com/acme/repo-a', 'host-1')).toBe('token');
+    expect(await getRegisteredCredentialKind('github.com/acme/repo-b', 'host-1')).toBe('oauth');
+  });
+
+  test('no-op when no repos have that kind for host', async () => {
+    await registerGitHubOAuthCredential('github.com/acme/repo-a', 'host-1', 'oauth_tok');
+    await expect(clearCredentialKindForHost('host-1', 'token')).resolves.toBeUndefined();
+    expect(await getRegisteredCredentialKind('github.com/acme/repo-a', 'host-1')).toBe('oauth');
   });
 });
 
@@ -308,6 +353,14 @@ describe('provider independence', () => {
     await registerGitHubOAuthCredential('github.com/acme/repo-a', 'host-1', 'oauth_tok');
     await registerGitHubAppCredential('github.com/acme/repo-b', 'host-1', 'app_tok');
     await clearRepoCredential('github.com/acme/repo-b');
+    expect(await getRegisteredCredentialKind('github.com/acme/repo-a', 'host-1')).toBe('oauth');
+    expect(await getRegisteredCredentialKind('github.com/acme/repo-b', 'host-1')).toBeNull();
+  });
+
+  test('clearing github_app via clearCredentialKindForHost preserves oauth registrations', async () => {
+    await registerGitHubOAuthCredential('github.com/acme/repo-a', 'host-1', 'oauth_tok');
+    await registerGitHubAppCredential('github.com/acme/repo-b', 'host-1', 'app_tok');
+    await clearCredentialKindForHost('host-1', 'github_app');
     expect(await getRegisteredCredentialKind('github.com/acme/repo-a', 'host-1')).toBe('oauth');
     expect(await getRegisteredCredentialKind('github.com/acme/repo-b', 'host-1')).toBeNull();
   });

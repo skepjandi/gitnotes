@@ -12,3 +12,9 @@ export async function setItemAsync(key: string, value: string): Promise<void> {
 export async function deleteItemAsync(key: string): Promise<void> {
   delete store[key];
 }
+
+export async function clear(): Promise<void> {
+  for (const key of Object.keys(store)) {
+    delete store[key];
+  }
+}

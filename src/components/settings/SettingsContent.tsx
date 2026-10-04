@@ -18,6 +18,8 @@ import {
   type LanguageCode,
 } from '../../i18n';
 import { ReminderSection } from './ReminderSection';
+import ContextMenu from '../ContextMenu';
+import { HostCredentialRow } from './HostCredentialRow';
 import { settingsStyles as styles } from './settingsStyles';
 import type { GitRepository } from '../../services/GitService';
 import type { TemplateRepoPreference } from '../../services/TemplateRepoPreferenceService';
@@ -240,8 +242,6 @@ export function SettingsContent(props: SettingsContentProps) {
     proStatusLabel,
     onOpenPaywall,
     accentColor,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    setAccentColor,
     onOpenAccentColorPicker,
     onManageTemplates,
     onToggleAI,
@@ -294,15 +294,14 @@ export function SettingsContent(props: SettingsContentProps) {
     patLoading = {},
     patError = {},
   } = props;
-  // Tokens hook gives us spacing/radii/type so the styled disconnect
-  // button matches the rest of the app without hardcoded values.
-  const { spacing, radii, type } = useTokens();
+  const { spacing, type } = useTokens();
   const { t } = useTranslation();
   const [languagePref, setLanguagePref] = useState<string>('system');
   const [showTimeoutPicker, setShowTimeoutPicker] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showResetAIMemoryModal, setShowResetAIMemoryModal] = useState(false);
   const [oauthConnected, setOauthConnected] = useState<Record<string, boolean>>({});
+  const [overflowHostId, setOverflowHostId] = useState<string | null>(null);
   // Drop providers whose `supportedPlatforms` excludes the current OS so a
   // provider that physically can't run here (e.g. on-device Llama on iOS) is
   // hidden entirely instead of showing as a permanently-disabled row.
@@ -674,215 +673,176 @@ export function SettingsContent(props: SettingsContentProps) {
               const isActive = summary.accountId === activeAccountId;
               return (
                 <React.Fragment key={summary.accountId}>
-                  <GroupRow
-                    testID="settings.row.account"
-                    leading={summary.account.avatarUrl ? <Image source={{ uri: summary.account.avatarUrl }} style={styles.avatar} /> : null}
-                  >
-                    <Text style={[styles.settingLabel, { color: colors.text }]}>
-                      {summary.account.name || summary.account.login}
-                      {isActive ? ` · ${t('accounts.active')}` : ''}
-                    </Text>
-                    <Text style={[styles.settingValue, { color: colors.textSecondary }]}>@{summary.account.login}</Text>
-                  </GroupRow>
-                  {/* Host rows live directly below the account row so the
-                      info (provider + login@url) is visible at a glance and
-                      the disconnect action sits next to the data it
-                      operates on. */}
+                  <View testID="settings.row.account">
+                    <GroupRow
+                      leading={summary.account.avatarUrl ? <Image source={{ uri: summary.account.avatarUrl }} style={styles.avatar} /> : null}
+                    >
+                      <Text style={[styles.settingLabel, { color: colors.text }]}>
+                        {summary.account.name || summary.account.login}
+                        {isActive ? ` · ${t('accounts.active')}` : ''}
+                      </Text>
+                      <Text style={[styles.settingValue, { color: colors.textSecondary }]}>@{summary.account.login}</Text>
+                    </GroupRow>
+                  </View>
                   {summary.hosts.map((host) => {
                     const isHostActive = host.id === summary.activeHostId;
                     const hostLogin = host.hostLogin || GIT_HOST_LABELS[host.provider];
                     const idLabel = host.instanceBaseUrl
                       ? `${hostLogin}@${host.instanceBaseUrl.replace(/^https?:\/\//, '')}`
                       : hostLogin;
+                    const isGithubHost = host.provider === 'github';
                     return (
-                      <View
-                        key={host.id}
-                        testID={`settings.row.host.${host.id}`}
-                        className="px-4 py-3 gap-3"
-                      >
-                        <View className="flex-1 min-w-0">
-                          <View className="flex-row items-center gap-2">
-                            <Text
-                              numberOfLines={1}
-                              style={{
-                                fontSize: type.sm,
-                                fontWeight: '600',
-                                color: colors.text,
-                              }}
-                            >
-                              {GIT_HOST_LABELS[host.provider]}
-                            </Text>
-                            {isHostActive ? (
-                              <View
-                                style={{
-                                  paddingHorizontal: 6,
-                                  minHeight: 18,
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  flexShrink: 0,
-                                  borderRadius: 6,
-                                  backgroundColor: colors.primary,
-                                }}
+                      <React.Fragment key={host.id}>
+                        <View testID={`settings.row.host.${host.id}`}>
+                          <GroupRow
+                            leading={<Ionicons name="globe-outline" size={19} color={colors.textSecondary} />}
+                            trailing={
+                              <TouchableOpacity
+                                testID={`settings.button.host-overflow.${host.id}`}
+                                onPress={() => setOverflowHostId(host.id)}
+                                accessibilityRole="button"
+                                accessibilityLabel={`${GIT_HOST_LABELS[host.provider]} actions`}
+                                hitSlop={8}
                               >
-                                <Text
-                                  style={{
-                                    color: '#ffffff',
-                                    fontSize: 9,
-                                    fontWeight: '800',
-                                    letterSpacing: 0.6,
-                                  }}
-                                >
-                                  {t('accounts.active').toUpperCase()}
-                                </Text>
-                              </View>
-                            ) : null}
-                          </View>
-                          <Text
-                            numberOfLines={1}
-                            style={{
-                              fontSize: type.xs,
-                              color: colors.textSecondary,
-                              fontFamily: 'Menlo',
-                              marginTop: 3,
-                            }}
+                                <Ionicons name="ellipsis-horizontal" size={22} color={colors.textSecondary} />
+                              </TouchableOpacity>
+                            }
                           >
-                            {idLabel}
-                          </Text>
-                        </View>
-                        {/* Styled disconnect button — outlined in error
-                            color with an unlink icon. Distinct from the
-                            account row's neutral chrome so the destructive
-                            intent is obvious without being alarming. */}
-                        <View className="flex-row flex-wrap items-center gap-2">
-                          <View className="flex-row items-center gap-1.5">
-                            <Text style={{ fontSize: type.xs, color: colors.textSecondary }}>SSH</Text>
-                            <Toggle
-                              testID={`settings.toggle.ssh.${host.id}`}
-                              value={hostUseSsh[host.id] ?? false}
-                              onValueChange={() => onToggleSSH(host.id)}
-                            />
-                          </View>
-                          {host.provider === 'github' ? (
-                            <>
-                              <View className="flex-row items-center gap-1.5">
-                                <Text style={{ fontSize: type.xs, color: colors.textSecondary }}>OAuth</Text>
-                                {oauthLoading[host.id] ? (
-                                  <ActivityIndicator
-                                    size="small"
-                                    color={colors.primary}
-                                    testID={`settings.spinner.oauth.${host.id}`}
-                                  />
-                                ) : null}
-                                <TouchableOpacity
-                                  testID={`settings.button.connect-oauth.${host.id}`}
-                                  onPress={() => {
-                                    if (oauthConnected[host.id]) {
-                                      onDisconnectOAuth(host.id);
-                                      setOauthConnected((current) => ({ ...current, [host.id]: false }));
-                                    } else {
-                                      onConnectOAuth(host.id);
-                                    }
-                                  }}
-                                  disabled={oauthLoading[host.id]}
-                                  accessibilityRole="button"
-                                >
-                                  <Text style={{ fontSize: type.xs, color: oauthError[host.id] ? colors.error : colors.primary }}>
-                                    {oauthConnected[host.id] ? 'Disconnect' : 'Connect'}
+                            <View className="flex-row items-center gap-2">
+                              <Text numberOfLines={1} style={{ fontSize: type.sm, fontWeight: '600', color: colors.text }}>
+                                {GIT_HOST_LABELS[host.provider]}
+                              </Text>
+                              {isHostActive ? (
+                                <View style={{ paddingHorizontal: 6, minHeight: 18, alignItems: 'center', justifyContent: 'center', borderRadius: 6, backgroundColor: colors.primary }}>
+                                  <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '800', letterSpacing: 0.6 }}>
+                                    {t('accounts.active').toUpperCase()}
                                   </Text>
-                                </TouchableOpacity>
-                              </View>
-                              <View className="flex-row items-center gap-1.5">
-                                <Text style={{ fontSize: type.xs, color: colors.textSecondary }}>App</Text>
-                                {appCredentials[host.id] ? (
-                                  <View className="flex-row items-center gap-1.5">
-                                    {appCredentials[host.id]!.accountAvatarUrl ? (
-                                      <Image
-                                        source={{ uri: appCredentials[host.id]!.accountAvatarUrl! }}
-                                        style={{ width: 16, height: 16, borderRadius: 3 }}
-                                      />
-                                    ) : (
-                                      <Ionicons name="cube" size={14} color={colors.primary} />
-                                    )}
-                                    <Text style={{ fontSize: type.xs, color: colors.primary }}>
-                                      Installed
-                                    </Text>
-                                    <TouchableOpacity
-                                      testID={`settings.button.remove-github-app.${host.id}`}
-                                      onPress={() => onDisconnectGitHubApp(host.id)}
-                                      disabled={appLoading[host.id]}
-                                      accessibilityRole="button"
-                                    >
-                                      <Text style={{ fontSize: type.xs, color: colors.error }}>
-                                        {t('common.remove')}
-                                      </Text>
-                                    </TouchableOpacity>
-                                  </View>
-                                ) : (
-                                  <TouchableOpacity
-                                    testID={`settings.button.connect-github-app.${host.id}`}
-                                    onPress={() => onConnectGitHubApp(host.id)}
-                                    disabled={appLoading[host.id]}
-                                    accessibilityRole="button"
-                                  >
-                                    <Text style={{ fontSize: type.xs, color: appError[host.id] ? colors.error : colors.primary }}>
-                                      {appLoading[host.id] ? '…' : 'Install'}
-                                    </Text>
-                                  </TouchableOpacity>
-                                )}
-                              </View>
-                              {(hostCredentialKinds[host.id] ?? []).includes('token') ? (
-                                <View className="flex-row items-center gap-1.5">
-                                  <Text style={{ fontSize: type.xs, color: colors.textSecondary }}>PAT</Text>
-                                  {patLoading[host.id] ? (
-                                    <ActivityIndicator
-                                      size="small"
-                                      color={colors.primary}
-                                      testID={`settings.spinner.pat.${host.id}`}
-                                    />
-                                  ) : null}
-                                  <TouchableOpacity
-                                    testID={`settings.button.remove-pat.${host.id}`}
-                                    onPress={() => onDisconnectPat(host.id)}
-                                    disabled={patLoading[host.id]}
-                                    accessibilityRole="button"
-                                  >
-                                    <Text style={{ fontSize: type.xs, color: patError[host.id] ? colors.error : colors.primary }}>
-                                      {t('common.remove')}
-                                    </Text>
-                                  </TouchableOpacity>
                                 </View>
                               ) : null}
-                            </>
-                          ) : null}
-                          <TouchableOpacity
-                            onPress={() => onDisconnectHost(host.id)}
-                            testID={`settings.button.disconnect-host.${host.id}`}
-                            accessibilityRole="button"
-                            accessibilityLabel={`${GIT_HOST_LABELS[host.provider]} ${t('accounts.disconnect')}`}
-                            activeOpacity={0.75}
-                            className="flex-row items-center gap-1.5 px-3 py-2 border"
-                            style={{ borderRadius: radii.md, borderColor: colors.error }}
-                          >
-                            <Ionicons name="unlink-outline" size={15} color={colors.error} />
-                            <Text
-                              style={{
-                                color: colors.error,
-                                fontSize: type.xs,
-                                fontWeight: '700',
-                                letterSpacing: 0.2,
-                              }}
-                            >
-                              {t('accounts.disconnect')}
+                            </View>
+                            <Text numberOfLines={1} style={{ fontSize: type.xs, color: colors.textSecondary, fontFamily: 'Menlo', marginTop: 3 }}>
+                              {idLabel}
                             </Text>
-                          </TouchableOpacity>
+                          </GroupRow>
                         </View>
-                      </View>
+
+                        <HostCredentialRow
+                          kind="ssh"
+                          hostId={host.id}
+                          sshEnabled={hostUseSsh[host.id] ?? false}
+                          oauthConnected={false}
+                          oauthLoading={false}
+                          oauthError={null}
+                          appCredential={null}
+                          appLoading={false}
+                          appError={null}
+                          hasPat={false}
+                          patLoading={false}
+                          patError={null}
+                          onToggleSSH={() => onToggleSSH(host.id)}
+                          onOAuthPress={() => undefined}
+                          onAppPress={() => undefined}
+                          onPatPress={() => undefined}
+                        />
+                        {isGithubHost ? (
+                          <>
+                            <HostCredentialRow
+                              kind="oauth"
+                              hostId={host.id}
+                              sshEnabled={false}
+                              oauthConnected={oauthConnected[host.id] ?? false}
+                              oauthLoading={oauthLoading[host.id] ?? false}
+                              oauthError={oauthError[host.id] ?? null}
+                              appCredential={null}
+                              appLoading={false}
+                              appError={null}
+                              hasPat={false}
+                              patLoading={false}
+                              patError={null}
+                              onToggleSSH={() => undefined}
+                              onOAuthPress={() => {
+                                if (oauthConnected[host.id]) {
+                                  onDisconnectOAuth(host.id);
+                                  setOauthConnected((current) => ({ ...current, [host.id]: false }));
+                                } else {
+                                  onConnectOAuth(host.id);
+                                }
+                              }}
+                              onAppPress={() => undefined}
+                              onPatPress={() => undefined}
+                            />
+                            <HostCredentialRow
+                              kind="github_app"
+                              hostId={host.id}
+                              sshEnabled={false}
+                              oauthConnected={false}
+                              oauthLoading={false}
+                              oauthError={null}
+                              appCredential={appCredentials[host.id] ?? null}
+                              appLoading={appLoading[host.id] ?? false}
+                              appError={appError[host.id] ?? null}
+                              hasPat={false}
+                              patLoading={false}
+                              patError={null}
+                              onToggleSSH={() => undefined}
+                              onOAuthPress={() => undefined}
+                              onAppPress={() => {
+                                if (appCredentials[host.id]) {
+                                  onDisconnectGitHubApp(host.id);
+                                } else {
+                                  onConnectGitHubApp(host.id);
+                                }
+                              }}
+                              onPatPress={() => undefined}
+                            />
+                            <HostCredentialRow
+                              kind="token"
+                              hostId={host.id}
+                              sshEnabled={false}
+                              oauthConnected={false}
+                              oauthLoading={false}
+                              oauthError={null}
+                              appCredential={null}
+                              appLoading={false}
+                              appError={null}
+                              hasPat={(hostCredentialKinds[host.id] ?? []).includes('token')}
+                              patLoading={patLoading[host.id] ?? false}
+                              patError={patError[host.id] ?? null}
+                              onToggleSSH={() => undefined}
+                              onOAuthPress={() => undefined}
+                              onAppPress={() => undefined}
+                              onPatPress={() => onDisconnectPat(host.id)}
+                            />
+                          </>
+                        ) : null}
+
+                        <ContextMenu
+                          visible={overflowHostId === host.id}
+                          onClose={() => setOverflowHostId(null)}
+                          title={GIT_HOST_LABELS[host.provider]}
+                          subtitle={idLabel}
+                          headerIcon="ellipsis-horizontal-circle-outline"
+                          items={[
+                            {
+                              icon: 'unlink-outline',
+                              label: t('accounts.disconnect'),
+                              destructive: true,
+                              testID: `settings.button.disconnect-host.${host.id}`,
+                              onPress: () => onDisconnectHost(host.id),
+                            },
+                          ]}
+                        />
+                      </React.Fragment>
                     );
                   })}
                 </React.Fragment>
               );
             })}
+          </>
+        )}
+          </Group>
 
+          <Group>
             <GroupRow
               testID={isPro ? 'settings.button.connect-host' : 'settings.row.connect-host-locked'}
               onPress={isPro ? () => onAddHost() : onAddHostLocked}
@@ -909,9 +869,7 @@ export function SettingsContent(props: SettingsContentProps) {
                 </Text>
               </GroupRow>
             )}
-          </>
-        )}
-        {/* GitHub App install — always available */}
+            {/* GitHub App install — always available */}
         <GroupRow
           testID="settings.button.install-github-app"
           onPress={() => onConnectGitHubApp(null)}

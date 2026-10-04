@@ -732,4 +732,90 @@ describe('Independent GitHub credential status and removal controls', () => {
       expect(getByTestId('settings.row.host.gh-1')).toBeTruthy();
     });
   });
+
+  describe('Accounts structure', () => {
+    it('renders the account header and separate credential rows', () => {
+      const summary = makeAccountSummary({ hostId: 'gh-1' });
+      const props = makeProps({
+        accountSummaries: [
+          {
+            accountId: summary.accountId,
+            account: {
+              id: summary.accountId,
+              login: summary.login,
+              name: 'Test User',
+              avatarUrl: summary.avatarUrl,
+            },
+            hosts: [
+              {
+                id: summary.hostId,
+                provider: summary.hostProvider as 'github' | 'gitlab' | 'gitea',
+                hostLogin: summary.hostLogin,
+                instanceBaseUrl: summary.instanceBaseUrl,
+              },
+            ],
+            activeHostId: summary.activeHostId,
+          },
+        ],
+        hostCredentialKinds: { 'gh-1': ['token', 'oauth', 'github_app', 'ssh'] },
+        appCredentials: {
+          'gh-1': {
+            kind: 'github_app',
+            installationId: 123,
+            accountLogin: 'testuser',
+            selectedRepositories: [],
+          },
+        },
+        hostUseSsh: { 'gh-1': true },
+      });
+
+      const { getByTestId } = render(<SettingsContent {...props} />);
+
+      expect(getByTestId('settings.row.account')).toBeTruthy();
+      expect(getByTestId('settings.row.host.gh-1')).toBeTruthy();
+      expect(getByTestId('settings.row.host.gh-1.ssh')).toBeTruthy();
+      expect(getByTestId('settings.row.host.gh-1.oauth')).toBeTruthy();
+      expect(getByTestId('settings.row.host.gh-1.github-app')).toBeTruthy();
+      expect(getByTestId('settings.row.host.gh-1.pat')).toBeTruthy();
+      expect(getByTestId('settings.button.host-overflow.gh-1')).toBeTruthy();
+    });
+
+    it('disconnects the host from the overflow action', async () => {
+      const onDisconnectHost = jest.fn();
+      const summary = makeAccountSummary({ hostId: 'gh-1' });
+      const props = makeProps({
+        accountSummaries: [
+          {
+            accountId: summary.accountId,
+            account: {
+              id: summary.accountId,
+              login: summary.login,
+              name: summary.name,
+              avatarUrl: summary.avatarUrl,
+            },
+            hosts: [
+              {
+                id: summary.hostId,
+                provider: summary.hostProvider as 'github' | 'gitlab' | 'gitea',
+                hostLogin: summary.hostLogin,
+                instanceBaseUrl: summary.instanceBaseUrl,
+              },
+            ],
+            activeHostId: summary.activeHostId,
+          },
+        ],
+        onDisconnectHost,
+      });
+
+      const { getByTestId } = render(<SettingsContent {...props} />);
+
+      await act(async () => {
+        fireEvent.press(getByTestId('settings.button.host-overflow.gh-1'));
+        fireEvent.press(getByTestId('settings.button.disconnect-host.gh-1'));
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      });
+
+      expect(onDisconnectHost).toHaveBeenCalledWith('gh-1');
+    });
+  });
 });

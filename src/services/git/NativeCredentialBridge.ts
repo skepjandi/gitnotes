@@ -324,6 +324,8 @@ export function isAuthFailure(error: unknown): boolean {
   // the credential was rejected or a stale token, triggering auth fallback.
   if (/too many redirects or authentication replays/i.test(msg)) return true;
 
+  if (/remote authentication required but no callback set/i.test(msg)) return true;
+
   // "credentials" alone can appear in git2 credential rejection messages,
   // but we exclude messages that also mention "permission" (403/permission denied).
   if (/credential/i.test(msg) && !/permission/i.test(msg) && !/denied/i.test(msg)) {

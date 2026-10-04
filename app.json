@@ -58,6 +58,18 @@
           "action": "VIEW",
           "data": [
             {
+              "scheme": "gitnotes"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
               "scheme": "rc-0aadf77f9f"
             }
           ],

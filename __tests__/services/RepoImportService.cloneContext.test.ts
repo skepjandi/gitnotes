@@ -146,4 +146,16 @@ describe('importRepoAtAdd clone context', () => {
     expect(GitFsService.cloneExclusive).not.toHaveBeenCalled();
     expect(mockPullFromSingleRepo).toHaveBeenCalled();
   });
+
+  it('returns an actionable retry result for an Expo lazy-bundle failure', async () => {
+    jest.mocked(GitFsService.cloneExclusive).mockRejectedValue(
+      new TypeError("Cannot read property 'reload' of undefined"),
+    );
+
+    await expect(importRepoAtAdd('group/project', 'project')).resolves.toEqual({
+      ok: false,
+      error: 'project: The app is still loading. Please try again.',
+      retryable: true,
+    });
+  });
 });

@@ -6,6 +6,10 @@ import { StorageService } from './StorageService';
 import { resolveBranch } from './git/branchResolver';
 import { parseRepoPath } from '../utils/gitPathParser';
 import { GitFsService, remoteUrlForHost } from './git/GitFsService';
+import {
+  DEV_BUNDLE_LOAD_RETRY_MESSAGE,
+  isDevBundleLoadError,
+} from './git/devBundleError';
 
 export type CloneProgressCallback = (phase: string, loaded: number, total: number | null) => void;
 
@@ -150,6 +154,9 @@ async function runImport(
     return { ok: true, counts: await pullFromSingleRepo(repoPath, onProgress) };
   } catch (error) {
     const classified = classifyImportError(error);
+    if (isDevBundleLoadError(error)) {
+      return { ok: false, error: `${label}: ${DEV_BUNDLE_LOAD_RETRY_MESSAGE}`, retryable: true };
+    }
     return { ok: false, error: `${label}: ${classified.message}`, retryable: classified.retryable };
   }
 }

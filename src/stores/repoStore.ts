@@ -19,6 +19,10 @@ import {
 import { reposAffectedByRemovedHosts, type RemovedHostRef } from '../services/git/repoRemovalCascade';
 import { initializeForRepo, removeForRepo } from '../services/git/activeBranchStore';
 import { setCredential } from '../services/git/engine/GitEngine';
+import {
+  DEV_BUNDLE_LOAD_RETRY_MESSAGE,
+  isDevBundleLoadError,
+} from '../services/git/devBundleError';
 
 interface RepoState {
   repositories: GitRepository[];
@@ -162,6 +166,9 @@ export const useRepoStore = create<RepoState & RepoActions>()((set, get) => ({
         instanceBaseUrl: hostInstanceBaseUrl,
       });
     } catch (err: unknown) {
+      if (isDevBundleLoadError(err)) {
+        throw new Error(DEV_BUNDLE_LOAD_RETRY_MESSAGE);
+      }
       const msg = err instanceof Error ? err.message : String(err);
       throw new Error(`Clone failed: ${msg}`);
     }

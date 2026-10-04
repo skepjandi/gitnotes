@@ -18,7 +18,7 @@ use crate::api::types::{
     FileStatusKind, HunkSelection, RemoteInfo, RepoInfo, RepoStatus,
 };
 use crate::engine::error::{EngineError, Result};
-use crate::engine::lock::{run_with_lock, RepoLock};
+use crate::engine::lock::{run_with_lock, try_run_with_lock, RepoLock};
 
 /// Open the repository at `path`.
 pub fn open_repo(path: &Path) -> Result<Repository> {
@@ -393,7 +393,7 @@ pub fn stage_file_lines(path: &Path, file_path: &str, hunks: &[HunkSelection]) -
 /// Create a commit from the staged index, using `author` as identity.
 /// Returns the created commit.
 pub fn commit_changes(path: &Path, message: &str, author: &Author) -> Result<CommitInfo> {
-    run_with_lock(path, || {
+    try_run_with_lock(path, || {
         let repo = open_repo(path)?;
         let mut index = repo.index()?;
         if index.has_conflicts() {
@@ -1302,6 +1302,56 @@ mod tests {
         let entry = index.get_path(Path::new(rel), 0).unwrap();
         let blob = repo.find_blob(entry.id).unwrap();
         String::from_utf8(blob.content().to_vec()).unwrap()
+    }
+
+    #[test]
+    fn commit_changes_returns_busy_when_lock_is_held() {
+        let dir = scratch_repo("commit-busy");
+        commit_file(&dir, "README", "baseline\n", "baseline");
+        fs::write(dir.join("README"), "changed\n").unwrap();
+        {
+            let repo = open_repo(&dir).unwrap();
+            let mut index = repo.index().unwrap();
+            index.add_path(Path::new("README")).unwrap();
+            index.write().unwrap();
+        }
+
+        let holder = RepoLock::acquire(&dir).unwrap();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let commit_dir = dir.clone();
+        let join = std::thread::spawn(move || {
+            let result = commit_changes(
+                &commit_dir,
+                "should fail while busy",
+                &Author {
+                    name: "QA".to_string(),
+                    email: "qa@gitnotes.test".to_string(),
+                },
+            );
+            sender.send(result).unwrap();
+        });
+
+        let observed_before_release = receiver.recv_timeout(std::time::Duration::from_millis(100));
+        let returned_before_release = observed_before_release.is_ok();
+        drop(holder);
+        let result = observed_before_release
+            .or_else(|_| {
+                receiver
+                    .recv()
+                    .map_err(|_| std::sync::mpsc::RecvTimeoutError::Disconnected)
+            })
+            .unwrap();
+        join.join().unwrap();
+
+        assert!(
+            returned_before_release,
+            "commit_changes did not return while the repository lock was held"
+        );
+        assert!(
+            matches!(result, Err(EngineError::Busy(_))),
+            "commit_changes should return Busy while the repository lock is held"
+        );
+        fs::remove_dir_all(&dir).ok();
     }
 
     #[test]

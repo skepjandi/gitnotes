@@ -150,6 +150,10 @@ Line-level partial staging — stage only selected diff hunks.
 
 Creates a commit with the staged changes.
 
+If another native Git operation currently holds the repository lock, the commit
+fails promptly with a busy error instead of waiting indefinitely. Callers should
+surface that error and let the user retry after the active operation completes.
+
 **Parameters:**
 - `repoPath` — local repository path
 - `message` — commit message

@@ -119,3 +119,9 @@ pub fn run_with_lock<T>(repo_dir: &Path, op: impl FnOnce() -> Result<T>) -> Resu
     let _lock = RepoLock::acquire(repo_dir)?;
     op()
 }
+
+/// Run `op` only when no other operation currently holds the repo lock.
+pub fn try_run_with_lock<T>(repo_dir: &Path, op: impl FnOnce() -> Result<T>) -> Result<T> {
+    let _lock = RepoLock::try_acquire(repo_dir)?;
+    op()
+}

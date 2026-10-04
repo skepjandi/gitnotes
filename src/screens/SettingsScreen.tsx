@@ -55,7 +55,7 @@ import { SettingsModals } from '../components/settings/SettingsModals';
 import { SSHKeyModal } from '../components/settings/SettingsModals';
 import { CloneProgressModal, type CloneProgress } from '../components/settings/CloneProgressModal';
 import type { GitRepository } from '../services/GitService';
-import { reposAffectedByRemovedHosts, buildProviderAccountCount, type RemovedHostRef } from '../services/git/repoRemovalCascade';
+import { reposAffectedByRemovedHosts, reposAffectedByRemovedCredential, buildProviderAccountCount, type RemovedHostRef } from '../services/git/repoRemovalCascade';
 import { useRepoStore } from '../stores/repoStore';
 import { importRepoAtAdd } from '../services/RepoImportService';
 import { useTranslation } from 'react-i18next';
@@ -116,7 +116,7 @@ export default function SettingsScreen() {
   const { clearAllNotes, refreshNotes } = useNotes();
   const { refreshCanvases } = useCanvases();
   const { refreshTodos } = useTodos();
-  const { authState, accounts, activeAccountId, accountSummaries, setToken, addAccount, removeAccount, switchAccount, disconnectHost, disconnectAllHosts, disconnectGitHubOAuth, disconnectGitHubApp, disconnectGitHubPat } = useAuth();
+  const { authState, accounts, activeAccountId, accountSummaries, setToken, addAccount, removeAccount, switchAccount, disconnectHost, disconnectAllHosts, disconnectGitHubOAuth, disconnectGitHubApp, disconnectGitHubPat, refreshAccounts } = useAuth();
   const { repositories, addRepository: addRepo, removeRepository: removeRepo } = useRepos();
   const {
     isLockEnabled: isBiometricLockEnabled,
@@ -1077,12 +1077,33 @@ export default function SettingsScreen() {
         setSshGenerating(false);
       }
     } else {
-      await AccountStorage.setHostUseSsh(hostId, false);
-      await clearCredential(`ssh:${hostId}`);
-      await AccountStorage.deleteSshKey(hostId);
-      HapticService.success();
+      const remainingKinds = (hostCredentialKinds[hostId] ?? []).filter((kind) => kind !== 'ssh');
+      const appCredential = await AccountStorage.getGitHubAppCredential(hostId);
+      const affected = reposAffectedByRemovedCredential(repositories, hostId, {
+        hasHostWideCredential: remainingKinds.some((kind) => kind === 'token' || kind === 'oauth'),
+        appRepositories: remainingKinds.includes('github_app') ? appCredential?.selectedRepositories ?? [] : [],
+      });
+      const body = affected.length > 0
+        ? `${t('settings.removeSSHBody', { defaultValue: 'Disable SSH access?' })}\n\n${t('settings.cascadeRemoveWarning', { count: affected.length })}`
+        : t('settings.removeSSHBody', { defaultValue: 'Disable SSH access?' });
+      Alert.alert(t('settings.removeSshTitle', { defaultValue: 'Disable SSH access' }), body, [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.remove'), style: 'destructive', onPress: async () => {
+          await AccountStorage.setHostUseSsh(hostId, false);
+          const result = await AuthService.removeCredential(hostId, 'ssh');
+          await clearCredential(`ssh:${hostId}`);
+          if (result.hostRemoved) {
+            const host = accountSummaries.flatMap((summary) => summary.hosts).find((item) => item.id === hostId);
+            if (host) await useRepoStore.getState().removeRepositoriesForHosts([{ id: hostId, provider: host.provider }], buildProviderAccountCount(accountSummaries));
+          } else {
+            for (const repo of affected) await useRepoStore.getState().removeRepository(repo.path, repo.provider);
+          }
+          await refreshAccounts();
+          HapticService.success();
+        } },
+      ]);
     }
-  }, []);
+  }, [accountSummaries, hostCredentialKinds, refreshAccounts, repositories, t]);
 
   const handleSaveSSHKey = useCallback(async () => {
     if (!sshModalHostId || !sshKeyData) return;
@@ -1174,14 +1195,36 @@ export default function SettingsScreen() {
     setOauthLoading((prev) => ({ ...prev, [hostId]: true }));
     setOauthError((prev) => ({ ...prev, [hostId]: null }));
     try {
-      await disconnectGitHubOAuth(hostId);
-      HapticService.success();
+      const remainingKinds = (hostCredentialKinds[hostId] ?? []).filter((kind) => kind !== 'oauth');
+      const appCredential = await AccountStorage.getGitHubAppCredential(hostId);
+      const affected = reposAffectedByRemovedCredential(repositories, hostId, {
+        hasHostWideCredential: remainingKinds.some((kind) => kind === 'token' || kind === 'ssh'),
+        appRepositories: remainingKinds.includes('github_app') ? appCredential?.selectedRepositories ?? [] : [],
+      });
+      const body = affected.length > 0
+        ? `${t('settings.removeOAuthBody', { defaultValue: 'Remove OAuth authentication?' })}\n\n${t('settings.cascadeRemoveWarning', { count: affected.length })}`
+        : t('settings.removeOAuthBody', { defaultValue: 'Remove OAuth authentication?' });
+      Alert.alert(t('settings.removeOAuthTitle', { defaultValue: 'Remove OAuth' }), body, [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.remove'), style: 'destructive', onPress: async () => {
+          const result = await disconnectGitHubOAuth(hostId);
+          if (result.hostRemoved) {
+            const host = accountSummaries.flatMap((summary) => summary.hosts).find((item) => item.id === hostId);
+            if (host) {
+              await useRepoStore.getState().removeRepositoriesForHosts([{ id: hostId, provider: host.provider }], buildProviderAccountCount(accountSummaries));
+            }
+          } else {
+            for (const repo of affected) await useRepoStore.getState().removeRepository(repo.path, repo.provider);
+          }
+          HapticService.success();
+        } },
+      ]);
     } catch (err) {
       setOauthError((prev) => ({ ...prev, [hostId]: err instanceof Error ? err.message : 'Unknown error' }));
     } finally {
       setOauthLoading((prev) => ({ ...prev, [hostId]: false }));
     }
-  }, [disconnectGitHubOAuth]);
+  }, [accountSummaries, disconnectGitHubOAuth, hostCredentialKinds, repositories, t]);
 
   const handleConnectGitHubApp = useCallback(async (hostId: string | null) => {
     const key = hostId ?? '__fresh__';
@@ -1221,37 +1264,68 @@ export default function SettingsScreen() {
     setAppLoading((prev) => ({ ...prev, [hostId]: true }));
     setAppError((prev) => ({ ...prev, [hostId]: null }));
     try {
-      await disconnectGitHubApp(hostId);
-      setAppCredentials((prev) => {
-        const next = { ...prev };
-        next[hostId] = null;
-        return next;
+      const remainingKinds = (hostCredentialKinds[hostId] ?? []).filter((kind) => kind !== 'github_app');
+      const affected = reposAffectedByRemovedCredential(repositories, hostId, {
+        hasHostWideCredential: remainingKinds.some((kind) => kind === 'token' || kind === 'oauth' || kind === 'ssh'),
+        appRepositories: [],
       });
-      HapticService.success();
+      const body = affected.length > 0
+        ? `${t('settings.removeGitHubAppBody', { defaultValue: 'Remove this GitHub App credential?' })}\n\n${t('settings.cascadeRemoveWarning', { count: affected.length })}`
+        : t('settings.removeGitHubAppBody', { defaultValue: 'Remove this GitHub App credential?' });
+      Alert.alert(t('settings.removeGitHubAppTitle', { defaultValue: 'Remove GitHub App' }), body, [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.remove'), style: 'destructive', onPress: async () => {
+          const result = await disconnectGitHubApp(hostId);
+          if (result.hostRemoved) {
+            const host = accountSummaries.flatMap((summary) => summary.hosts).find((item) => item.id === hostId);
+            if (host) await useRepoStore.getState().removeRepositoriesForHosts([{ id: hostId, provider: host.provider }], buildProviderAccountCount(accountSummaries));
+          } else {
+            for (const repo of affected) await useRepoStore.getState().removeRepository(repo.path, repo.provider);
+          }
+          setAppCredentials((prev) => ({ ...prev, [hostId]: null }));
+          HapticService.success();
+        } },
+      ]);
     } catch (err) {
       setAppError((prev) => ({ ...prev, [hostId]: err instanceof Error ? err.message : 'Unknown error' }));
     } finally {
       setAppLoading((prev) => ({ ...prev, [hostId]: false }));
     }
-  }, [disconnectGitHubApp]);
+  }, [accountSummaries, disconnectGitHubApp, hostCredentialKinds, repositories, t]);
 
   const handleDisconnectPat = useCallback(async (hostId: string) => {
     setPatLoading((prev) => ({ ...prev, [hostId]: true }));
     setPatError((prev) => ({ ...prev, [hostId]: null }));
     try {
-      await disconnectGitHubPat(hostId);
-      setHostCredentialKinds((prev) => {
-        const next = { ...prev };
-        next[hostId] = (next[hostId] ?? []).filter((k) => k !== 'token');
-        return next;
+      const remainingKinds = (hostCredentialKinds[hostId] ?? []).filter((kind) => kind !== 'token');
+      const appCredential = await AccountStorage.getGitHubAppCredential(hostId);
+      const affected = reposAffectedByRemovedCredential(repositories, hostId, {
+        hasHostWideCredential: remainingKinds.some((kind) => kind === 'oauth' || kind === 'ssh'),
+        appRepositories: remainingKinds.includes('github_app') ? appCredential?.selectedRepositories ?? [] : [],
       });
-      HapticService.success();
+      const body = affected.length > 0
+        ? `${t('settings.removePatBody', { defaultValue: 'Remove this personal access token?' })}\n\n${t('settings.cascadeRemoveWarning', { count: affected.length })}`
+        : t('settings.removePatBody', { defaultValue: 'Remove this personal access token?' });
+      Alert.alert(t('settings.removePatTitle', { defaultValue: 'Remove personal access token' }), body, [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.remove'), style: 'destructive', onPress: async () => {
+          const result = await disconnectGitHubPat(hostId);
+          if (result.hostRemoved) {
+            const host = accountSummaries.flatMap((summary) => summary.hosts).find((item) => item.id === hostId);
+            if (host) await useRepoStore.getState().removeRepositoriesForHosts([{ id: hostId, provider: host.provider }], buildProviderAccountCount(accountSummaries));
+          } else {
+            for (const repo of affected) await useRepoStore.getState().removeRepository(repo.path, repo.provider);
+          }
+          setHostCredentialKinds((prev) => ({ ...prev, [hostId]: (prev[hostId] ?? []).filter((kind) => kind !== 'token') }));
+          HapticService.success();
+        } },
+      ]);
     } catch (err) {
       setPatError((prev) => ({ ...prev, [hostId]: err instanceof Error ? err.message : 'Unknown error' }));
     } finally {
       setPatLoading((prev) => ({ ...prev, [hostId]: false }));
     }
-  }, [disconnectGitHubPat]);
+  }, [accountSummaries, disconnectGitHubPat, hostCredentialKinds, repositories, t]);
 
   const handleResetOnboarding = useCallback(() => {
     HapticService.warning();

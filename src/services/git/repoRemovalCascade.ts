@@ -11,6 +11,29 @@ export interface RemovedHostRef {
   provider: GitHostProvider;
 }
 
+export interface RemainingCredentialAccess {
+  hasHostWideCredential: boolean;
+  appRepositories: ReadonlyArray<{ owner: string; repo: string }>;
+}
+
+export function reposAffectedByRemovedCredential(
+  repositories: GitRepository[],
+  hostId: string,
+  remaining: RemainingCredentialAccess,
+): GitRepository[] {
+  if (remaining.hasHostWideCredential) return [];
+
+  const selected = new Set(
+    remaining.appRepositories.map(({ owner, repo }) => `${owner}/${repo}`.toLowerCase()),
+  );
+
+  return repositories.filter((repo) => {
+    if (repo.hostId !== hostId) return false;
+    if (selected.has((repo.full_name ?? repo.path).toLowerCase())) return false;
+    return true;
+  });
+}
+
 /**
  * Returns the subset of `repositories` that should be removed when the given
  * hosts are removed. Pure: no mutation, returns a filtered array.

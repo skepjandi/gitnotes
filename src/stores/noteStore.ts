@@ -4,7 +4,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Note, NoteCreateInput, NoteUpdateInput, sortNotesWithPinnedFirst, filterNotesBySearch } from '../models/Note';
 import { StorageService } from '../services/StorageService';
 import { NoteSyncQueueService, CloneSyncService, type MutationSucceededEvent, type DroppedMutationEvent, type SaveResult } from '../services/cloneSyncServiceImpl';
-import { resolveStageAuthor } from '../services/git/CommitService';
+import { CommitService } from '../services/git/CommitService';
 import { commitRename } from '../services/git/commitOps';
 import { resolveDefaultFolder, resolveDefaultRepo } from '../services/git/defaultsPolicy';
 import { recordDeleteFailure } from '../services/git/deleteFailures';
@@ -166,7 +166,7 @@ export const useNoteStore = create<NoteState & NoteActions>()((set, get) => ({
             attempts: 0,
           });
           try {
-            const author = await resolveStageAuthor();
+            const author = await CommitService.resolveAuthor();
             const commitResult = await commitRename({
               repo: existingNote.repo,
               branch: existingNote.branch ?? 'main',

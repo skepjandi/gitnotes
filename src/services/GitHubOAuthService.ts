@@ -180,7 +180,7 @@ export class GitHubOAuthService {
     hostId: string | null;
     scopes?: string[];
   }): Promise<OAuthInitiationResult> {
-    const { backendUrl, redirectUri, clientId, hostId, scopes = ['read:user'] } = params;
+    const { backendUrl, redirectUri, clientId, hostId, scopes = ['read:user', 'public_repo'] } = params;
 
     const verifier = await generatePkceVerifier();
     const challenge = await generateS256Challenge(verifier);
@@ -293,7 +293,7 @@ export class GitHubOAuthService {
       let resolvedHostId: string;
 
       if (hostId === null) {
-        const account = await AccountStorage.addAccount(data.access_token, {
+        const account = await AccountStorage.addAccount(null, {
           login: data.login,
           name: data.login,
           email: '',
@@ -308,7 +308,6 @@ export class GitHubOAuthService {
           name: data.login,
           email: null,
           avatarUrl: data.avatar_url ?? null,
-          token: data.access_token,
         });
         const currentActiveHostId = await AccountStorage.getActiveHostId();
         if (!currentActiveHostId) {

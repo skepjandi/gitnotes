@@ -520,7 +520,7 @@ export class AccountStorage {
    * active account when none is currently active. Drops the legacy token
    * after the first account is created.
    */
-  static async addAccount(token: string, profile: AccountProfile): Promise<StoredAccount> {
+  static async addAccount(token: string | null, profile: AccountProfile): Promise<StoredAccount> {
     const accounts = await this.listAccounts();
     const existingIndex = accounts.findIndex((a) => a.login === profile.login);
 
@@ -535,7 +535,7 @@ export class AccountStorage {
         hostIds: existing.hostIds ?? [],
       };
       accounts[existingIndex] = updated;
-      await writeTokenById(existing.id, token);
+      if (token !== null) await writeTokenById(existing.id, token);
       await this.writeAccounts(accounts);
       const activeId = await this.getActiveAccountId();
       if (!activeId) await this.setActiveAccountId(existing.id);
@@ -553,7 +553,7 @@ export class AccountStorage {
       hostIds: [],
     };
     accounts.push(newAccount);
-    await writeTokenById(id, token);
+    if (token !== null) await writeTokenById(id, token);
     await this.writeAccounts(accounts);
 
     const activeId = await this.getActiveAccountId();
@@ -653,7 +653,7 @@ export class AccountStorage {
    * appending its id to the owning account's `hostIds`.
    */
   static async upsertHostConnection(
-    connection: Omit<HostConnection, 'id' | 'addedAt'> & { token: string },
+    connection: Omit<HostConnection, 'id' | 'addedAt'> & { token?: string },
   ): Promise<HostConnection> {
     const hosts = await listHostConnections();
     const accounts = await this.listAccounts();
@@ -685,7 +685,7 @@ export class AccountStorage {
     }
 
     await writeHostConnections(hosts);
-    await writeHostToken(id, connection.token);
+    if (connection.token !== undefined) await writeHostToken(id, connection.token);
 
     if (!account.hostIds.includes(id)) {
       account.hostIds = [...account.hostIds, id];

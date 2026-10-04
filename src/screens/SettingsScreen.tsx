@@ -351,10 +351,6 @@ export default function SettingsScreen() {
   }, []);
 
   const handleEnableCloneMode = useCallback(async (repo: GitRepository, isRetry = false) => {
-    if (!GitHubService.isAuthenticated()) {
-      Alert.alert(t('settings.githubRequiredTitle'), t('settings.githubRequiredBody'));
-      return;
-    }
     if (!isRetry) {
       cloneOuterRetriesRef.current = 0;
     }
@@ -363,13 +359,11 @@ export default function SettingsScreen() {
     setCloneProgress({ repoName: repo.name, phase: t('settings.clonePhasePreparing'), loaded: 0, total: null });
     const throttled = createThrottledEmitter((phase, loaded, total) => setCloneProgress({ repoName: repo.name, phase, loaded, total }));
     try {
-      const token = (await AuthService.getToken()) ?? undefined;
       const branch = repo.branch || 'main';
       if (!(await GitFsService.isCloned({ repoPath: repo.path }))) {
         await GitFsService.clone({
           repoPath: repo.path,
           branch,
-          token,
           onProgress: (phase, loaded, total) => {
             if (cloneAbortedRef.current) {
               throw new Error('CLONE_CANCELLED');

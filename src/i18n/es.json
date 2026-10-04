@@ -379,8 +379,8 @@
     "tokenInvalid": "Token no válido. Compruébalo e inténtalo de nuevo.",
     "removeAccountTitle": "¿Eliminar @{{login}}?",
     "removeAccountBody": "El token de esta cuenta se eliminará de este dispositivo. Las notas/tareas creadas con ella permanecen en local.",
-    "removeTokenTitle": "Eliminar token de GitHub",
-    "removeTokenBody": "Esto desconectará tu cuenta de GitHub. ¿Continuar?",
+    "removeTokenTitle": "¿Desconectar todos los hosts?",
+    "removeTokenBody": "Esto eliminará todos los hosts conectados y sus credenciales de este dispositivo. ¿Continuar?",
     "cascadeRemoveWarning": "Esto también eliminará {{count}} repositorio(s) sincronizado(s) de este dispositivo.",
     "resetOnboardingTitle": "Restablecer introducción",
     "resetOnboardingBody": "La pantalla de introducción se mostrará en el próximo inicio de la aplicación.",
@@ -576,7 +576,8 @@
       "aiPersonalization": "Cuando está activada, la IA lee tus notas y diarios para ofrecer respuestas personalizadas. Desactiva para mayor privacidad — la IA solo usará el contexto del chat actual.",
       "githubTools": "Cuando está activado, tu agente de IA puede listar tus repositorios, crear issues, abrir pull requests, revisar cambios de diff y publicar reseñas usando tu cuenta de GitHub conectada. Usa el mismo token que ya configuraste.",
       "dailyQuotePersonalization": "Cuando está activado, la IA lee las notas de tu diario para personalizar las citas que se muestran en tu pantalla de inicio. Desactívalo para ver una cita aleatoria cada día.",
-      "dailyQuoteShowSources": "Muestra el libro original o la obra de donde fue tomada la cita, al lado del nombre del autor."
+      "dailyQuoteShowSources": "Muestra el libro original o la obra de donde fue tomada la cita, al lado del nombre del autor.",
+      "disconnectAllHosts": "Elimina todas las conexiones de hosts y credenciales guardadas de este dispositivo."
     },
     "title": "Hint"
   },
@@ -604,7 +605,7 @@
     "removeAccount": "Remove account",
     "disconnectTitle": "Disconnect host?",
     "disconnectBody": "The host connection will be removed.",
-    "removeActiveConnection": "Disconnect active host",
+    "disconnectAllHosts": "Desconectar todos los hosts",
     "settings": {
       "accountsGroup": "Cuentas"
     },

@@ -378,8 +378,8 @@
     "tokenInvalid": "トークンが無効です。確認してもう一度お試しください。",
     "removeAccountTitle": "@{{login}}を削除しますか？",
     "removeAccountBody": "このアカウントのトークンはこのデバイスから削除されます。このアカウントで作成したノート/ToDoはローカルに残ります。",
-    "removeTokenTitle": "GitHubトークンを削除",
-    "removeTokenBody": "GitHubアカウントの接続が解除されます。続行しますか？",
+    "removeTokenTitle": "すべてのホストを接続解除しますか？",
+    "removeTokenBody": "接続されているすべてのホストと認証情報がこの端末から削除されます。続行しますか？",
     "cascadeRemoveWarning": "同期された {{count}} 個のリポジトリもこの端末から削除されます。",
     "resetOnboardingTitle": "オンボーディングをリセット",
     "resetOnboardingBody": "次回アプリ起動時にオンボーディング画面が表示されます。",
@@ -574,7 +574,8 @@
       "aiPersonalization": "有効にすると、AIはノートと日記を読んでパーソナライズされた応答を提供します。プライバシーのためにオフにすると、AIは現在のチャットコンテキストのみを使用します。",
       "githubTools": "有効にすると、AIエージェントが接続済みのGitHubアカウントを使って、リポジトリの一覧表示、Issueの作成、プルリクエストの作成、差分の変更レビュー、レビューの投稿を行えます。設定済みの同じトークンを使用します。",
       "dailyQuotePersonalization": "オンにすると、AIが日記を読んでホーム画面に表示される名言をパーソナライズします。オフにすると毎日ランダムな名言が表示されます。",
-      "dailyQuoteShowSources": "名言が引用された元の書籍や作品を、著者名の横に表示します。"
+      "dailyQuoteShowSources": "名言が引用された元の書籍や作品を、著者名の横に表示します。",
+      "disconnectAllHosts": "保存されているすべてのホスト接続と認証情報をこの端末から削除します。"
     },
     "title": "Hint"
   },
@@ -602,7 +603,7 @@
     "removeAccount": "Remove account",
     "disconnectTitle": "Disconnect host?",
     "disconnectBody": "The host connection will be removed.",
-    "removeActiveConnection": "Disconnect active host",
+    "disconnectAllHosts": "すべてのホストを接続解除",
     "settings": {
       "accountsGroup": "アカウント"
     },

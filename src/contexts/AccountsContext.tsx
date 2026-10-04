@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import {
   AccountSummary,
   AuthService,
@@ -38,6 +38,7 @@ interface AccountsContextValue {
   connectHost: (input: ConnectHostInput) => Promise<ConnectHostResult>;
   /** Remove a host connection from the active account. */
   disconnectHost: (hostId: string) => Promise<void>;
+  disconnectAllHosts: () => Promise<void>;
   /** Make this host connection the active one across the app. */
   switchToHost: (hostId: string) => Promise<boolean>;
   /** Make this account the active one (defaults to its first available host). */
@@ -244,6 +245,18 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     },
     [accountSummaries, activeAccountId, refreshAccounts, clearChatRepoIfOrphaned],
   );
+
+  const disconnectAllHosts = useCallback(async () => {
+    const hostIds = accountSummaries.flatMap((summary) => summary.hosts.map((host) => host.id));
+    for (const hostId of hostIds) {
+      await AuthService.disconnectHost(hostId);
+    }
+    await AuthService.clearToken();
+    await GitHubService.clearToken();
+    setAuthState(EMPTY_AUTH);
+    await refreshAccounts();
+    useAIStore.getState().setChatRepo(null, null, 'main', null);
+  }, [accountSummaries, refreshAccounts]);
 
   const switchToHost = useCallback(
     async (hostId: string): Promise<boolean> => {
@@ -475,6 +488,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       refreshAccounts,
       connectHost,
       disconnectHost,
+      disconnectAllHosts,
       switchToHost,
       switchAccount,
       removeAccount,
@@ -499,6 +513,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       refreshAccounts,
       connectHost,
       disconnectHost,
+      disconnectAllHosts,
       switchToHost,
       switchAccount,
       removeAccount,
@@ -535,6 +550,7 @@ export function useAccounts(): AccountsContextValue {
       refreshAccounts: async () => {},
       connectHost: async () => ({ ok: false, error: 'Accounts not ready' }),
       disconnectHost: async () => {},
+      disconnectAllHosts: async () => Promise.resolve(),
       switchToHost: async () => false,
       switchAccount: async () => false,
       removeAccount: async () => {},

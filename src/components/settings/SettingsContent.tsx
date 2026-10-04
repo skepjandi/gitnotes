@@ -863,9 +863,17 @@ export function SettingsContent(props: SettingsContentProps) {
                 </GroupRow>
 
                 {accountSummaries.length < 2 && accountSummaries.every((s) => s.hosts.length <= 1) ? null : (
-                  <GroupRow testID="settings.button.remove-token" onPress={onRemoveToken} accessibilityRole="button">
-                    <Text style={[styles.settingLabel, { color: colors.error }]}>
-                      {t('accounts.removeActiveConnection')}
+                  <GroupRow
+                    testID="settings.button.remove-token"
+                    onPress={onRemoveToken}
+                    accessibilityRole="button"
+                    leading={<Ionicons name="trash-outline" size={18} color={colors.error} />}
+                    trailing={<HintIcon hintKey="hints.settings.disconnectAllHosts" testID="hint.disconnect-all-hosts" />}
+                  >
+                    <Text
+                      style={[styles.settingLabel, { color: colors.error }]}
+                    >
+                      {t('accounts.disconnectAllHosts')}
                     </Text>
                   </GroupRow>
                 )}

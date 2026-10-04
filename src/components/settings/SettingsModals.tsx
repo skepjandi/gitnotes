@@ -526,6 +526,9 @@ export function SettingsModals(props: SettingsModalsProps) {
     tokenTestResult,
     __onRepoPickerListRender,
   } = props;
+  const hasRepositoryCredentials = authState.isAuthenticated || Object.values(hostCredentialKinds).some(
+    (kinds) => kinds.includes('token') || kinds.includes('oauth') || kinds.includes('github_app'),
+  );
 
   return (
     <>
@@ -638,7 +641,7 @@ export function SettingsModals(props: SettingsModalsProps) {
             </View>
           ) : null}
 
-          {authState.isAuthenticated ? (
+          {hasRepositoryCredentials ? (
             <RepoPickerList
               discoverableRepos={discoverableRepos}
               repositories={repositories}

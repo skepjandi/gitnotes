@@ -40,6 +40,7 @@ jest.mock('expo-web-browser', () => ({
 }));
 
 import * as GitEngine from '@/services/git/engine/GitEngine';
+import { ANDROID_NATIVE_BUILD_COMMAND } from '@/services/git/engine/GitEngine';
 import { AuthService } from '@/services/AuthService';
 import { AccountStorage } from '@/services/AccountStorage';
 import { StorageService } from '@/services/StorageService';
@@ -51,6 +52,12 @@ const nativeModule = (requireNativeModule as jest.Mock).mock.results[0].value as
   getCredential: jest.Mock;
   setCredential: jest.Mock;
 };
+
+describe('GitEngine Android build guidance', () => {
+  it('uses the runnable Android Rust build script command', () => {
+    expect(ANDROID_NATIVE_BUILD_COMMAND).toBe('yarn build:rust:android');
+  });
+});
 
 describe('GitEngine.pull', () => {
   beforeEach(() => {

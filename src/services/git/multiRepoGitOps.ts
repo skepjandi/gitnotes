@@ -107,6 +107,7 @@ export async function pushAll(
           if (!postflightResult.ok) {
             const reasonError = new Error(`Branch state changed during push (${postflightResult.reason})`);
             const failure = classifyPushError(reasonError);
+            gitOperationRegistry.fail(registryOpId, reasonError.message);
             return { repoId: repo.id, repoPath: repo.path, repoName: repo.name, ok: false, actedCount: 0, error: failure.message, failureKind: failure.kind };
           }
           gitOperationRegistry.succeed(registryOpId);

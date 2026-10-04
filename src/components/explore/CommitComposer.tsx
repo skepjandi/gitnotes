@@ -14,6 +14,9 @@ import { useAccounts } from '@/contexts/AccountsContext';
 import type { RepoLike } from './exploreShared';
 import { useTokens } from '@/contexts/ThemeContext';
 import { buildCommitMessageDraft } from './commitMessageDraft';
+import { CommitService } from '@/services/git/CommitService';
+import { AccountStorage } from '@/services/AccountStorage';
+import { getActiveGitHost } from '@/services/git/activeHost';
 
 const MESSAGE_PLACEHOLDER = 'feat: what changed? (conventional commit)';
 
@@ -30,24 +33,47 @@ interface CommitComposerProps {
 }
 
 export function CommitComposer({ repo, changedPaths, statuses, stagedCount, onCommitted, embedded = false }: CommitComposerProps) {
-  const { accounts, activeAccountId } = useAccounts();
+  const { accounts, activeAccountId, authState } = useAccounts();
   const activeAccount = accounts.find((account) => account.id === activeAccountId) ?? null;
   const { colors } = useTokens();
   const { t } = useTranslation();
   const [message, setMessage] = useState('');
   const [authorName, setAuthorName] = useState('');
   const [authorEmail, setAuthorEmail] = useState('');
-  const [authorTouched, setAuthorTouched] = useState(false);
+  const [nameTouched, setNameTouched] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
   const [busy, setBusy] = useState<'stageAll' | 'commit' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [draftDismissed, setDraftDismissed] = useState(false);
+  const [activeHostId, setActiveHostId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!activeAccount || authorTouched) return;
-    setAuthorName(activeAccount.name);
-    setAuthorEmail(activeAccount.email ?? '');
-  }, [activeAccount, authorTouched]);
+    let cancelled = false;
+    void (async () => {
+      const host = await getActiveGitHost();
+      if (cancelled) return;
+      const hostId = host?.hostId ?? null;
+      setActiveHostId(hostId);
+      if (hostId) {
+        const remembered = await AccountStorage.getRememberedCommitAuthor(hostId);
+        if (cancelled) return;
+        if (remembered) {
+          if (!nameTouched) setAuthorName(remembered.name ?? '');
+          if (!emailTouched) setAuthorEmail(remembered.email);
+          return;
+        }
+      }
+      if (nameTouched || emailTouched) return;
+      const author = await CommitService.resolveAuthor();
+      if (cancelled) return;
+      if (!nameTouched) setAuthorName(author.name);
+      if (!emailTouched) setAuthorEmail(author.email);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeAccount, authState.user, nameTouched, emailTouched]);
 
   useEffect(() => {
     if (draftDismissed) return;
@@ -88,6 +114,16 @@ export function CommitComposer({ repo, changedPaths, statuses, stagedCount, onCo
           name: authorName.trim(),
           email: authorEmail.trim(),
         });
+
+        // Persist manually entered email for this host after successful commit.
+        const currentHostId = activeHostId ?? (await getActiveGitHost())?.hostId ?? null;
+        if (currentHostId && emailTouched && authorEmail.trim().length > 0) {
+          await AccountStorage.setRememberedCommitAuthor(currentHostId, {
+            email: authorEmail.trim(),
+            name: authorName.trim(),
+          });
+        }
+
         setMessage('');
         setDraftDismissed(false);
         setSuccess(`Committed ${commit.shortId} — ${commit.summary}`);
@@ -98,7 +134,7 @@ export function CommitComposer({ repo, changedPaths, statuses, stagedCount, onCo
         setBusy(null);
       }
     },
-    [validate, changedPaths, repo.localPath, message, authorName, authorEmail, onCommitted],
+    [validate, changedPaths, repo.localPath, message, authorName, authorEmail, onCommitted, activeHostId, emailTouched],
   );
 
   const nothingToStageAll = changedPaths.length === 0;
@@ -156,7 +192,7 @@ export function CommitComposer({ repo, changedPaths, statuses, stagedCount, onCo
           <InputField
             value={authorName}
             onChangeText={(value) => {
-              setAuthorTouched(true);
+              setNameTouched(true);
               setAuthorName(value);
             }}
             placeholder="Author name"
@@ -168,7 +204,7 @@ export function CommitComposer({ repo, changedPaths, statuses, stagedCount, onCo
           <InputField
             value={authorEmail}
             onChangeText={(value) => {
-              setAuthorTouched(true);
+              setEmailTouched(true);
               setAuthorEmail(value);
             }}
             placeholder="author@email.com"

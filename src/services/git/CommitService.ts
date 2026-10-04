@@ -3,11 +3,12 @@ import { parseRepoPath } from '../../utils/gitPathParser';
 import { makeGitFs as buildGitFs } from './gitFs';
 import { gitHttp } from './gitHttp';
 import { LocalGitWriter, isCorruptionError } from './LocalGitWriter';
-import { getGitHostService } from './gitHostFactory';
+import { getActiveGitHost } from './activeHost';
 import type { GitHostUser } from './GitHost';
 import { repairHeadRef } from './GitFsService';
 import { useGitActivityStore } from '../../stores/gitActivityStore';
 import { StorageService } from '../StorageService';
+import { AccountStorage } from '../AccountStorage';
 
 // ─── minimal git stub (no-op until Rust engine is wired) ───────────────────
 const git = {
@@ -50,10 +51,24 @@ function tokenAuth(token: string | undefined) {
 }
 
 export async function resolveStageAuthor(): Promise<{ name: string; email: string }> {
-  const user: GitHostUser | null = await getGitHostService('github').getAuthenticatedUser();
+  const activeHost = await getActiveGitHost();
+  if (!activeHost) {
+    return { name: 'gitnotes', email: '' };
+  }
+
+  const remembered = await AccountStorage.getRememberedCommitAuthor(activeHost.hostId);
+  if (remembered) {
+    return {
+      name: remembered.name?.trim() || 'gitnotes',
+      email: remembered.email.trim(),
+    };
+  }
+
+  const user: GitHostUser | null = await activeHost.host.getAuthenticatedUser();
+  const login = user?.login?.trim() || 'gitnotes';
   return {
-    name: user?.name ?? user?.login ?? 'gitnotes',
-    email: user?.email ?? `${user?.login ?? 'gitnotes'}@users.noreply.gitnotes`,
+    name: user?.name?.trim() || login,
+    email: user?.email?.trim() || '',
   };
 }
 

@@ -75,6 +75,7 @@ jest.mock('@react-native-async-storage/async-storage', () => {
 
 import { AppIconService } from '@/services/AppIconService';
 import * as ExpoAlternateAppIcons from 'expo-alternate-app-icons';
+import { Platform } from 'react-native';
 
 type ExpoMock = {
   _reset: () => void;
@@ -104,6 +105,16 @@ describe('AppIconService.isSupported', () => {
     mock._setPlatformSupports(false);
     const result = await AppIconService.isSupported();
     expect(result).toBe(false);
+  });
+
+  it('returns false for Android development builds', async () => {
+    const platform = jest.replaceProperty(Platform, 'OS', 'android');
+    try {
+      const result = await AppIconService.isSupported();
+      expect(result).toBe(false);
+    } finally {
+      platform.restore();
+    }
   });
 });
 

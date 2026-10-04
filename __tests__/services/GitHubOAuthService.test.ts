@@ -146,7 +146,7 @@ describe('GitHubOAuthService', () => {
       expect(result.ok).toBe(true);
       expect(mockPost).toHaveBeenCalledWith(
         `${TEST_BACKEND}/api/v1/oauth/initiate`,
-        expect.objectContaining({ scopes: ['read:user', 'public_repo'] }),
+        expect.objectContaining({ scopes: ['read:user', 'repo'] }),
         expect.anything(),
       );
 
@@ -181,6 +181,32 @@ describe('GitHubOAuthService', () => {
       expect(result.ok).toBe(true);
       expect(result.authorizationUrl).toContain('github.com/login/oauth/authorize');
       expect(mod.pendingOAuthFlows.has('oauth-state-xyz')).toBe(true);
+    });
+
+    it('forwards explicit scopes without replacing them with defaults', async () => {
+      const { mod, mockPost, mockGetRandomBytesAsync, mockDigestStringAsync } = await loadService();
+      mockGetRandomBytesAsync.mockResolvedValue('verifier-custom-scope');
+      mockDigestStringAsync.mockResolvedValue('sha-256-custom-scope');
+      mockPost.mockResolvedValueOnce({
+        data: {
+          authorization_url: 'https://github.com/login/oauth/authorize',
+          state: 'custom-scope-state',
+        },
+      });
+
+      await mod.GitHubOAuthService.initiate({
+        backendUrl: TEST_BACKEND,
+        hostId: TEST_HOST_ID,
+        clientId: TEST_CLIENT_ID,
+        redirectUri: TEST_REDIRECT_URI,
+        scopes: ['read:user'],
+      });
+
+      expect(mockPost).toHaveBeenCalledWith(
+        `${TEST_BACKEND}/api/v1/oauth/initiate`,
+        expect.objectContaining({ scopes: ['read:user'] }),
+        expect.anything(),
+      );
     });
   });
 

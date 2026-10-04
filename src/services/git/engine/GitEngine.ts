@@ -90,15 +90,17 @@ try {
 }
 
 // On Android the native module only exists once the Rust engine has been
-// built (`yarn build:rust --android`) and bundled. Fail fast with an
+// built (`yarn build:rust:android`) and bundled. Fail fast with an
 // actionable error instead of letting a missing/incomplete native module
 // surface later as cryptic per-op failures.
+export const ANDROID_NATIVE_BUILD_COMMAND = 'yarn build:rust:android';
+
 if (
   Platform.OS === 'android' &&
   (GitEngineModule === null || typeof GitEngineModule.version !== 'function')
 ) {
   throw new Error(
-    'GitEngine Android native module not available. Run `yarn build:rust --android` first.',
+    `GitEngine Android native module not available. Run \`${ANDROID_NATIVE_BUILD_COMMAND}\` first.`,
   );
 }
 

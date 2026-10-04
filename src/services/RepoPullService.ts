@@ -877,10 +877,6 @@ export async function pullFromSingleRepo(
   repoPath: string,
   onProgress?: CloneProgressCallback,
 ): Promise<PullResult> {
-  if (!GitHubService.isAuthenticated()) {
-    return { repos: 0, notes: 0, canvases: 0, todos: 0, templates: 0 };
-  }
-
   onProgress?.('Reading repository…', 0, null);
 
   const repos = await StorageService.getSavedRepositories();

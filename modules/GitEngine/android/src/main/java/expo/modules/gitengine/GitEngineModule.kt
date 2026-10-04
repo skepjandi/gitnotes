@@ -162,7 +162,7 @@ class GitEngineModule : Module() {
     val error = engineLoadError ?: return
     throw GitEngineException(
       "GitEngine native library unavailable: ${error.message ?: error}. " +
-        "Run `yarn build:rust --android` and rebuild the app."
+        "Run `yarn build:rust:android` and rebuild the app."
     )
   }
 

@@ -161,6 +161,17 @@ describe('repoStore.addRepository preflight boundary', () => {
     );
   });
 
+  it('surfaces an actionable retry error for an Expo lazy-bundle failure', async () => {
+    jest.mocked(checkGitHubRepoAccess).mockResolvedValue({ kind: 'ok' });
+    jest.mocked(GitFsService.cloneExclusive).mockRejectedValue(
+      new TypeError("Cannot read property 'reload' of undefined"),
+    );
+
+    await expect(useRepoStore.getState().addRepository('me/my-repo')).rejects.toThrow(
+      'The app is still loading. Please try again.',
+    );
+  });
+
   // -----------------------------------------------------------------------
   // no_access — terminal, throws immediately before registration
   // -----------------------------------------------------------------------

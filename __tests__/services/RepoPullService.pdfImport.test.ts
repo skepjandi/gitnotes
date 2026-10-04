@@ -25,6 +25,7 @@ import { AuthService } from '@/services/AuthService';
 import { StorageService } from '@/services/StorageService';
 import { GitFsService } from '@/services/git/GitFsService';
 import { resolveBranch } from '@/services/git/branchResolver';
+import { GitHubService } from '@/services/GitHubService';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -145,7 +146,9 @@ describe('PDF exclusion via pullFromSingleRepo import seam', () => {
     jest.mocked(GitFsService.isCloned).mockResolvedValue(true);
     jest.mocked(GitFsService.pullWithFastForward).mockResolvedValue({ ok: true });
     jest.mocked(StorageService.getAllNotes).mockResolvedValue([]);
+    jest.mocked(StorageService.getAllTodos).mockResolvedValue([]);
     jest.mocked(StorageService.saveAllNotes).mockResolvedValue(undefined);
+    jest.mocked(GitHubService.isAuthenticated).mockReturnValue(true);
   });
 
   it('PDF files are excluded from notes imported through pullFromSingleRepo', async () => {
@@ -190,6 +193,39 @@ describe('PDF exclusion via pullFromSingleRepo import seam', () => {
     expect(StorageService.saveAllNotes).toHaveBeenCalledTimes(1);
     const savedNotes = jest.mocked(StorageService.saveAllNotes).mock.calls[0][0];
     expect(savedNotes).toHaveLength(0);
+  });
+
+  it('imports local clone notes with a native host connection and no legacy GitHub token', async () => {
+    jest.mocked(AuthService.getToken).mockResolvedValue(null);
+    jest.mocked(AccountStorage.getActiveHostConnection).mockResolvedValue({
+      id: 'account:github:default',
+      accountId: 'account',
+      provider: 'github',
+      instanceBaseUrl: null,
+      hostLogin: 'alice',
+      hostUserId: 1,
+      name: 'Alice',
+      email: null,
+      avatarUrl: null,
+      addedAt: 1,
+    });
+    jest.mocked(GitHubService.isAuthenticated).mockReturnValue(false);
+    jest.mocked(GitFsService.listTree).mockResolvedValue([
+      { path: 'notes/welcome.md', type: 'blob', sha: 'aaa', size: 120 },
+    ]);
+    jest.mocked(GitFsService.readFile).mockResolvedValue('# Welcome');
+    mockPullFromSingleRepo.mockImplementation(realPullFromSingleRepo);
+
+    await pullFromSingleRepo(REPO_PATH);
+
+    expect(GitFsService.pullWithFastForward).toHaveBeenCalledWith({
+      repoPath: REPO_PATH,
+      branch: 'main',
+      token: undefined,
+      repoId: REPO_ID,
+    });
+    expect(StorageService.saveAllNotes).toHaveBeenCalledTimes(1);
+    expect(jest.mocked(StorageService.saveAllNotes).mock.calls[0][0]).toHaveLength(1);
   });
 });
 

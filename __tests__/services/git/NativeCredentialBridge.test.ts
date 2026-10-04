@@ -668,6 +668,10 @@ describe('isAuthFailure', () => {
   test('returns true for "too many redirects or authentication replays" (libgit2 native error)', () => {
     expect(isAuthFailure(new Error('Git(message: "too many redirects or authentication replays", corruption: false)'))).toBe(true);
   });
+
+  test('returns true when libgit2 reports that no auth callback was configured', () => {
+    expect(isAuthFailure(new Error('remote authentication required but no callback set'))).toBe(true);
+  });
 });
 
 describe('getNextCredentialKind', () => {

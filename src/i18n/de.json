@@ -379,8 +379,8 @@
     "tokenInvalid": "Ungültiges Token. Bitte überprüfe es und versuche es erneut.",
     "removeAccountTitle": "@{{login}} entfernen?",
     "removeAccountBody": "Das Token für dieses Konto wird von diesem Gerät gelöscht. Mit dem Konto erstellte Notizen/Aufgaben bleiben lokal erhalten.",
-    "removeTokenTitle": "GitHub-Token entfernen",
-    "removeTokenBody": "Dadurch wird dein GitHub-Konto getrennt. Fortfahren?",
+    "removeTokenTitle": "Alle Hosts trennen?",
+    "removeTokenBody": "Alle verbundenen Hosts und ihre Zugangsdaten werden von diesem Gerät entfernt. Fortfahren?",
     "cascadeRemoveWarning": "Dadurch wird/werden auch {{count}} synchronisierte(s) Repo(s) von diesem Gerät entfernt.",
     "resetOnboardingTitle": "Onboarding zurücksetzen",
     "resetOnboardingBody": "Der Onboarding-Bildschirm wird beim nächsten Start der App angezeigt.",
@@ -576,7 +576,8 @@
       "aiPersonalization": "Wenn aktiviert, liest die KI deine Notizen und Tagebücher, um personalisierte Antworten zu liefern. Deaktivieren für Datenschutz — KI verwendet nur den aktuellen Chat-Kontext.",
       "githubTools": "Wenn aktiviert, kann dein KI-Agent deine Repositories auflisten, Issues erstellen, Pull Requests öffnen, Diff-Änderungen prüfen und Reviews posten – über dein verbundenes GitHub-Konto. Verwendet denselben Token, den du bereits eingerichtet hast.",
       "dailyQuotePersonalization": "Wenn aktiviert, liest die KI deine Tagebuchnotizen, um die auf deinem Startbildschirm angezeigten Zitate zu personalisieren. Deaktiviere es, um jeden Tag ein zufälliges Zitat zu sehen.",
-      "dailyQuoteShowSources": "Zeigt das ursprüngliche Buch oder Werk, aus dem das Zitat stammt, neben dem Namen des Autors an."
+      "dailyQuoteShowSources": "Zeigt das ursprüngliche Buch oder Werk, aus dem das Zitat stammt, neben dem Namen des Autors an.",
+      "disconnectAllHosts": "Entfernt alle gespeicherten Host-Verbindungen und Zugangsdaten von diesem Gerät."
     },
     "title": "Hint"
   },
@@ -604,7 +605,7 @@
     "removeAccount": "Remove account",
     "disconnectTitle": "Disconnect host?",
     "disconnectBody": "The host connection will be removed.",
-    "removeActiveConnection": "Disconnect active host",
+    "disconnectAllHosts": "Alle Hosts trennen",
     "settings": {
       "accountsGroup": "Konten"
     },

@@ -481,8 +481,8 @@
     "tokenInvalid": "Invalid token. Please check and try again.",
     "removeAccountTitle": "Remove @{{login}}?",
     "removeAccountBody": "The token for this account will be deleted from this device. Notes/todos created under it stay locally.",
-    "removeTokenTitle": "Remove GitHub Token",
-    "removeTokenBody": "This will disconnect your GitHub account. Continue?",
+    "removeTokenTitle": "Disconnect all hosts?",
+    "removeTokenBody": "This will remove all connected hosts and their credentials from this device. Continue?",
     "cascadeRemoveWarning": "This will also remove {{count}} synced repo(s) from this device.",
     "resetOnboardingTitle": "Reset Onboarding",
     "resetOnboardingBody": "This will show the onboarding screen on next app launch.",
@@ -542,7 +542,7 @@
     "removeAccount": "Remove account",
     "disconnectTitle": "Disconnect host?",
     "disconnectBody": "{{label}} will be removed from this account. You can reconnect any time.",
-    "removeActiveConnection": "Disconnect active host",
+    "disconnectAllHosts": "Disconnect all hosts",
     "settings": {
       "accountsGroup": "Accounts"
     },
@@ -919,7 +919,8 @@
       "aiPersonalization": "When enabled, AI reads your notes and journals to provide personalized responses. Turn off for data privacy — AI will only use the current chat context.",
       "githubTools": "When enabled, your AI agent can list your repos, create issues, open pull requests, review diff changes, and post reviews using your connected GitHub account. Uses the same token you already set up.",
       "dailyQuotePersonalization": "When on, AI reads your journal notes to personalize the quotes shown on your home screen. Turn off to see a random quote each day.",
-      "dailyQuoteShowSources": "Show the original book or work the quote was taken from, displayed next to the author name."
+      "dailyQuoteShowSources": "Show the original book or work the quote was taken from, displayed next to the author name.",
+      "disconnectAllHosts": "Removes every saved host connection and credential from this device."
     },
     "title": "Hint"
   },

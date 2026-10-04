@@ -104,6 +104,8 @@ jest.mock('@/services/AccountStorage', () => ({
   AccountStorage: {
     getHostConnection: jest.fn(),
     getHostToken: jest.fn(),
+    getGitHubAppCredential: jest.fn(),
+    getOAuthCredential: jest.fn(),
   },
 }));
 

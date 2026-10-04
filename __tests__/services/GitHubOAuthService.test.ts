@@ -146,7 +146,7 @@ describe('GitHubOAuthService', () => {
       expect(result.ok).toBe(true);
       expect(mockPost).toHaveBeenCalledWith(
         `${TEST_BACKEND}/api/v1/oauth/initiate`,
-        expect.objectContaining({ scopes: ['read:user', 'repo'] }),
+        expect.objectContaining({ scopes: ['read:user', 'user:email', 'repo'] }),
         expect.anything(),
       );
 

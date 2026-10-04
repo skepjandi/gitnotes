@@ -180,7 +180,7 @@ export class GitHubOAuthService {
     hostId: string | null;
     scopes?: string[];
   }): Promise<OAuthInitiationResult> {
-    const { backendUrl, redirectUri, clientId, hostId, scopes = ['read:user', 'repo'] } = params;
+    const { backendUrl, redirectUri, clientId, hostId, scopes = ['read:user', 'user:email', 'repo'] } = params;
 
     const verifier = await generatePkceVerifier();
     const challenge = await generateS256Challenge(verifier);

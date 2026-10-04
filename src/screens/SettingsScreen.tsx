@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Linking, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -116,7 +116,7 @@ export default function SettingsScreen() {
   const { clearAllNotes, refreshNotes } = useNotes();
   const { refreshCanvases } = useCanvases();
   const { refreshTodos } = useTodos();
-  const { authState, accounts, activeAccountId, accountSummaries, setToken, clearToken, addAccount, removeAccount, switchAccount, disconnectHost, disconnectGitHubOAuth, disconnectGitHubApp, disconnectGitHubPat } = useAuth();
+  const { authState, accounts, activeAccountId, accountSummaries, setToken, addAccount, removeAccount, switchAccount, disconnectHost, disconnectAllHosts, disconnectGitHubOAuth, disconnectGitHubApp, disconnectGitHubPat } = useAuth();
   const { repositories, addRepository: addRepo, removeRepository: removeRepo } = useRepos();
   const {
     isLockEnabled: isBiometricLockEnabled,
@@ -976,11 +976,9 @@ export default function SettingsScreen() {
 
   const handleRemoveToken = useCallback(() => {
     HapticService.warning();
-    const summary = accountSummaries[0];
-    const host = summary
-      ? summary.hosts.find((h) => h.id === summary.activeHostId) ?? summary.hosts[0]
-      : undefined;
-    const removedHosts: RemovedHostRef[] = host ? [{ id: host.id, provider: host.provider }] : [];
+    const removedHosts: RemovedHostRef[] = accountSummaries.flatMap((summary) =>
+      summary.hosts.map((host) => ({ id: host.id, provider: host.provider })),
+    );
     const providerAccountCount = buildProviderAccountCount(accountSummaries);
     const affectedCount = reposAffectedByRemovedHosts(repositories, removedHosts, providerAccountCount).length;
     const body = affectedCount > 0
@@ -993,7 +991,7 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await clearToken();
+            await disconnectAllHosts();
             await useRepoStore.getState().removeRepositoriesForHosts(removedHosts, providerAccountCount);
             HapticService.success();
           } catch (err) {
@@ -1006,7 +1004,7 @@ export default function SettingsScreen() {
         },
       },
     ]);
-  }, [accountSummaries, repositories, clearToken, t]);
+  }, [accountSummaries, repositories, disconnectAllHosts, t]);
 
   // Native-only "Connected hosts" UI: a single Alert lists each connected
   // host as a button; tapping one shows the disconnect confirmation Alert.

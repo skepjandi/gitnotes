@@ -7,6 +7,7 @@
  * it through a mock that exposes the callback.
  */
 import { act, render } from '@testing-library/react-native';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 let capturedOnReleaseSegment: ((segment: 'stage' | 'commit' | 'push') => void) | null = null;
 
@@ -73,7 +74,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
-const mockRefresh = jest.fn();
+const mockRefresh = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 jest.mock('@/hooks/useAllReposStatus', () => ({
   useAllReposStatus: () => ({
     perRepo: new Map(),
@@ -100,18 +101,27 @@ jest.mock('@/stores/repoStore', () => ({
 
 jest.mock('@/contexts/AccountsContext', () => ({
   useAccounts: () => ({
-    accounts: [{ id: 'acc-1', name: 'Test User', email: 'test@example.com' }],
+    accounts: [{ id: 'acc-1', name: 'Test User', email: '' }],
     activeAccountId: 'acc-1',
   }),
 }));
 
-const mockStageAllPending = jest.fn();
-const mockCommitAll = jest.fn();
-const mockPushAll = jest.fn();
+const mockStageAllPending = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockCommitAll = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockPushAll = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 jest.mock('@/services/git/multiRepoGitOps', () => ({
   stageAllPending: (...args: unknown[]) => mockStageAllPending(...args),
   commitAll: (...args: unknown[]) => mockCommitAll(...args),
   pushAll: (...args: unknown[]) => mockPushAll(...args),
+}));
+
+const mockResolveAuthor = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockGenerateCommitMessage = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+jest.mock('@/services/git/CommitService', () => ({
+  CommitService: {
+    resolveAuthor: (...args: unknown[]) => mockResolveAuthor(...args),
+    generateCommitMessage: (...args: unknown[]) => mockGenerateCommitMessage(...args),
+  },
 }));
 
 const mockEmitGitRefresh = jest.fn();
@@ -161,6 +171,8 @@ function setupDefaultMocks() {
   mockStageAllPending.mockResolvedValue({ outcomes: [], totalActed: 1, failures: [], ok: true });
   mockCommitAll.mockResolvedValue({ outcomes: [], totalActed: 1, failures: [], ok: true });
   mockPushAll.mockResolvedValue({ outcomes: [], totalActed: 1, failures: [], ok: true });
+  mockResolveAuthor.mockResolvedValue({ name: 'Resolved User', email: 'resolved@example.com' });
+  mockGenerateCommitMessage.mockResolvedValue('Update notes');
   mockRefresh.mockResolvedValue(undefined);
 }
 
@@ -209,6 +221,22 @@ describe('AppFloatingGitButton — service call order', () => {
     expect(mockStageAllPending).toHaveBeenCalledTimes(1);
     expect(mockCommitAll).toHaveBeenCalledTimes(1);
     expect(mockPushAll).not.toHaveBeenCalled();
+  });
+
+  it('commit segment passes the active-host author to commitAll', async () => {
+    const { default: AppFloatingGitButton } = require('@/components/git/AppFloatingGitButton');
+    render(<AppFloatingGitButton />);
+    await act(async () => { await Promise.resolve(); });
+
+    await act(async () => { getReleaseCallback()('commit'); });
+    await flushPromises();
+
+    expect(mockResolveAuthor).toHaveBeenCalledTimes(1);
+    expect(mockCommitAll).toHaveBeenCalledWith(
+      expect.any(Array),
+      'Update notes',
+      { name: 'Resolved User', email: 'resolved@example.com' },
+    );
   });
 
   it('push segment calls stageAllPending then commitAll then pushAll', async () => {

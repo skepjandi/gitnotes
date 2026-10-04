@@ -144,6 +144,11 @@ describe('GitHubOAuthService', () => {
       });
 
       expect(result.ok).toBe(true);
+      expect(mockPost).toHaveBeenCalledWith(
+        `${TEST_BACKEND}/api/v1/oauth/initiate`,
+        expect.objectContaining({ scopes: ['read:user', 'public_repo'] }),
+        expect.anything(),
+      );
 
       const pending = mod.pendingOAuthFlows.get('test-state-abc');
       expect(pending).toBeDefined();
@@ -366,7 +371,7 @@ describe('GitHubOAuthService', () => {
       });
 
       expect(result.outcome).toBe('success');
-      expect(mockAddAccount).toHaveBeenCalledWith('access-token-first', expect.objectContaining({
+      expect(mockAddAccount).toHaveBeenCalledWith(null, expect.objectContaining({
         login: 'firstuser',
         name: 'firstuser',
       }));
@@ -376,8 +381,8 @@ describe('GitHubOAuthService', () => {
         instanceBaseUrl: null,
         hostLogin: 'firstuser',
         hostUserId: 456,
-        token: 'access-token-first',
       }));
+      expect(mockUpsertHostConnection.mock.calls[0][0]).not.toHaveProperty('token');
       expect(mockSetActiveAccountId).toHaveBeenCalledWith('acc-123');
       expect(mockSetActiveHostId).toHaveBeenCalledWith('acc-123:github:default');
       expect(mockUpdateHostProfile).toHaveBeenCalledWith('acc-123:github:default', expect.objectContaining({

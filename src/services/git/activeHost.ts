@@ -14,6 +14,8 @@ import {
   forgejoHostService,
 } from './gitHostFactory';
 
+export { GIT_HOST_API_BASES };
+
 export interface ActiveGitHost {
   provider: GitHostProvider;
   baseUrl: string;
@@ -112,6 +114,8 @@ function resolveHostService(
 }
 
 export const __testing = { GitHubHostService };
+
+export { resolveHostService };
 
 function makeGitLabService(baseUrl: string): GitHostFullService {
   const service = new GitLabService();

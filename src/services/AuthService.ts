@@ -391,6 +391,12 @@ export class AuthService {
           continue;
         }
 
+        const oauthCredential = await AccountStorage.getOAuthCredential(host.id);
+        if (oauthCredential) {
+          anyHostsLeft = true;
+          continue;
+        }
+
         const token = await AccountStorage.getHostToken(host.id);
         if (!token) {
           await AccountStorage.removeHostConnection(host.id);

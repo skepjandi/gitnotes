@@ -8,6 +8,7 @@ import { useGitButtonActionStore } from '@/stores/gitButtonActionStore';
 import { stageAllPending, commitAll, pushAll, type RepoOpOutcome } from '@/services/git/multiRepoGitOps';
 import { CommitService } from '@/services/git/CommitService';
 import type { Author } from '@/services/git/engine/GitEngine';
+import type { GitRepository } from '@/services/GitService';
 import { emitGitContentRefresh, emitGitRefresh } from '@/hooks/useGitRefreshEvent';
 import FloatingGitButton from './FloatingGitButton';
 import type { ReleaseSegment } from './useFloatingGitButtonAffordances';
@@ -84,27 +85,37 @@ export default function AppFloatingGitButton() {
           return;
         }
 
-        const author: Author = await CommitService.resolveAuthor();
-        if (!author.email.trim()) {
-          toast.show({
-            placement: 'top',
-            duration: 3000,
-            render: ({ id }: { id: string }) => (
-              <Toast action="error" nativeID={`gitbutton-noauthor-${id}`}>
-                <ToastTitle>Cannot commit</ToastTitle>
-                <ToastDescription>No commit email found. Enter one in the staging page.</ToastDescription>
-              </Toast>
-            ),
-          });
-          return;
-        }
+        const authorResolver = async (repo: GitRepository): Promise<Author | null> => {
+          const author = await CommitService.resolveAuthor(repo.id);
+          return author.name.trim() && author.email.trim() ? author : null;
+        };
 
         const message = await CommitService.generateCommitMessage(
           repos[0]?.id ?? '',
           stageResult.totalActed,
         );
-        const commitResult = await commitAll(repos, message, author);
+        const commitResult = await commitAll(repos, message, authorResolver);
         if (!commitResult.ok) {
+          const missingAuthor = commitResult.failures.find(
+            (failure) => failure.error === 'Missing commit author',
+          );
+          if (missingAuthor) {
+            setPending({ repoId: missingAuthor.repoId, section: 'staging' });
+            navigation.navigate('MainTabs', { screen: 'ExploreTab' });
+            toast.show({
+              placement: 'top',
+              duration: 3000,
+              render: ({ id }: { id: string }) => (
+                <Toast action="error" nativeID={`gitbutton-noauthor-${id}`}>
+                  <ToastTitle>Missing commit author</ToastTitle>
+                  <ToastDescription>
+                    Enter your author info in the staging page for {missingAuthor.repoName}.
+                  </ToastDescription>
+                </Toast>
+              ),
+            });
+            return;
+          }
           toast.show({
             placement: 'top',
             duration: 4000,
@@ -135,10 +146,15 @@ export default function AppFloatingGitButton() {
           return;
         }
 
-        const pushResult = await pushAll(repos);
+        // Only push repos that successfully committed
+        const successfulRepos = repos.filter((repo) => {
+          const outcome = commitResult.outcomes.find((o) => o.repoId === repo.id);
+          return outcome?.ok === true;
+        });
+        const pushResult = successfulRepos.length > 0 ? await pushAll(successfulRepos) : { outcomes: [], totalActed: 0, failures: [], ok: true };
         pushFailedCount = pushResult.failures.length;
 
-        if (pushFailedCount === repos.length) {
+        if (pushFailedCount === successfulRepos.length) {
           toast.show({
             placement: 'top',
             duration: 4000,
@@ -152,7 +168,7 @@ export default function AppFloatingGitButton() {
             ),
           });
         } else {
-          const pushedCount = repos.length - pushFailedCount;
+          const pushedCount = successfulRepos.length - pushFailedCount;
           toast.show({
             placement: 'top',
             duration: 3000,
@@ -209,7 +225,7 @@ export default function AppFloatingGitButton() {
         isOperationActiveRef.current = false;
       }
     },
-    [repos, toast, aggregatedState, navigation],
+    [repos, toast, aggregatedState, navigation, setPending],
   );
 
   /**

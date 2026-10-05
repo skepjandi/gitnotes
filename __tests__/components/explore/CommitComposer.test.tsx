@@ -48,6 +48,8 @@ jest.mock('@/services/AccountStorage', () => ({
   AccountStorage: {
     getRememberedCommitAuthor: jest.fn(),
     setRememberedCommitAuthor: jest.fn(),
+    getRememberedCommitAuthorForRepo: jest.fn(),
+    setRememberedCommitAuthorForRepo: jest.fn(),
   },
 }));
 
@@ -100,6 +102,7 @@ describe('CommitComposer author identity', () => {
       instanceBaseUrl: null,
       host: {} as never,
     });
+    jest.mocked(AccountStorage.getRememberedCommitAuthorForRepo).mockResolvedValue(null);
     jest.mocked(AccountStorage.getRememberedCommitAuthor).mockResolvedValue(null);
     jest.mocked(CommitService.resolveAuthor).mockResolvedValue({
       name: 'API Name',
@@ -124,7 +127,7 @@ describe('CommitComposer author identity', () => {
   });
 
   it('loads remembered email when available', async () => {
-    jest.mocked(AccountStorage.getRememberedCommitAuthor).mockResolvedValue({
+    jest.mocked(AccountStorage.getRememberedCommitAuthorForRepo).mockResolvedValue({
       email: 'remembered@example.com',
       name: 'Remembered Name',
     });
@@ -146,6 +149,10 @@ describe('CommitComposer author identity', () => {
   });
 
   it('does not overwrite manually edited email with async resolution', async () => {
+    jest.mocked(CommitService.resolveAuthor).mockImplementation(
+      () => new Promise((resolve) => setImmediate(() => resolve({ name: 'API Name', email: 'api@example.com' })))
+    );
+
     const { getByTestId } = render(
       <CommitComposer
         repo={{ id: 'repo-1', localPath: '/repo', path: 'owner/repo', name: 'repo', branch: 'main' }}

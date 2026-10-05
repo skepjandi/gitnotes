@@ -3,7 +3,7 @@ import { parseRepoPath } from '../../utils/gitPathParser';
 import { makeGitFs as buildGitFs } from './gitFs';
 import { gitHttp } from './gitHttp';
 import { LocalGitWriter, isCorruptionError } from './LocalGitWriter';
-import { getActiveGitHost } from './activeHost';
+import { getActiveGitHost, resolveHostService, GIT_HOST_API_BASES } from './activeHost';
 import type { GitHostUser } from './GitHost';
 import { repairHeadRef } from './GitFsService';
 import { useGitActivityStore } from '../../stores/gitActivityStore';
@@ -50,8 +50,79 @@ function tokenAuth(token: string | undefined) {
   return () => ({ username: 'x-access-token', password: token });
 }
 
-export async function resolveStageAuthor(): Promise<{ name: string; email: string }> {
+export async function resolveStageAuthor(repoId?: string): Promise<{ name: string; email: string }> {
   const activeHost = await getActiveGitHost();
+
+  if (repoId) {
+    const repoRemembered = await AccountStorage.getRememberedCommitAuthorForRepo(repoId);
+    if (repoRemembered) {
+      return {
+        name: repoRemembered.name?.trim() || 'gitnotes',
+        email: repoRemembered.email.trim(),
+      };
+    }
+  }
+
+  if (repoId) {
+    const repos = await StorageService.getSavedRepositories();
+    const repo = repos.find((r) => r.id === repoId);
+    const repoHostId = repo?.hostId;
+    if (repoHostId) {
+      const hostConnection = await AccountStorage.getHostConnection(repoHostId);
+      if (hostConnection) {
+        const hostRemembered = await AccountStorage.getRememberedCommitAuthor(repoHostId);
+        if (hostRemembered) {
+          return {
+            name: hostRemembered.name?.trim() || 'gitnotes',
+            email: hostRemembered.email.trim(),
+          };
+        }
+
+        const profileName = hostConnection.name.trim();
+        const profileEmail = hostConnection.email?.trim() ?? '';
+        const profileLogin = hostConnection.hostLogin.trim();
+        const profileGithubEmail =
+          hostConnection.provider === 'github'
+            ? `${hostConnection.hostUserId}+${profileLogin}@users.noreply.github.com`
+            : '';
+        if (profileEmail) {
+          return {
+            name: profileName || profileLogin || 'gitnotes',
+            email: profileEmail,
+          };
+        }
+        if (profileGithubEmail) {
+          return {
+            name: profileName || profileLogin || 'gitnotes',
+            email: profileGithubEmail,
+          };
+        }
+
+        const token = await AccountStorage.getHostToken(repoHostId);
+        if (token) {
+          const baseUrl = hostConnection.instanceBaseUrl ?? GIT_HOST_API_BASES[hostConnection.provider];
+          const hostService = resolveHostService(hostConnection.provider, baseUrl);
+          const user: GitHostUser | null = await hostService.getAuthenticatedUser().catch(() => null);
+          if (user) {
+            const login = user.login?.trim() || 'gitnotes';
+            const email = user.email?.trim();
+            const githubNoreplyEmail =
+              hostConnection.provider === 'github'
+                ? `${user.id}+${user.login}@users.noreply.github.com`
+                : '';
+            return {
+              name: user.name?.trim() || login,
+              email: email || githubNoreplyEmail,
+            };
+          }
+        }
+        if (profileName || profileLogin) {
+          return { name: profileName || profileLogin, email: '' };
+        }
+      }
+    }
+  }
+
   if (!activeHost) {
     return { name: 'gitnotes', email: '' };
   }
@@ -125,9 +196,13 @@ export class CommitService {
    * Resolve the author for a commit. Uses the GitHostService to get the
    * authenticated user's name and email. Falls back to 'gitnotes' if
    * no user info is available.
+   *
+   * @param repoId - Optional repository id for per-repo author resolution.
+   *   Resolution order: per-repo remembered author, repo host API identity,
+   *   host-scoped remembered author, active-host/API fallback.
    */
-  static async resolveAuthor(): Promise<{ name: string; email: string }> {
-    return resolveStageAuthor();
+  static async resolveAuthor(repoId?: string): Promise<{ name: string; email: string }> {
+    return resolveStageAuthor(repoId);
   }
 
   /**

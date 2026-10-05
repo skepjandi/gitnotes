@@ -53,7 +53,7 @@ export async function stageAllPending(
 export async function commitAll(
   repos: readonly GitRepository[],
   message: string,
-  author: Author,
+  author: Author | ((repo: GitRepository) => Author | null | Promise<Author | null>),
 ): Promise<AggregateOpOutcome> {
   const outcomes = await Promise.all(
     repos.map(async (repo): Promise<RepoOpOutcome> => {
@@ -64,7 +64,18 @@ export async function commitAll(
         if (stagedCount === 0) {
           return { repoId: repo.id, repoPath: repo.path, repoName: repo.name, ok: true, actedCount: 0 };
         }
-        await GitEngine.commit(localPath, message, author);
+        const resolvedAuthor = typeof author === 'function' ? await author(repo) : author;
+        if (!resolvedAuthor || !resolvedAuthor.name.trim() || !resolvedAuthor.email.trim()) {
+          return {
+            repoId: repo.id,
+            repoPath: repo.path,
+            repoName: repo.name,
+            ok: false,
+            actedCount: 0,
+            error: 'Missing commit author',
+          };
+        }
+        await GitEngine.commit(localPath, message, resolvedAuthor);
         return { repoId: repo.id, repoPath: repo.path, repoName: repo.name, ok: true, actedCount: 1 };
       } catch (err) {
         return { repoId: repo.id, repoPath: repo.path, repoName: repo.name, ok: false, actedCount: 0, error: err instanceof Error ? err.message : String(err) };
@@ -132,17 +143,21 @@ export async function pushAll(
 
 /**
  * Convenience: commit + push in one call. Runs commitAll first; if a repo
- * fails to commit, the matching push is skipped. Then pushAll runs across
- * all repos. Returns the combined aggregate (sums of actedCount from each
- * phase; failures from either phase land in `failures`).
+ * fails to commit, it is excluded from the push phase. Then pushAll runs across
+ * repos that successfully committed. Returns the combined aggregate (sums of
+ * actedCount from each phase; failures from either phase land in `failures`).
  */
 export async function commitAndPushAll(
   repos: readonly GitRepository[],
   message: string,
-  author: Author,
+  author: Author | ((repo: GitRepository) => Author | null | Promise<Author | null>),
 ): Promise<AggregateOpOutcome> {
   const commitResult = await commitAll(repos, message, author);
-  const pushResult = await pushAll(repos);
+  const successfulRepos = repos.filter((repo) => {
+    const outcome = commitResult.outcomes.find((o) => o.repoId === repo.id);
+    return outcome?.ok === true;
+  });
+  const pushResult = successfulRepos.length > 0 ? await pushAll(successfulRepos) : { outcomes: [], totalActed: 0, failures: [], ok: true };
   return {
     outcomes: [...commitResult.outcomes, ...pushResult.outcomes],
     totalActed: commitResult.totalActed + pushResult.totalActed,

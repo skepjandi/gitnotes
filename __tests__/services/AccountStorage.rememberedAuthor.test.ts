@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it } from '@jest/globals';
 import { AccountStorage } from '../../src/services/AccountStorage';
 
 const HOST_ID = 'acc-test:github:default';
+const REPO_ID = 'repo-123';
 const REMEMBERED_EMAILS_KEY = '@gitnotes:remembered_commit_authors';
+const REMEMBERED_REPO_AUTHORS_KEY = '@gitnotes:remembered_repo_commit_authors';
 
 beforeEach(async () => {
   await AsyncStorage.clear();
@@ -123,6 +125,144 @@ describe('AccountStorage remembered commit authors', () => {
 
       const stored = await AsyncStorage.getItem(REMEMBERED_EMAILS_KEY);
       expect(stored).toBeNull();
+    });
+  });
+});
+
+describe('AccountStorage repo-scoped remembered commit authors', () => {
+  describe('getRememberedCommitAuthorForRepo', () => {
+    it('returns null when no remembered author exists for repo', async () => {
+      const result = await AccountStorage.getRememberedCommitAuthorForRepo(REPO_ID);
+      expect(result).toBeNull();
+    });
+
+    it('returns remembered author when stored for repo', async () => {
+      await AsyncStorage.setItem(
+        REMEMBERED_REPO_AUTHORS_KEY,
+        JSON.stringify({ [REPO_ID]: { email: 'repo@example.com', name: 'Repo User' } }),
+      );
+
+      const result = await AccountStorage.getRememberedCommitAuthorForRepo(REPO_ID);
+      expect(result).toEqual({ email: 'repo@example.com', name: 'Repo User' });
+    });
+
+    it('returns null for repo with no remembered author when other repos exist', async () => {
+      await AsyncStorage.setItem(
+        REMEMBERED_REPO_AUTHORS_KEY,
+        JSON.stringify({
+          [REPO_ID]: { email: 'repo@example.com' },
+          'other-repo-id': { email: 'other@example.com' },
+        }),
+      );
+
+      const result = await AccountStorage.getRememberedCommitAuthorForRepo('non-existent-repo');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('setRememberedCommitAuthorForRepo', () => {
+    it('stores remembered author for repo', async () => {
+      await AccountStorage.setRememberedCommitAuthorForRepo(REPO_ID, {
+        email: 'repo@example.com',
+        name: 'Repo User',
+      });
+
+      const stored = await AsyncStorage.getItem(REMEMBERED_REPO_AUTHORS_KEY);
+      expect(JSON.parse(stored ?? '{}')).toEqual({
+        [REPO_ID]: { email: 'repo@example.com', name: 'Repo User' },
+      });
+    });
+
+    it('updates existing remembered author for repo', async () => {
+      await AccountStorage.setRememberedCommitAuthorForRepo(REPO_ID, {
+        email: 'first@example.com',
+        name: 'First',
+      });
+      await AccountStorage.setRememberedCommitAuthorForRepo(REPO_ID, {
+        email: 'second@example.com',
+        name: 'Second',
+      });
+
+      const result = await AccountStorage.getRememberedCommitAuthorForRepo(REPO_ID);
+      expect(result).toEqual({ email: 'second@example.com', name: 'Second' });
+    });
+
+    it('clears remembered author when passed null', async () => {
+      await AsyncStorage.setItem(
+        REMEMBERED_REPO_AUTHORS_KEY,
+        JSON.stringify({ [REPO_ID]: { email: 'repo@example.com' } }),
+      );
+
+      await AccountStorage.setRememberedCommitAuthorForRepo(REPO_ID, null);
+
+      const result = await AccountStorage.getRememberedCommitAuthorForRepo(REPO_ID);
+      expect(result).toBeNull();
+    });
+
+    it('does not affect other repos when clearing one', async () => {
+      await AsyncStorage.setItem(
+        REMEMBERED_REPO_AUTHORS_KEY,
+        JSON.stringify({
+          [REPO_ID]: { email: 'repo@example.com' },
+          'other-repo-id': { email: 'other@example.com' },
+        }),
+      );
+
+      await AccountStorage.setRememberedCommitAuthorForRepo(REPO_ID, null);
+
+      const otherResult = await AccountStorage.getRememberedCommitAuthorForRepo('other-repo-id');
+      expect(otherResult).toEqual({ email: 'other@example.com' });
+    });
+
+    it('does not affect host-scoped remembered authors when clearing repo author', async () => {
+      await AsyncStorage.setItem(
+        REMEMBERED_EMAILS_KEY,
+        JSON.stringify({ [HOST_ID]: { email: 'host@example.com' } }),
+      );
+      await AsyncStorage.setItem(
+        REMEMBERED_REPO_AUTHORS_KEY,
+        JSON.stringify({ [REPO_ID]: { email: 'repo@example.com' } }),
+      );
+
+      await AccountStorage.setRememberedCommitAuthorForRepo(REPO_ID, null);
+
+      const hostResult = await AccountStorage.getRememberedCommitAuthor(HOST_ID);
+      expect(hostResult).toEqual({ email: 'host@example.com' });
+    });
+  });
+
+  describe('clearAll cleanup', () => {
+    it('clears all repo-scoped remembered authors on clearAll', async () => {
+      await AsyncStorage.setItem(
+        REMEMBERED_REPO_AUTHORS_KEY,
+        JSON.stringify({
+          [REPO_ID]: { email: 'repo@example.com' },
+          'other-repo-id': { email: 'other@example.com' },
+        }),
+      );
+
+      await AccountStorage.clearAll();
+
+      const stored = await AsyncStorage.getItem(REMEMBERED_REPO_AUTHORS_KEY);
+      expect(stored).toBeNull();
+    });
+
+    it('clears both host-scoped and repo-scoped remembered authors on clearAll', async () => {
+      await AsyncStorage.setItem(
+        REMEMBERED_EMAILS_KEY,
+        JSON.stringify({ [HOST_ID]: { email: 'host@example.com' } }),
+      );
+      await AsyncStorage.setItem(
+        REMEMBERED_REPO_AUTHORS_KEY,
+        JSON.stringify({ [REPO_ID]: { email: 'repo@example.com' } }),
+      );
+
+      await AccountStorage.clearAll();
+
+      const hostStored = await AsyncStorage.getItem(REMEMBERED_EMAILS_KEY);
+      const repoStored = await AsyncStorage.getItem(REMEMBERED_REPO_AUTHORS_KEY);
+      expect(hostStored).toBeNull();
+      expect(repoStored).toBeNull();
     });
   });
 });

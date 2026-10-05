@@ -41,6 +41,10 @@ const HOST_CREDENTIALS_KEY = '@gitnotes:host_credential_ids';
 // user explicitly overrides the API-derived identity and opting to persist.
 const REMEMBERED_EMAILS_KEY = '@gitnotes:remembered_commit_authors';
 
+// Stores manually-entered commit author email + name per repository.
+// Scoped by repository id, independent of host connections.
+const REMEMBERED_REPO_AUTHORS_KEY = '@gitnotes:remembered_repo_commit_authors';
+
 export interface StoredAccount {
   id: string;
   login: string;
@@ -252,6 +256,33 @@ async function writeRememberedAuthors(
   mapping: Record<string, RememberedCommitAuthor>,
 ): Promise<void> {
   await AsyncStorage.setItem(REMEMBERED_EMAILS_KEY, JSON.stringify(mapping));
+}
+
+async function readRememberedRepoAuthors(): Promise<Record<string, RememberedCommitAuthor>> {
+  const raw = await AsyncStorage.getItem(REMEMBERED_REPO_AUTHORS_KEY);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        (entry): entry is [string, RememberedCommitAuthor] => {
+          const value = entry[1];
+          return typeof value === 'object'
+            && value !== null
+            && typeof (value as { email?: unknown }).email === 'string';
+        },
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
+
+async function writeRememberedRepoAuthors(
+  mapping: Record<string, RememberedCommitAuthor>,
+): Promise<void> {
+  await AsyncStorage.setItem(REMEMBERED_REPO_AUTHORS_KEY, JSON.stringify(mapping));
 }
 
 async function readHostCredentialIds(): Promise<Record<string, string[]>> {
@@ -636,6 +667,7 @@ export class AccountStorage {
     await deleteLegacyToken();
     await AsyncStorage.removeItem(HOST_CREDENTIALS_KEY).catch(() => undefined);
     await AsyncStorage.removeItem(REMEMBERED_EMAILS_KEY).catch(() => undefined);
+    await AsyncStorage.removeItem(REMEMBERED_REPO_AUTHORS_KEY).catch(() => undefined);
   }
 
   // ── Host connections ─────────────────────────────────────────────────
@@ -958,6 +990,36 @@ export class AccountStorage {
       map[hostId] = author;
     }
     await writeRememberedAuthors(map);
+  }
+
+  /**
+   * Returns the manually-remembered commit author for a repository, if one was stored
+   * via `setRememberedCommitAuthorForRepo`.
+   */
+  static async getRememberedCommitAuthorForRepo(
+    repoId: string,
+  ): Promise<RememberedCommitAuthor | null> {
+    const map = await readRememberedRepoAuthors();
+    return map[repoId] ?? null;
+  }
+
+  /**
+   * Persists a manually-entered commit author (email + optional name) for a repository.
+   * Call this after a successful commit when the user explicitly provided an email
+   * that differs from the API-derived identity.
+   * Pass `null` to clear the remembered author for a repository.
+   */
+  static async setRememberedCommitAuthorForRepo(
+    repoId: string,
+    author: RememberedCommitAuthor | null,
+  ): Promise<void> {
+    const map = await readRememberedRepoAuthors();
+    if (author === null) {
+      delete map[repoId];
+    } else {
+      map[repoId] = author;
+    }
+    await writeRememberedRepoAuthors(map);
   }
 
   // ── Credential removal ─────────────────────────────────────────────

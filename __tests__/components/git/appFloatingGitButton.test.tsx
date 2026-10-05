@@ -160,7 +160,11 @@ jest.mock('@react-navigation/native', () => {
 const mockSetPending = jest.fn();
 const mockClearPending = jest.fn();
 jest.mock('@/stores/gitButtonActionStore', () => ({
-  useGitButtonActionStore: () => ({
+  useGitButtonActionStore: (selector: (state: {
+    pending: null;
+    setPending: typeof mockSetPending;
+    clear: typeof mockClearPending;
+  }) => unknown) => selector({
     pending: null,
     setPending: mockSetPending,
     clear: mockClearPending,
@@ -223,7 +227,7 @@ describe('AppFloatingGitButton — service call order', () => {
     expect(mockPushAll).not.toHaveBeenCalled();
   });
 
-  it('commit segment passes the active-host author to commitAll', async () => {
+  it('commit segment passes a per-repo author resolver to commitAll', async () => {
     const { default: AppFloatingGitButton } = require('@/components/git/AppFloatingGitButton');
     render(<AppFloatingGitButton />);
     await act(async () => { await Promise.resolve(); });
@@ -231,15 +235,25 @@ describe('AppFloatingGitButton — service call order', () => {
     await act(async () => { getReleaseCallback()('commit'); });
     await flushPromises();
 
-    expect(mockResolveAuthor).toHaveBeenCalledTimes(1);
     expect(mockCommitAll).toHaveBeenCalledWith(
       expect.any(Array),
       'Update notes',
-      { name: 'Resolved User', email: 'resolved@example.com' },
+      expect.any(Function),
     );
   });
 
   it('push segment calls stageAllPending then commitAll then pushAll', async () => {
+    // Override mockCommitAll to return proper outcomes so pushAll is called
+    mockCommitAll.mockResolvedValue({
+      outcomes: [
+        { repoId: 'repo-1', repoPath: '/test/repo-1', repoName: 'Repo 1', ok: true, actedCount: 1 },
+        { repoId: 'repo-2', repoPath: '/test/repo-2', repoName: 'Repo 2', ok: true, actedCount: 1 },
+      ],
+      totalActed: 2,
+      failures: [],
+      ok: true,
+    });
+
     const { default: AppFloatingGitButton } = require('@/components/git/AppFloatingGitButton');
     render(<AppFloatingGitButton />);
     await act(async () => { await Promise.resolve(); });
@@ -251,6 +265,33 @@ describe('AppFloatingGitButton — service call order', () => {
     expect(mockStageAllPending).toHaveBeenCalledTimes(1);
     expect(mockCommitAll).toHaveBeenCalledTimes(1);
     expect(mockPushAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes to the affected repo when its author is missing', async () => {
+    mockCommitAll.mockResolvedValue({
+      outcomes: [],
+      totalActed: 0,
+      failures: [{
+        repoId: 'repo-1',
+        repoPath: '/test/repo-1',
+        repoName: 'Test Repo',
+        ok: false,
+        actedCount: 0,
+        error: 'Missing commit author',
+      }],
+      ok: false,
+    });
+
+    const { default: AppFloatingGitButton } = require('@/components/git/AppFloatingGitButton');
+    render(<AppFloatingGitButton />);
+    await act(async () => { await Promise.resolve(); });
+
+    await act(async () => { getReleaseCallback()('commit'); });
+    await flushPromises();
+
+    expect(mockSetPending).toHaveBeenCalledWith({ repoId: 'repo-1', section: 'staging' });
+    expect(mockNavigate).toHaveBeenCalledWith('MainTabs', { screen: 'ExploreTab' });
+    expect(mockPushAll).not.toHaveBeenCalled();
   });
 });
 
@@ -348,6 +389,13 @@ describe('AppFloatingGitButton — operation lock', () => {
     const { unmount } = render(<AppFloatingGitButton />);
     await act(async () => { await Promise.resolve(); });
 
+    // Override commitAll to return proper outcomes so pushAll is actually called
+    mockCommitAll.mockResolvedValue({
+      outcomes: [{ repoId: 'repo-1', repoPath: '/test/repo-1', repoName: 'Repo 1', ok: true, actedCount: 1 }],
+      totalActed: 1,
+      failures: [],
+      ok: true,
+    });
     mockPushAll.mockResolvedValue({ outcomes: [], totalActed: 0, failures: [{ repoId: 'repo-1', repoPath: '/test/repo-1', repoName: 'Repo 1', ok: false, actedCount: 0, error: 'Push failed' }], ok: false });
 
     const release = getReleaseCallback();
@@ -378,6 +426,16 @@ describe('AppFloatingGitButton — conflict navigation deduplication', () => {
   });
 
   it('navigates to each unique conflict repoId exactly once', async () => {
+    // Override commitAll to return proper outcomes so pushAll is actually called
+    mockCommitAll.mockResolvedValue({
+      outcomes: [
+        { repoId: 'repo-1', repoPath: '/test/repo-1', repoName: 'Repo 1', ok: true, actedCount: 1 },
+        { repoId: 'repo-2', repoPath: '/test/repo-2', repoName: 'Repo 2', ok: true, actedCount: 1 },
+      ],
+      totalActed: 2,
+      failures: [],
+      ok: true,
+    });
     mockPushAll.mockResolvedValue({
       outcomes: [],
       totalActed: 0,
@@ -519,6 +577,16 @@ describe('AppFloatingGitButton — toast feedback', () => {
   });
 
   it('shows partial-failure toast when some repos conflict', async () => {
+    // Need 2 successful commit outcomes so pushFailedCount < successfulRepos.length for partial failure
+    mockCommitAll.mockResolvedValue({
+      outcomes: [
+        { repoId: 'repo-1', repoPath: '/test/repo-1', repoName: 'Repo 1', ok: true, actedCount: 1 },
+        { repoId: 'repo-2', repoPath: '/test/repo-2', repoName: 'Repo 2', ok: true, actedCount: 1 },
+      ],
+      totalActed: 2,
+      failures: [],
+      ok: true,
+    });
     mockPushAll.mockResolvedValue({
       outcomes: [],
       totalActed: 1,

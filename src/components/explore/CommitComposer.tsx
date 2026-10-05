@@ -16,7 +16,6 @@ import { useTokens } from '@/contexts/ThemeContext';
 import { buildCommitMessageDraft } from './commitMessageDraft';
 import { CommitService } from '@/services/git/CommitService';
 import { AccountStorage } from '@/services/AccountStorage';
-import { getActiveGitHost } from '@/services/git/activeHost';
 
 const MESSAGE_PLACEHOLDER = 'feat: what changed? (conventional commit)';
 
@@ -46,15 +45,18 @@ export function CommitComposer({ repo, changedPaths, statuses, stagedCount, onCo
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [draftDismissed, setDraftDismissed] = useState(false);
-  const [activeHostId, setActiveHostId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const host = await getActiveGitHost();
+      const repoRemembered = await AccountStorage.getRememberedCommitAuthorForRepo(repo.id);
       if (cancelled) return;
-      const hostId = host?.hostId ?? null;
-      setActiveHostId(hostId);
+      if (repoRemembered) {
+        if (!nameTouched) setAuthorName(repoRemembered.name ?? '');
+        if (!emailTouched) setAuthorEmail(repoRemembered.email);
+        return;
+      }
+      const hostId = repo.hostId ?? null;
       if (hostId) {
         const remembered = await AccountStorage.getRememberedCommitAuthor(hostId);
         if (cancelled) return;
@@ -65,15 +67,16 @@ export function CommitComposer({ repo, changedPaths, statuses, stagedCount, onCo
         }
       }
       if (nameTouched || emailTouched) return;
-      const author = await CommitService.resolveAuthor();
+      const author = await CommitService.resolveAuthor(repo.id);
       if (cancelled) return;
+      if (emailTouched) return;
       if (!nameTouched) setAuthorName(author.name);
       if (!emailTouched) setAuthorEmail(author.email);
     })();
     return () => {
       cancelled = true;
     };
-  }, [activeAccount, authState.user, nameTouched, emailTouched]);
+  }, [repo.id, repo.hostId, activeAccount, authState.user, nameTouched, emailTouched]);
 
   useEffect(() => {
     if (draftDismissed) return;
@@ -115,10 +118,12 @@ export function CommitComposer({ repo, changedPaths, statuses, stagedCount, onCo
           email: authorEmail.trim(),
         });
 
-        // Persist manually entered email for this host after successful commit.
-        const currentHostId = activeHostId ?? (await getActiveGitHost())?.hostId ?? null;
-        if (currentHostId && emailTouched && authorEmail.trim().length > 0) {
-          await AccountStorage.setRememberedCommitAuthor(currentHostId, {
+        if (
+          (nameTouched || emailTouched)
+          && authorName.trim().length > 0
+          && authorEmail.trim().length > 0
+        ) {
+          await AccountStorage.setRememberedCommitAuthorForRepo(repo.id, {
             email: authorEmail.trim(),
             name: authorName.trim(),
           });
@@ -134,7 +139,7 @@ export function CommitComposer({ repo, changedPaths, statuses, stagedCount, onCo
         setBusy(null);
       }
     },
-    [validate, changedPaths, repo.localPath, message, authorName, authorEmail, onCommitted, activeHostId, emailTouched],
+    [validate, changedPaths, repo.localPath, repo.id, message, authorName, authorEmail, onCommitted, nameTouched, emailTouched],
   );
 
   const nothingToStageAll = changedPaths.length === 0;

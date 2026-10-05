@@ -3264,6 +3264,18 @@ sealed class CredentialSource {
      * Let libgit2 try its default paths (ssh agent, config, credential helpers).
      */
     object Default : CredentialSource()
+
+    /**
+     * GitHub OAuth access token — used as a bearer for HTTPS auth.
+     */
+    data class GitHubOAuth(
+        val `token`: kotlin.String) : CredentialSource()
+
+    /**
+     * GitHub App installation token scoped to selected repositories.
+     */
+    data class GitHubAppInstallation(
+        val `token`: kotlin.String) : CredentialSource()
     
     
 
@@ -3294,6 +3306,12 @@ public object FfiConverterTypeCredentialSource : FfiConverterRustBuffer<Credenti
                 FfiConverterOptionalString.read(buf),
                 )
             4 -> CredentialSource.Default
+            5 -> CredentialSource.GitHubOAuth(
+                FfiConverterString.read(buf),
+                )
+            6 -> CredentialSource.GitHubAppInstallation(
+                FfiConverterString.read(buf),
+                )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
         }
     }
@@ -3329,6 +3347,18 @@ public object FfiConverterTypeCredentialSource : FfiConverterRustBuffer<Credenti
                 4UL
             )
         }
+        is CredentialSource.GitHubOAuth -> {
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`token`)
+            )
+        }
+        is CredentialSource.GitHubAppInstallation -> {
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`token`)
+            )
+        }
     }
 
     override fun write(value: CredentialSource, buf: ByteBuffer) {
@@ -3353,6 +3383,16 @@ public object FfiConverterTypeCredentialSource : FfiConverterRustBuffer<Credenti
             }
             is CredentialSource.Default -> {
                 buf.putInt(4)
+                Unit
+            }
+            is CredentialSource.GitHubOAuth -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`token`, buf)
+                Unit
+            }
+            is CredentialSource.GitHubAppInstallation -> {
+                buf.putInt(6)
+                FfiConverterString.write(value.`token`, buf)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -4777,5 +4817,4 @@ public object FfiConverterSequenceTypeRemoteInfo: FfiConverterRustBuffer<List<Re
     )
     }
     
-
 

@@ -2731,6 +2731,16 @@ public enum CredentialSource: Equatable, Hashable {
      * Let libgit2 try its default paths (ssh agent, config, credential helpers).
      */
     case `default`
+    /**
+     * GitHub OAuth access token — used as a bearer for HTTPS auth.
+     */
+    case gitHubOAuth(token: String
+    )
+    /**
+     * GitHub App installation token scoped to selected repositories.
+     */
+    case gitHubAppInstallation(token: String
+    )
 
 
 
@@ -2761,6 +2771,10 @@ public struct FfiConverterTypeCredentialSource: FfiConverterRustBuffer {
         )
         
         case 4: return .`default`
+        case 5: return .gitHubOAuth(token: try FfiConverterString.read(from: &buf)
+        )
+        case 6: return .gitHubAppInstallation(token: try FfiConverterString.read(from: &buf)
+        )
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -2790,6 +2804,12 @@ public struct FfiConverterTypeCredentialSource: FfiConverterRustBuffer {
         
         case .`default`:
             writeInt(&buf, Int32(4))
+        case let .gitHubOAuth(token):
+            writeInt(&buf, Int32(5))
+            FfiConverterString.write(token, into: &buf)
+        case let .gitHubAppInstallation(token):
+            writeInt(&buf, Int32(6))
+            FfiConverterString.write(token, into: &buf)
         
         }
     }

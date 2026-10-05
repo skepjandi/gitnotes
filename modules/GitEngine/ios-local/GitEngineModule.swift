@@ -329,6 +329,10 @@ private func credentialDict(_ source: CredentialSource) -> [String: Any]? {
     return dict
   case .default:
     return ["kind": "default"]
+  case .gitHubOAuth(let token):
+    return ["kind": "userpass", "username": "x-access-token", "password": token]
+  case .gitHubAppInstallation(let token):
+    return ["kind": "userpass", "username": "x-access-token", "password": token]
   }
 }
 

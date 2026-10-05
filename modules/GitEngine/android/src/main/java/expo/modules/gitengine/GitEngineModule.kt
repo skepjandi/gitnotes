@@ -228,6 +228,16 @@ class GitEngineModule : Module() {
       "passphrase" to source.passphrase,
     )
     is CredentialSource.Default -> mapOf("kind" to "default")
+    is CredentialSource.GitHubOAuth -> mapOf(
+      "kind" to "userpass",
+      "username" to "x-access-token",
+      "password" to source.token,
+    )
+    is CredentialSource.GitHubAppInstallation -> mapOf(
+      "kind" to "userpass",
+      "username" to "x-access-token",
+      "password" to source.token,
+    )
   }
 
   private fun hunksFromJs(hunks: List<Map<String, Any?>>): List<HunkSelection> = hunks.map { hunk ->

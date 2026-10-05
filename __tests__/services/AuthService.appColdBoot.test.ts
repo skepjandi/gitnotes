@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import AuthService from '@/services/AuthService';
 import AccountStorage from '@/services/AccountStorage';
 import { GitHubAppService } from '@/services/GitHubAppService';
-import type { GitHubAppCredentialRecord } from '@/services/git/contracts';
+import type { GitHubAppCredentialRecord, GitHubOAuthCredentialRecord } from '@/services/git/contracts';
 import type { HostConnection, StoredAccount } from '@/services/AccountStorage';
 
 jest.mock('@/services/AccountStorage', () => {
@@ -11,6 +11,7 @@ jest.mock('@/services/AccountStorage', () => {
     listHostConnections: jest.fn(),
     getHostToken: jest.fn(),
     getGitHubAppCredential: jest.fn(),
+    getOAuthCredential: jest.fn(),
     removeHostConnection: jest.fn(),
     removeAccount: jest.fn(),
   };
@@ -76,6 +77,24 @@ function makeAccount(): StoredAccount {
   };
 }
 
+function makeOAuthCredential(): GitHubOAuthCredentialRecord {
+  return {
+    id: 'acc-123:github:default:oauth',
+    hostId: 'acc-123:github:default',
+    kind: 'oauth',
+    addedAt: Date.now(),
+    accessToken: 'gho-valid',
+    login: 'octocat',
+    userId: 789,
+    expiresAt: Date.now() + 3_600_000,
+    renewal: {
+      refreshToken: 'refresh-token',
+      refreshExpiresAt: Date.now() + 86_400_000,
+      backendUrl: 'https://worker.example.com',
+    },
+  };
+}
+
 describe('AuthService.validateAllAccounts() with GitHub App credentials', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -116,6 +135,17 @@ describe('AuthService.validateAllAccounts() with GitHub App credentials', () => 
       code: 'backend_unreachable',
       message: 'Backend service unavailable',
     });
+
+    await AuthService.validateAllAccounts();
+
+    expect(storage.removeHostConnection).not.toHaveBeenCalled();
+    expect(storage.removeAccount).not.toHaveBeenCalled();
+  });
+
+  it('preserves an OAuth-only host during cold boot validation', async () => {
+    storage.getGitHubAppCredential.mockResolvedValue(null);
+    storage.getOAuthCredential.mockResolvedValue(makeOAuthCredential());
+    storage.getHostToken.mockResolvedValue(null);
 
     await AuthService.validateAllAccounts();
 

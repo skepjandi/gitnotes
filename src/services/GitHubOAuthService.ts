@@ -32,6 +32,7 @@ import {
 } from './git/contracts';
 import { AccountStorage } from './AccountStorage';
 import { generateId } from '../utils/ids';
+import { canCreateAdditionalIdentity } from './TierLimits';
 
 // ── PKCE helpers ──────────────────────────────────────────────────────────────
 
@@ -97,6 +98,7 @@ export type OAuthCallbackResult =
   | { outcome: 'denied'; code?: string; message?: string }
   | { outcome: 'duplicate' }
   | { outcome: 'malformed' }
+  | { outcome: 'free_tier_limit_reached' }
   | { outcome: 'backend_error'; code: OAuthErrorCode; message: string };
 
 export type OAuthInitiationResult =
@@ -293,6 +295,9 @@ export class GitHubOAuthService {
       let resolvedHostId: string;
 
       if (hostId === null) {
+        if (!await canCreateAdditionalIdentity('__new__', 'github', null)) {
+          return { outcome: 'free_tier_limit_reached' };
+        }
         const account = await AccountStorage.addAccount(null, {
           login: data.login,
           name: data.login,

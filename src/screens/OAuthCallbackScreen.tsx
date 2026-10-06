@@ -80,14 +80,23 @@ export default function OAuthCallbackScreen() {
 
   const success = result.outcome === 'success';
   const denied = result.outcome === 'denied' || result.outcome === 'cancelled';
-  const title = success ? 'GitHub Connected' : denied ? 'Sign-in Cancelled' : 'Sign-in Failed';
+  const freeTierLimit = result.outcome === 'free_tier_limit_reached';
+  const title = success
+    ? 'GitHub Connected'
+    : denied
+      ? 'Sign-in Cancelled'
+      : freeTierLimit
+        ? 'Account Limit Reached'
+        : 'Sign-in Failed';
   const message = success
     ? 'Your GitHub account is now connected.'
     : denied
       ? 'GitHub sign-in was cancelled or denied.'
-      : result.outcome === 'backend_error' && result.message
-        ? result.message
-      : 'The GitHub sign-in flow could not be completed. Please try again.';
+      : freeTierLimit
+        ? 'You have reached the maximum number of accounts on the Free plan. Upgrade to Pro to add more accounts.'
+        : result.outcome === 'backend_error' && result.message
+          ? result.message
+          : 'The GitHub sign-in flow could not be completed. Please try again.';
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>

@@ -42,7 +42,7 @@ const ALL_PROVIDERS: { provider: GitHostProvider; helpTextKey: string }[] = [
   { provider: 'forgejo', helpTextKey: 'connectHost.help.forgejo' },
 ];
 
-type TokenReason = 'invalid' | 'missing_repo_scope' | 'missing_contents_permission' | 'saml' | 'no_repository_access' | 'network';
+type TokenReason = 'invalid' | 'missing_repo_scope' | 'missing_contents_permission' | 'saml' | 'no_repository_access' | 'network' | 'free_tier_identity_limit_reached';
 
 const getTokenErrorKey = (reason: TokenReason | undefined, provider: string): string => {
   if (provider === 'github' && reason) {
@@ -59,6 +59,8 @@ const getTokenErrorKey = (reason: TokenReason | undefined, provider: string): st
         return 'settings.tokenTestInvalid';
       case 'network':
         return 'settings.tokenTestNetwork';
+      case 'free_tier_identity_limit_reached':
+        return 'settings.tokenTestInvalid';
     }
   }
   return 'connectHost.error.invalidTokenBody';

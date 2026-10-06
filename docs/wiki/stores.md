@@ -62,6 +62,8 @@
 
 **Key Actions:** `loadThreads`, `loadThread`, `createThread`, `deleteThread`, `renameThread`, `addMessage`, `updateMessage`, `removeMessage`, `truncateAfter`, `setStreaming`, `clearActiveThread`, `clearError`, `setStorageAdapter`
 
+**Error handling with cached summaries:** When `loadThreads` encounters a `ChatStorageError` with cached data (transient network or 5xx error from `ChatStorageService`), it preserves the cached thread list and surfaces the warning via `error` while still displaying available threads. First-message persistence: new user messages are persisted via `persistPrimedThread` before the assistant response begins streaming.
+
 ---
 
 ## Repo Store (`src/stores/repoStore.ts`)

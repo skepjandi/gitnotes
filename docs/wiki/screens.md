@@ -171,6 +171,8 @@ The canonical route param types are in `src/navigation/types.ts`:
 - `ContextPickerModal` — pick which note/repo to chat about
 - `ModelSelector` — pick AI model
 
+**Tool-call continuation:** The controller uses a manual bounded multi-round continuation loop (not SDK auto-execution). Tool calls are wrapped in `executeWithTimeout` with a 30-second timeout (`TOOL_EXECUTION_TIMEOUT_MS`). The loop is capped at `MAX_TOOL_ROUNDS = 5` rounds per streaming session. Tool calls are deduplicated by `(toolName, argsJSON)` to prevent re-execution after a confirmation Apply. On confirmation prompt, the stream pauses and waits for user Apply/Cancel; Apply triggers a continuation round using `toContinuationMessages` to replay prior assistant and tool messages.
+
 ---
 
 ### ChatThreadListScreen

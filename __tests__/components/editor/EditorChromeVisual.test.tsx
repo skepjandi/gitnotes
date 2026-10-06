@@ -178,6 +178,13 @@ describe('MarkdownToolbar', () => {
     bold.props.onPress?.();
     expect(onFormat).toHaveBeenCalledWith({ type: 'bold' });
   });
+
+  it('keeps the keyboard open when tapping a typing tool', () => {
+    render(<MarkdownToolbar onFormat={jest.fn()} format="markdown" />);
+
+    const toolbar = screen.getByTestId('markdown-toolbar.toolbar-action.press');
+    expect(toolbar.props.children.props.keyboardShouldPersistTaps).toBe('always');
+  });
 });
 
 // ── TagInput ─────────────────────────────────────────────────────────────────

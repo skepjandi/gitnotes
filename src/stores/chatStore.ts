@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { ChatMessage, ChatThread, ChatThreadSummary } from '../models/Chat';
+import { ChatStorageError } from '../services/ChatStorageService';
 import { formatSyncError } from '../services/git/formatSyncError';
 import { buildThreadSummary, deriveChatTitleFromText, isDefaultChatTitle } from '../utils/chatThreadSummary';
 
@@ -99,7 +100,18 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
       const threads = await storageAdapter.loadThreadSummaries(owner, repo, branch);
       set({ threads: sortThreadSummaries(threads), isLoading: false });
     } catch (err) {
-      set({ error: 'Failed to load chat threads', isLoading: false });
+      if (err instanceof ChatStorageError && err.cachedData !== undefined) {
+        set({
+          threads: sortThreadSummaries(err.cachedData),
+          error: err.warning ?? err.message,
+          isLoading: false,
+        });
+        return;
+      }
+      const errorMessage = err instanceof ChatStorageError
+        ? err.message
+        : 'Failed to load chat threads';
+      set({ error: errorMessage, isLoading: false });
       console.error('Error loading chat threads:', err);
     }
   },
@@ -120,7 +132,10 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
       }));
       return thread;
     } catch (err) {
-      set({ error: 'Failed to load chat thread', isLoading: false });
+      const errorMessage = err instanceof ChatStorageError
+        ? err.message
+        : 'Failed to load chat thread';
+      set({ error: errorMessage, isLoading: false });
       console.error('Error loading chat thread:', err);
       return null;
     }

@@ -25,6 +25,7 @@ export function MarkdownToolbar({ onFormat, format }: Props) {
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.container}
+        keyboardShouldPersistTaps="always"
         contentContainerStyle={[styles.content, { paddingHorizontal: spacing[2], paddingVertical: spacing[1], gap: spacing[1] }]}
       >
         {buttons.map(({ label, action, testID: btnTestID }) => (

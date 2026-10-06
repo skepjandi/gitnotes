@@ -19,7 +19,7 @@ interface ConnectHostResult {
   ok: boolean;
   error?: string;
   host?: HostConnectionSummary;
-  reason?: 'invalid' | 'missing_repo_scope' | 'missing_contents_permission' | 'saml' | 'no_repository_access' | 'network';
+  reason?: 'invalid' | 'missing_repo_scope' | 'missing_contents_permission' | 'saml' | 'no_repository_access' | 'network' | 'free_tier_identity_limit_reached';
 }
 
 interface AccountsContextValue {

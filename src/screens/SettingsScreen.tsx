@@ -846,6 +846,13 @@ export default function SettingsScreen() {
       setTokenError(t('settings.tokenRequired'));
       return;
     }
+    // Guard: Free users cannot add a second account via the PAT modal.
+    // The onOpenAddAccount gate should prevent the modal from opening, but
+    // this is a defense-in-depth check in case of alternate entry paths.
+    if (tokenModalMode === 'add' && accounts.length >= FREE_TIER_MAX_ACCOUNTS && !isPro) {
+      promptProUpgrade(t, openPaywall);
+      return;
+    }
     setIsVerifying(true);
     setTokenError(null);
     const ok = tokenModalMode === 'add' ? !!(await addAccount(tokenInput.trim())) : await setToken(tokenInput.trim());
@@ -889,7 +896,7 @@ export default function SettingsScreen() {
         setTokenError(t('settings.tokenInvalid'));
       }
     }
-  }, [addAccount, setToken, tokenInput, tokenModalMode, t]);
+  }, [accounts.length, addAccount, isPro, openPaywall, setToken, t, tokenInput, tokenModalMode]);
 
   const handleTestToken = useCallback(async () => {
     const candidate = tokenInput.trim();
@@ -1188,6 +1195,10 @@ export default function SettingsScreen() {
   }, [navigation]);
 
   const handleConnectOAuth = useCallback(async (hostId: string | null) => {
+    if (hostId === null && accounts.length >= FREE_TIER_MAX_ACCOUNTS && !isPro) {
+      promptProUpgrade(t, openPaywall);
+      return;
+    }
     const key = hostId ?? '__fresh__';
     const clientId = process.env.EXPO_PUBLIC_GITHUB_OAUTH_CLIENT_ID;
     if (!clientId) {
@@ -1195,7 +1206,7 @@ export default function SettingsScreen() {
       return;
     }
     setOauthPermissionHostId(hostId);
-  }, []);
+  }, [accounts.length, isPro, openPaywall, t]);
 
   const handleOAuthPermissionConfirm = useCallback((scopes: OAuthScope[]) => {
     const hostId = oauthPermissionHostId;
@@ -1239,6 +1250,10 @@ export default function SettingsScreen() {
   }, [accountSummaries, disconnectGitHubOAuth, hostCredentialKinds, repositories, t]);
 
   const handleConnectGitHubApp = useCallback(async (hostId: string | null) => {
+    if (hostId === null && accounts.length >= FREE_TIER_MAX_ACCOUNTS && !isPro) {
+      promptProUpgrade(t, openPaywall);
+      return;
+    }
     const key = hostId ?? '__fresh__';
     setAppLoading((prev) => ({ ...prev, [key]: true }));
     setAppError((prev) => ({ ...prev, [key]: null }));
@@ -1270,7 +1285,7 @@ export default function SettingsScreen() {
     } finally {
       setAppLoading((prev) => ({ ...prev, [key]: false }));
     }
-  }, [navigation]);
+  }, [accounts.length, isPro, navigation, openPaywall, t]);
 
   const handleDisconnectGitHubApp = useCallback(async (hostId: string) => {
     setAppLoading((prev) => ({ ...prev, [hostId]: true }));
@@ -1433,6 +1448,10 @@ export default function SettingsScreen() {
         patLoading={patLoading}
         patError={patError}
         onAddHost={(preset) => {
+          if (accounts.length >= FREE_TIER_MAX_ACCOUNTS && !isPro) {
+            promptProUpgrade(t, openPaywall);
+            return;
+          }
           setConnectHostPreset(preset);
           setShowConnectHostModal(true);
         }}

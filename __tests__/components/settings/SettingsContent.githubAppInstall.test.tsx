@@ -432,12 +432,12 @@ describe('Global GitHub App install action with existing accounts', () => {
   });
 
   /**
-   * REGRESSION TEST (FAILS on current production code):
-   *
-   * Verifies the press behavior once the button is rendered for non-empty accounts.
-   * onConnectGitHubApp(null) should be called when the global install button is pressed.
+   * Free user with existing accounts: GitHub App install via __new__ identity is gated.
+   * The button is visible (per commit 41d3c0c9), but pressing it triggers the paywall
+   * because Free limits one account/host identity and __new__ requires Pro.
    */
-  it('calls onConnectGitHubApp(null) when global install-github-app is pressed (existing accounts)', async () => {
+  it('Free user with existing accounts calls onOpenPaywall (not onConnectGitHubApp) when global install-github-app is pressed', async () => {
+    const onOpenPaywall = jest.fn();
     const onConnectGitHubApp = jest.fn();
     const summary = makeAccountSummary();
     const props = makeProps({
@@ -462,15 +462,16 @@ describe('Global GitHub App install action with existing accounts', () => {
         },
       ],
       activeAccountId: summary.accountId,
+      isPro: false,
+      onOpenPaywall,
       onConnectGitHubApp,
     });
     const { getByTestId } = render(<SettingsContent {...props} />);
 
-    // Button not rendered in current production for non-empty accounts
     await act(async () => {
       fireEvent.press(getByTestId('settings.button.install-github-app'));
     });
-    expect(onConnectGitHubApp).toHaveBeenCalledTimes(1);
-    expect(onConnectGitHubApp).toHaveBeenCalledWith(null);
+    expect(onOpenPaywall).toHaveBeenCalledTimes(1);
+    expect(onConnectGitHubApp).not.toHaveBeenCalled();
   });
 });

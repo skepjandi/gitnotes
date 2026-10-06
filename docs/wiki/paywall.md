@@ -16,7 +16,8 @@ GitNotēs has two tiers: **Free** and **Pro**.
 | Customizable accent color | ❌ | ✅ |
 | Advanced AI (Claude 3.5, GPT-4o) | ❌ | ✅ |
 | Multi-host (GitLab, Gitea) | ❌ | ✅ |
-| Unlimited repos | 3 | Unlimited |
+| Repositories | 1 | Unlimited |
+| Account/provider/host identities | 1 | Unlimited |
 | Canvas AI vision | Limited | ✅ |
 | Priority support | ❌ | ✅ |
 
@@ -189,7 +190,9 @@ Redirects away from a Pro-only screen if the user is not Pro.
 
 **File:** `src/services/TierLimits.ts`
 
-Enforces feature limits per tier — repo count on free, canvas AI usage limits, etc.
+Enforces feature limits per tier — repo count, identity count, canvas AI usage limits, etc.
+
+**Identity vs credentials distinction:** An identity is an exact account + provider + host combination (e.g., `github.com` with user `alice`). Free users get one identity; Pro users get unlimited. Within a single identity, Free users can register multiple credential types (PAT, OAuth, GitHub App, SSH) on the same host without any credential-count cap. Adding a second account, provider, or host requires Pro.
 
 ---
 

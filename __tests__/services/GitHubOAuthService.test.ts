@@ -12,6 +12,14 @@ const TEST_REDIRECT_URI = 'gitnotes://oauth/callback';
 const FAKE_ACCOUNT = { id: 'acc-123', login: 'testuser', name: 'Test User', email: 'test@example.com', avatarUrl: 'https://example.com/avatar.png', addedAt: Date.now(), hostIds: [] };
 const FAKE_HOST = { id: 'acc-123:github:default', accountId: 'acc-123', provider: 'github' as const, instanceBaseUrl: null, hostLogin: 'testuser', hostUserId: 123, name: 'Test User', email: 'test@example.com', avatarUrl: 'https://example.com/avatar.png', addedAt: Date.now() };
 
+const mockCanCreate = jest.fn<() => Promise<boolean>>();
+mockCanCreate.mockResolvedValue(true);
+
+jest.mock('@/services/TierLimits', () => ({
+  canCreateAdditionalIdentity: mockCanCreate,
+  enforceTierLimits: async () => {},
+}));
+
 const loadService = async () => {
   const mockPost = jest.fn<() => Promise<unknown>>();
   const mockGetRandomBytesAsync = jest.fn<() => Promise<string>>();
@@ -24,15 +32,20 @@ const loadService = async () => {
   const mockGetActiveHostId = jest.fn<() => Promise<string | null>>();
   const mockSetOAuthCredential = jest.fn<() => Promise<void>>();
   const mockUpdateHostProfile = jest.fn<() => Promise<void>>();
+  const mockListAccounts = jest.fn<() => Promise<{ id: string }[]>>();
   const uuid = { current: 'test-state-abc' };
 
+  mockCanCreate.mockReset();
+  mockCanCreate.mockResolvedValue(true);
   mockGetActiveHostId.mockResolvedValue(null);
+  mockListAccounts.mockResolvedValue([]);
 
   const mod = await new Promise<typeof import('../../src/services/GitHubOAuthService')>((resolve) => {
     jest.isolateModules(() => {
-      jest.unmock('@/services/AccountStorage');
-      jest.unmock('axios');
-      jest.unmock('cross-fetch');
+      jest.doMock('@/services/TierLimits', () => ({
+        canCreateAdditionalIdentity: mockCanCreate,
+        enforceTierLimits: async () => {},
+      }));
       jest.doMock('@/services/AccountStorage', () => ({
         AccountStorage: {
           addAccount: mockAddAccount,
@@ -42,6 +55,7 @@ const loadService = async () => {
           getActiveHostId: mockGetActiveHostId,
           setOAuthCredential: mockSetOAuthCredential,
           updateHostProfile: mockUpdateHostProfile,
+          listAccounts: mockListAccounts,
         },
       }));
 
@@ -83,7 +97,9 @@ const loadService = async () => {
   return {
     mod, mockPost, mockGetRandomBytesAsync, mockDigestStringAsync, mockOpenAuthSessionAsync,
     mockAddAccount, mockUpsertHostConnection, mockSetActiveAccountId, mockSetActiveHostId,
-    mockGetActiveHostId, mockSetOAuthCredential, mockUpdateHostProfile,
+    mockGetActiveHostId, mockSetOAuthCredential, mockUpdateHostProfile, mockListAccounts,
+    mockCanCreate,
+    pendingOAuthFlows: mod.pendingOAuthFlows,
     setUuid: (s: string) => { uuid.current = s; },
   };
 };
@@ -470,4 +486,5 @@ describe('GitHubOAuthService', () => {
       }));
     });
   });
+
 });

@@ -918,10 +918,15 @@ export function SettingsContent(props: SettingsContentProps) {
                 )}
               </>
             ) : null}
-            {/* GitHub App install — always available */}
         <GroupRow
           testID="settings.button.install-github-app"
-          onPress={() => onConnectGitHubApp(null)}
+          onPress={() => {
+            if (!isPro && accountSummaries.length > 0) {
+              onOpenPaywall();
+            } else {
+              onConnectGitHubApp(null);
+            }
+          }}
           leading={<Ionicons name="cube-outline" size={20} color={colors.primary} />}
           trailing={
             appLoading['__fresh__'] ? (
@@ -929,7 +934,11 @@ export function SettingsContent(props: SettingsContentProps) {
             ) : appError['__fresh__'] ? (
               <Text style={{ fontSize: type.xs, color: colors.error }}>{appError['__fresh__']}</Text>
             ) : (
-              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              <Ionicons
+                name={!isPro && accountSummaries.length > 0 ? 'lock-closed-outline' : 'chevron-forward'}
+                size={20}
+                color={colors.textSecondary}
+              />
             )
           }
         >

@@ -18,6 +18,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-10-05
 
+### docs: synchronize Free tier identity and repo limits across docs
+
+**What:** Documentation claimed Free had three repositories, conflicting with the actual one-repo, one-identity implementation. No source or test files were modified.
+
+**Fix:** Updated paywall.md feature table to list `Repositories | 1 | Unlimited` and added a new `Account/provider/host identities | 1 | Unlimited` row. Clarified in Tier Limits section that one identity allows multiple credential types (PAT, OAuth, GitHub App, SSH) on the same host; adding a second account, provider, or host requires Pro.
+
 ### fix(git): fail fast when a commit repository is busy
 
 **What:** Floating Git commits could remain stuck while waiting indefinitely for another native Git operation to release the repository lock.

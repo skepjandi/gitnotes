@@ -8,6 +8,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-10-06
+
+### fix(editor): keep typing tools usable above the keyboard
+
+**What:** Tapping a formatting tool in the note editor could dismiss the keyboard before the tool action completed.
+
+**Fix:** Preserve keyboard taps in the sticky Markdown toolbar and add regression coverage for the toolbar scroll behavior.
+
 ## 2026-10-05
 
 ### fix(git): fail fast when a commit repository is busy

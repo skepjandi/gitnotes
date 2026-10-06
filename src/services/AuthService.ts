@@ -25,6 +25,7 @@ import {
   isInstallationTokenExpired,
   hasEmptyRepositorySelection,
 } from './git/contracts';
+import { canCreateAdditionalIdentity } from './TierLimits';
 
 export interface GitHubUser {
   id: number;
@@ -157,7 +158,7 @@ export interface ConnectHostInput {
 
 export type ConnectHostResult =
   | { ok: true; account: StoredAccount; host: HostConnectionSummary }
-  | { ok: false; reason: 'invalid' | 'missing_repo_scope' | 'missing_contents_permission' | 'saml' | 'no_repository_access' | 'network' };
+  | { ok: false; reason: 'invalid' | 'missing_repo_scope' | 'missing_contents_permission' | 'saml' | 'no_repository_access' | 'network' | 'free_tier_identity_limit_reached' };
 
 /**
  * Verifies a token against the chosen host's API. Returns the resolved
@@ -435,27 +436,48 @@ export class AuthService {
     );
     if (!verification.ok) return { ok: false, reason: verification.reason };
     const verified = verification.user;
+    const instanceBaseUrl = input.instanceBaseUrl?.trim() || null;
 
     let account: StoredAccount | null = null;
+
+    // Path A: accountId explicitly provided — find and use that account.
     if (input.accountId) {
       const all = await AccountStorage.listAccounts();
       account = all.find((a) => a.id === input.accountId) ?? null;
-    }
-    if (!account) {
-      // For GitHub, match by login so re-connecting the same GitHub identity
-      // doesn't create a duplicate account. For other providers we also match
-      // by login, but since logins can collide across hosts (e.g. someone has
-      // the same username on GitHub and GitLab.com) we additionally require
-      // there to be no existing host on this account for the same provider
-      // instance — if there is, we attach to the same account.
+      if (!account) {
+        // Explicit accountId that doesn't exist — treat as new identity attempt.
+        if (!(await canCreateAdditionalIdentity('__unknown__', input.provider, instanceBaseUrl))) {
+          return { ok: false, reason: 'free_tier_identity_limit_reached' };
+        }
+        // Account not found via explicit ID — do not create implicitly.
+        return { ok: false, reason: 'invalid' };
+      }
+      // accountId provided and found — check host-level policy.
+      if (!(await canCreateAdditionalIdentity(account.id, input.provider, instanceBaseUrl))) {
+        return { ok: false, reason: 'free_tier_identity_limit_reached' };
+      }
+    } else {
+      // Path B: no accountId — try login-matching.
       const all = await AccountStorage.listAccounts();
       account = all.find((a) => a.login === verified.login) ?? null;
-      if (!account) {
+
+      if (account) {
+        // Login matched an existing account — check if target host is allowed.
+        // If the host already exists it's an update (always allowed).
+        // If it's a new host on this account, Free users with an existing host are blocked.
+        if (!(await canCreateAdditionalIdentity(account.id, input.provider, instanceBaseUrl))) {
+          return { ok: false, reason: 'free_tier_identity_limit_reached' };
+        }
+      } else {
+        // Path C: no account matched — fresh identity.
+        // canCreateAdditionalIdentity('__new__', ...) checks Pro bypass above
+        // account-count gate, so Free gets blocked at 1 account and Pro is always allowed.
+        if (!(await canCreateAdditionalIdentity('__new__', input.provider, instanceBaseUrl))) {
+          return { ok: false, reason: 'free_tier_identity_limit_reached' };
+        }
         account = await AccountStorage.addAccount(input.token, profileFromUser(verified));
       }
     }
-
-    const instanceBaseUrl = input.instanceBaseUrl?.trim() || null;
 
     const host = await AccountStorage.upsertHostConnection({
       accountId: account.id,

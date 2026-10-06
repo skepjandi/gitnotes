@@ -29,3 +29,17 @@ export const STREAM_RENDER_FLUSH_MS = 80;
 
 /** Default chat-storage branch when the user has not picked one. */
 export const DEFAULT_CHAT_BRANCH = 'main';
+
+/**
+ * Maximum number of tool-call round-trips permitted in a single
+ * `streamChatResponse` continuation before the controller aborts.
+ * Caps runaway loops when the model repeatedly calls the same tool.
+ */
+export const MAX_TOOL_ROUNDS = 5;
+
+/**
+ * Milliseconds to wait for a tool `execute` function to resolve before
+ * treating it as timed out. Exposed here so the controller can apply the
+ * same deadline to any SDK-level continuation retry.
+ */
+export const TOOL_EXECUTION_TIMEOUT_MS = 30_000;

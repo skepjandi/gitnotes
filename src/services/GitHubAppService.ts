@@ -26,6 +26,7 @@ import type {
 } from './git/contracts';
 import { validateGitHubAppCredential, isInstallationTokenExpired } from './git/contracts';
 import { AccountStorage } from './AccountStorage';
+import { canCreateAdditionalIdentity } from './TierLimits';
 
 // ── Deep-link callback result types ───────────────────────────────────────────
 
@@ -37,6 +38,7 @@ export type AppCallbackResult =
   | { outcome: 'wrong_app'; code?: string; message?: string }
   | { outcome: 'selection_mismatch'; code?: string; message?: string }
   | { outcome: 'owner_not_allowed'; message?: string }
+  | { outcome: 'free_tier_limit_reached' }
   | { outcome: 'backend_error'; code: GitHubAppErrorCode; message: string };
 
 const inFlightCallbacks = new Map<string, Promise<AppCallbackResult>>();
@@ -308,6 +310,9 @@ export class GitHubAppService {
       let resolvedHostId: string;
 
       if (hostId === null) {
+        if (!await canCreateAdditionalIdentity('__new__', 'github', null)) {
+          return { outcome: 'free_tier_limit_reached' };
+        }
         // First-time App install: no existing host connection.
         // Create account + host connection from backend response.
         const accountAvatarUrl = data.account_avatar_url ?? null;

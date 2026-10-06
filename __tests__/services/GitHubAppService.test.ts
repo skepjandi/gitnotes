@@ -25,6 +25,14 @@ const TEST_INSTALLATION_URL = 'https://github.com/apps/test-app/installations/ne
 const FAKE_ACCOUNT_APP = { id: 'acc-app-456', login: 'appuser', name: 'App User', email: '', avatarUrl: '', addedAt: Date.now(), hostIds: [] };
 const FAKE_HOST_APP = { id: 'acc-app-456:github:default', accountId: 'acc-app-456', provider: 'github' as const, instanceBaseUrl: null, hostLogin: 'appuser', hostUserId: 789, name: 'App User', email: null, avatarUrl: null, addedAt: Date.now() };
 
+const mockCanCreate = jest.fn<() => Promise<boolean>>();
+mockCanCreate.mockResolvedValue(true);
+
+jest.mock('@/services/TierLimits', () => ({
+  canCreateAdditionalIdentity: mockCanCreate,
+  enforceTierLimits: async () => {},
+}));
+
 /** Loads GitHubAppService fresh each time with mocks in place. */
 const loadService = async () => {
   const mockPost = jest.fn<() => Promise<unknown>>();
@@ -35,7 +43,17 @@ const loadService = async () => {
   const mockSetActiveHostId = jest.fn<() => Promise<void>>();
   const mockGetActiveHostId = jest.fn<() => Promise<string | null>>();
   const mockClearHostToken = jest.fn<() => Promise<void>>();
+  const mockListAccounts = jest.fn<() => Promise<{ id: string }[]>>();
+
+  mockCanCreate.mockReset();
+  mockCanCreate.mockResolvedValue(true);
   mockGetActiveHostId.mockResolvedValue(null);
+  mockListAccounts.mockResolvedValue([]);
+
+  jest.doMock('@/services/TierLimits', () => ({
+    canCreateAdditionalIdentity: mockCanCreate,
+    enforceTierLimits: async () => {},
+  }));
 
   jest.doMock('expo-web-browser', () => ({
     openBrowserAsync: jest.fn(),
@@ -60,6 +78,7 @@ const loadService = async () => {
       setActiveHostId: mockSetActiveHostId,
       getActiveHostId: mockGetActiveHostId,
       clearHostToken: mockClearHostToken,
+      listAccounts: mockListAccounts,
     },
   }));
 
@@ -83,7 +102,7 @@ const loadService = async () => {
     mod, mockPost, mockSetGitHubAppCredential,
     mockAddAccount, mockUpsertHostConnection,
     mockSetActiveAccountId, mockSetActiveHostId, mockGetActiveHostId,
-    mockClearHostToken,
+    mockClearHostToken, mockListAccounts, mockCanCreate,
   };
 };
 
@@ -596,4 +615,5 @@ describe('GitHubAppService', () => {
       }));
     });
   });
+
 });

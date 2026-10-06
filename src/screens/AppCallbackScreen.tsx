@@ -168,6 +168,22 @@ export default function AppCallbackScreen() {
         </SafeAreaView>
       );
 
+    case 'free_tier_limit_reached':
+      return (
+        <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
+          <View className="flex-1 items-center justify-center gap-4 px-8">
+            <Text className="text-3xl" style={{ color: '#FF3B30' }}>✗</Text>
+            <Text className="text-xl font-bold" style={{ color: colors.text }}>
+              Account Limit Reached
+            </Text>
+            <Text className="text-base text-center" style={{ color: colors.textSecondary }}>
+              You have reached the maximum number of accounts on the Free plan. Upgrade to Pro to add more accounts.
+            </Text>
+            <Button label="Back to Settings" onPress={handleDone} className="mt-4" />
+          </View>
+        </SafeAreaView>
+      );
+
     case 'selection_mismatch':
       return (
         <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>

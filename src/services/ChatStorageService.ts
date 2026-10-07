@@ -4,6 +4,7 @@ import axios from 'axios';
 import { ChatThread, ChatThreadSummary } from '../models/Chat';
 import { buildThreadSummary, isDefaultChatTitle } from '../utils/chatThreadSummary';
 import { GitHubService } from './GitHubService';
+import { AccountStorage } from './AccountStorage';
 
 const GITHUB_API = 'https://api.github.com';
 const CHAT_DIR = 'chat';
@@ -84,18 +85,34 @@ async function getToken(): Promise<string> {
   if (chatRepoAccountId) {
     const scoped = await AuthService.getTokenById(chatRepoAccountId);
     if (scoped) return scoped;
-  }
-
-  if (!GitHubService.isAuthenticated()) {
+    if (await GitHubService.isAuthenticatedAsync()) {
+      const summary = (await AuthService.listAccountSummaries()).find(
+        (item) => item.account.id === chatRepoAccountId,
+      );
+      const host = summary?.hosts.find((item) => item.id === summary.activeHostId) ?? summary?.hosts[0];
+      if (host) {
+        const oauthCred = await AccountStorage.getOAuthCredential(host.id);
+        if (oauthCred?.accessToken) return oauthCred.accessToken;
+      }
+    }
     throw new Error('GitHub not authenticated');
   }
 
-  const token = await AuthService.getToken();
-  if (!token) {
-    throw new Error('GitHub token is not configured');
+  if (GitHubService.isAuthenticated()) {
+    const token = await AuthService.getToken();
+    if (token) return token;
   }
 
-  return token;
+  if (await GitHubService.isAuthenticatedAsync()) {
+    const summary = await AuthService.getActiveSummary();
+    const host = summary?.hosts.find((item) => item.id === summary.activeHostId) ?? summary?.hosts[0];
+    if (host) {
+      const oauthCred = await AccountStorage.getOAuthCredential(host.id);
+      if (oauthCred?.accessToken) return oauthCred.accessToken;
+    }
+  }
+
+  throw new Error('GitHub not authenticated');
 }
 
 async function githubRequest<T>(params: {
@@ -350,7 +367,7 @@ async function persistThreadRepair(
 }
 
 export async function initializeChatStorage(owner: string, repo: string, branch: string = 'main'): Promise<boolean> {
-  if (!GitHubService.isAuthenticated()) {
+  if (!await GitHubService.isAuthenticatedAsync()) {
     return false;
   }
 

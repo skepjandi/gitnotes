@@ -35,7 +35,7 @@ export async function syncCanvasToGitHub(params: {
   }
   const tokenOverride = await resolveToken(accountId);
 
-  if (!tokenOverride && !GitHubService.isAuthenticated()) {
+  if (!tokenOverride && !(await GitHubService.isAuthenticatedAsync())) {
     return { success: false, error: 'GitHub not authenticated' };
   }
 
@@ -84,7 +84,7 @@ export async function deleteCanvasFromGitHub(params: {
   const { repo: repoPath, branch, filePath, title, accountId } = params;
   const tokenOverride = await resolveToken(accountId);
 
-  if (!tokenOverride && !GitHubService.isAuthenticated()) {
+  if (!tokenOverride && !(await GitHubService.isAuthenticatedAsync())) {
     return { success: false, error: 'GitHub not authenticated' };
   }
 

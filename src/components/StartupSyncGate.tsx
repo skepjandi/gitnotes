@@ -74,7 +74,7 @@ export function StartupSyncGate({ children }: { children: React.ReactNode }) {
       const releaseExternalSync = acquireExternalSync();
       try {
         await GitHubService.initialize();
-        if (!GitHubService.isAuthenticated()) return;
+        if (!(await GitHubService.isAuthenticatedAsync())) return;
         // Do NOT wrap this in a gate cycle: syncNow acquires the cycle
         // itself, and holding one here would deadlock its acquisition.
         // 'startup' keeps these auto-pulls non-blocking for the sync UI.

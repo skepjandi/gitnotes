@@ -854,7 +854,7 @@ async function pullTemplatesFromRepo(
 }
 
 export async function pullTemplatesFromConfiguredRepo(): Promise<number> {
-  if (!GitHubService.isAuthenticated()) return 0;
+  if (!(await GitHubService.isAuthenticatedAsync())) return 0;
   const pref = await TemplateRepoPreferenceService.get();
   if (!pref) return 0;
   const info = parseRepoPath(pref.repoPath);
@@ -908,7 +908,7 @@ export async function pullFromSingleRepo(
 }
 
 export async function pullAllFromRepos(): Promise<PullResult> {
-  if (!GitHubService.isAuthenticated()) {
+  if (!(await GitHubService.isAuthenticatedAsync())) {
     return { repos: 0, notes: 0, canvases: 0, todos: 0, templates: 0 };
   }
 

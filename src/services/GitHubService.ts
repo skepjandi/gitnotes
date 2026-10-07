@@ -407,6 +407,28 @@ class GitHubServiceClass {
     return !!this.token;
   }
 
+  async isAuthenticatedAsync(): Promise<boolean> {
+    if (this.isAuthenticated()) return true;
+    const summary = await AuthService.getActiveSummary();
+    const host = summary?.hosts.find((item) => item.id === summary.activeHostId) ?? summary?.hosts[0];
+    if (!host) return false;
+    const availability = await AuthService.getProviderAuthAvailability(host.id, host.provider);
+    return availability.isAvailable;
+  }
+
+  /**
+   * Resolves the OAuth access token for the active host when no singleton token
+   * is available (OAuth-only users). Returns null when no OAuth credential exists.
+   */
+  private async resolveOAuthTokenForActiveHost(): Promise<string | null> {
+    const summary = await AuthService.getActiveSummary();
+    if (!summary) return null;
+    const host = summary.hosts.find((item) => item.id === summary.activeHostId) ?? summary.hosts[0];
+    if (!host) return null;
+    const oauthCred = await AccountStorage.getOAuthCredential(host.id);
+    return oauthCred?.accessToken ?? null;
+  }
+
   getUser(): GitHubUser | null {
     return this.user;
   }
@@ -1260,6 +1282,13 @@ class GitHubServiceClass {
       })).token;
     } else {
       resolvedToken = this.token;
+      // OAuth fallback: when singleton token is absent but the active host has
+      // an OAuth credential (OAuth-only user), resolve it so default API calls
+      // (request without explicit opts) continue to work.
+      if (!resolvedToken && !(opts?.credentialKind)) {
+        const oauthToken = await this.resolveOAuthTokenForActiveHost();
+        if (oauthToken) resolvedToken = oauthToken;
+      }
     }
 
     if (!resolvedToken) throw new Error('GitHub token is not configured');
@@ -1299,6 +1328,10 @@ class GitHubServiceClass {
       resolvedToken = oauthCred?.accessToken ?? null;
     } else {
       resolvedToken = this.token;
+      if (!resolvedToken) {
+        const oauthToken = await this.resolveOAuthTokenForActiveHost();
+        if (oauthToken) resolvedToken = oauthToken;
+      }
     }
 
     if (!resolvedToken) throw new Error('GitHub token is not configured');

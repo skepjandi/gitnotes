@@ -1,6 +1,7 @@
 import { ThoughtDumpService } from '@/services/ThoughtDumpService';
 import { CloneSyncService } from '@/services/cloneSyncServiceImpl';
 import { CommitService } from '@/services/git/CommitService';
+import { GitHubService } from '@/services/GitHubService';
 
 jest.mock('@/services/cloneSyncServiceImpl', () => ({
   CloneSyncService: {
@@ -17,6 +18,7 @@ jest.mock('@/services/git/CommitService', () => ({
 jest.mock('@/services/GitHubService', () => ({
   GitHubService: {
     isAuthenticated: jest.fn(() => true),
+    isAuthenticatedAsync: jest.fn(async () => true),
   },
 }));
 
@@ -44,5 +46,17 @@ describe('ThoughtDumpService', () => {
       content: expect.any(String),
     }));
     expect(CommitService.commit).not.toHaveBeenCalled();
+  });
+
+  it('writes thought dumps with an OAuth credential when no legacy token is loaded', async () => {
+    (GitHubService.isAuthenticated as jest.Mock).mockReturnValue(false);
+    (GitHubService.isAuthenticatedAsync as jest.Mock).mockResolvedValue(true);
+
+    const result = await ThoughtDumpService.create('An OAuth thought', {
+      repoPath: 'owner/repo',
+      branch: 'main',
+    });
+
+    expect(result.ok).toBe(true);
   });
 });

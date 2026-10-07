@@ -23,7 +23,10 @@ jest.mock('@/services/http', () => ({
   default: { interceptors: { request: { use: jest.fn() }, response: { use: jest.fn() } } },
 }));
 jest.mock('@/services/GitHubService', () => ({
-  GitHubService: { isAuthenticated: jest.fn(() => true) },
+  GitHubService: {
+    isAuthenticated: jest.fn(() => true),
+    isAuthenticatedAsync: jest.fn(() => Promise.resolve(true)),
+  },
 }));
 jest.mock('@/services/AuthService');
 const MockAuthService = require('@/services/AuthService');
@@ -31,13 +34,23 @@ MockAuthService.default.getToken = jest.fn(() => Promise.resolve('test-token'));
 MockAuthService.getToken = MockAuthService.default.getToken;
 MockAuthService.default.getTokenById = jest.fn(() => Promise.resolve('test-token'));
 MockAuthService.getTokenById = MockAuthService.default.getTokenById;
+MockAuthService.default.getActiveSummary = jest.fn(() => Promise.resolve(null));
+MockAuthService.getActiveSummary = MockAuthService.default.getActiveSummary;
+MockAuthService.default.listAccountSummaries = jest.fn(() => Promise.resolve([]));
+MockAuthService.listAccountSummaries = MockAuthService.default.listAccountSummaries;
+jest.mock('@/services/AccountStorage');
+const MockAccountStorage = require('@/services/AccountStorage');
+MockAccountStorage.AccountStorage.getOAuthCredential = jest.fn(() => Promise.resolve(null));
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ChatThread, ChatThreadSummary } from '@/models/Chat';
+import type { AccountSummary } from '@/services/AuthService';
+import type { GitHubOAuthCredentialRecord } from '@/services/git/contracts';
 
 import * as ChatStorageService from '@/services/ChatStorageService';
 import { GitHubService } from '@/services/GitHubService';
 import AuthService from '@/services/AuthService';
+import { AccountStorage } from '@/services/AccountStorage';
 
 const OWNER = 'test-owner';
 const REPO = 'test-repo';
@@ -258,6 +271,94 @@ describe('ChatStorageService regression', () => {
       mockRequest.mockReset();
       mockRequest.mockRejectedValueOnce(new Error('Server error'));
       await expect(ChatStorageService.isChatStorageInitialized(OWNER, REPO, BRANCH)).rejects.toThrow('Server error');
+    });
+  });
+
+  describe('OAuth-only user regression', () => {
+    const oauthCredential = {
+      kind: 'oauth' as const,
+      accessToken: 'oauth-access-token-123',
+      expiresAt: Date.now() + 3600 * 1000,
+      userId: 12345,
+      renewal: {
+        refreshToken: 'refresh-token',
+        backendUrl: 'https://gitnotes-backend.example.com',
+        refreshExpiresAt: Date.now() + 86400 * 1000,
+      },
+    };
+
+    const activeSummary = {
+      account: { id: 'account-123', login: 'testuser', name: 'Test User', email: 'test@test.com', avatarUrl: '', hostIds: ['host-1'] },
+      hosts: [{
+        id: 'host-1',
+        accountId: 'account-123',
+        provider: 'github' as const,
+        hostLogin: 'testuser',
+        hostUserId: 12345,
+        name: 'Test User',
+        email: 'test@test.com',
+        avatarUrl: '',
+        instanceBaseUrl: null,
+        addedAt: Date.now(),
+      }],
+      activeHostId: 'host-1',
+    };
+
+    beforeEach(async () => {
+      jest.clearAllMocks();
+      mockRequest.mockReset();
+      mockRequest.mockResolvedValue(undefined);
+      await AsyncStorage.clear();
+      ChatStorageService.setChatRepoAccount(null);
+    });
+
+    it('falls back to OAuth token when no singleton token exists', async () => {
+      jest.spyOn(GitHubService, 'isAuthenticated').mockReturnValueOnce(false);
+      jest.spyOn(GitHubService, 'isAuthenticatedAsync').mockResolvedValueOnce(true);
+      jest.spyOn(AuthService, 'getActiveSummary').mockResolvedValueOnce(activeSummary as AccountSummary);
+      jest.spyOn(AccountStorage, 'getOAuthCredential').mockResolvedValueOnce(oauthCredential as GitHubOAuthCredentialRecord);
+
+      const thread = makeThread();
+      mockRequest.mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify(thread)));
+
+      const result = await ChatStorageService.loadThread(OWNER, REPO, THREAD_ID, BRANCH);
+
+      expect(result).not.toBeNull();
+      expect(result?.id).toBe(THREAD_ID);
+      expect(mockRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'token oauth-access-token-123',
+          }),
+        }),
+      );
+    });
+
+    it('uses OAuth token when setChatRepoAccount is called with OAuth-only active account', async () => {
+      jest.spyOn(GitHubService, 'isAuthenticated').mockReturnValueOnce(false);
+      jest.spyOn(AuthService, 'getTokenById').mockResolvedValueOnce(null);
+      jest.spyOn(GitHubService, 'isAuthenticatedAsync').mockResolvedValueOnce(true);
+      jest.spyOn(AuthService, 'listAccountSummaries').mockResolvedValueOnce([activeSummary as AccountSummary]);
+      jest.spyOn(AccountStorage, 'getOAuthCredential').mockResolvedValueOnce(oauthCredential as GitHubOAuthCredentialRecord);
+
+      ChatStorageService.setChatRepoAccount('account-123');
+
+      const thread = makeThread();
+      mockRequest.mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify(thread)));
+
+      const result = await ChatStorageService.loadThread(OWNER, REPO, THREAD_ID, BRANCH);
+
+      expect(result).not.toBeNull();
+      expect(result?.id).toBe(THREAD_ID);
+      expect(AccountStorage.getOAuthCredential).toHaveBeenCalledWith('host-1');
+    });
+
+    it('throws when OAuth is not available and no singleton token exists', async () => {
+      jest.spyOn(GitHubService, 'isAuthenticated').mockReturnValueOnce(false);
+      jest.spyOn(GitHubService, 'isAuthenticatedAsync').mockResolvedValueOnce(false);
+
+      await expect(ChatStorageService.loadThread(OWNER, REPO, THREAD_ID, BRANCH))
+        .rejects.toThrow('GitHub not authenticated');
     });
   });
 });

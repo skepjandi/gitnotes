@@ -39,11 +39,23 @@ export default function RenderStyleSettingsScreen() {
   const [discovered, setDiscovered] = useState<DiscoveredBinding[]>([]);
 
   useEffect(() => {
-    if (!showRepoPicker || !GitHubService.isAuthenticated()) return;
+    if (!showRepoPicker) return;
+    let cancelled = false;
     setDiscovering(true);
-    void RenderStyleService.discoverExisting()
-      .then(setDiscovered)
-      .finally(() => setDiscovering(false));
+    void (async () => {
+      const isAuthAvailable = await GitHubService.isAuthenticatedAsync();
+      if (cancelled) return;
+      if (!isAuthAvailable) {
+        setDiscovering(false);
+        return;
+      }
+      const result = await RenderStyleService.discoverExisting();
+      if (!cancelled) setDiscovered(result);
+      if (!cancelled) setDiscovering(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [showRepoPicker]);
 
   const handlePickRepo = useCallback(

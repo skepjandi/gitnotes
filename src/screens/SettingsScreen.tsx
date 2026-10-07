@@ -566,7 +566,7 @@ export default function SettingsScreen() {
   }, [repositories, templatesRepoPref, t]);
 
   const handleSyncRepo = useCallback(async (repo: GitRepository) => {
-    if (!GitHubService.isAuthenticated()) {
+    if (!await GitHubService.isAuthenticatedAsync()) {
       Alert.alert(t('settings.githubRequiredSyncTitle'), t('settings.githubRequiredSyncBody'));
       return;
     }

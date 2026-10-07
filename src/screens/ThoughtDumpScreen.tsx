@@ -73,7 +73,7 @@ export default function ThoughtDumpScreen({ onDumpChange }: Props) {
     try {
       const repos = await StorageService.getSavedRepositories();
       setSavedRepos(repos);
-      setIsAuthenticated(GitHubService.isAuthenticated());
+      setIsAuthenticated(await GitHubService.isAuthenticatedAsync());
 
       const preference = await ThoughtDumpRepoPreferenceService.get();
       const lastUsed = await LastUsedRepoService.get();

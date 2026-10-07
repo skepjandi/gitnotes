@@ -63,7 +63,7 @@ async function getFirstRepo(): Promise<{ repoPath: string; branch?: string; prov
 
 export class ThoughtDumpService {
   static async create(text: string, options?: ThoughtDumpCreateOptions): Promise<ThoughtDumpCreateResult> {
-    if (!GitHubService.isAuthenticated()) {
+    if (!(await GitHubService.isAuthenticatedAsync())) {
       return { ok: false, reason: 'not-authenticated' };
     }
 
@@ -115,7 +115,7 @@ export class ThoughtDumpService {
   }
 
   static async list(options?: { repoPath?: string; branch?: string; provider?: GitHostProvider }): Promise<ThoughtDump[]> {
-    if (!GitHubService.isAuthenticated()) return [];
+    if (!(await GitHubService.isAuthenticatedAsync())) return [];
 
     let repoPath: string;
     let branch: string;
@@ -155,7 +155,7 @@ export class ThoughtDumpService {
   }
 
   static async delete(_id: string, options: ThoughtDumpDeleteOptions): Promise<boolean> {
-    if (!GitHubService.isAuthenticated()) return false;
+    if (!(await GitHubService.isAuthenticatedAsync())) return false;
 
     const repoPath = options.repoPath;
     const branch = await resolveBranch(repoPath, options.branch);

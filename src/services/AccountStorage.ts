@@ -523,6 +523,8 @@ export class AccountStorage {
   /**
    * Returns the token for the currently active account, falling back to the
    * legacy single-token storage for installs that haven't migrated yet.
+   * When no PAT/legacy token exists, falls back to the active host's OAuth
+   * access token to support OAuth-only users.
    */
   static async getActiveToken(): Promise<string | null> {
     const activeHostId = await this.getActiveHostId();
@@ -535,7 +537,16 @@ export class AccountStorage {
       const t = await readTokenById(id);
       if (t) return t;
     }
-    return readLegacyToken();
+    const legacy = await readLegacyToken();
+    if (legacy) return legacy;
+
+    // PAT precedence exhausted — fall back to active host's OAuth token
+    // to support OAuth-only users who have no PAT configured.
+    if (activeHostId) {
+      const oauthCred = await readOAuthCredential(activeHostId);
+      if (oauthCred?.accessToken) return oauthCred.accessToken;
+    }
+    return null;
   }
 
   static async getActiveHostConnection(): Promise<HostConnection | null> {

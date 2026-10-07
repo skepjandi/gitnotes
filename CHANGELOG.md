@@ -10,6 +10,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-10-07
 
+### fix(chat): serialize initial message persistence
+
+**What:** AI chat could surface an intermittent GitHub 409 when the initial user-message save raced the completed reply save.
+
+**Fix:** Wait for the primed thread write to finish before starting the AI request, keeping the per-repository chat index read-modify-write sequence ordered. Added a regression test for the save/request ordering.
+
 ### fix(chat): recover old-chat and bound tool-call continuation
 
 **What:** Two reliability bugs in chat: old thread lists could fail to load silently when the GitHub API returned network or server errors, and unbounded tool-call loops could continue indefinitely without user control.

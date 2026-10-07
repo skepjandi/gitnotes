@@ -347,6 +347,35 @@ describe('useChatScreenController — stopStreaming', () => {
 });
 
 describe('useChatScreenController — first-message persistence', () => {
+  it('waits for the primed thread save before starting the AI request', async () => {
+    const model = {} as LanguageModel;
+    mockInitializeModel.mockResolvedValueOnce(model);
+
+    let resolvePrimedSave!: () => void;
+    const primedSave = new Promise<void>((resolve) => {
+      resolvePrimedSave = resolve;
+    });
+    ChatStorageService.saveThread
+      .mockImplementationOnce(() => primedSave)
+      .mockResolvedValue(undefined);
+    mockStreamChatResponse.mockImplementation(async function* (): AsyncGenerator<string> {
+      yield textDelta('Hello!');
+    });
+
+    setupStores({ activeThread });
+    const { result } = renderHook(() => useChatScreenController(THREAD_ID));
+    await act(async () => {
+      const sendPromise = result.current.handleSend('Hello') as Promise<void>;
+      await Promise.resolve();
+      expect(mockStreamChatResponse).not.toHaveBeenCalled();
+      resolvePrimedSave();
+      await sendPromise;
+    });
+
+    expect(mockStreamChatResponse).toHaveBeenCalledTimes(1);
+    expect(ChatStorageService.saveThread).toHaveBeenCalledTimes(2);
+  });
+
   it('saves thread after first user message', async () => {
     const model = {} as LanguageModel;
     mockInitializeModel.mockResolvedValueOnce(model);

@@ -103,7 +103,7 @@ function markBusySkip(reason: string, detail: string): void {
 }
 
 async function shouldPull(): Promise<boolean> {
-  if (!GitHubService.isAuthenticated()) return false;
+  if (!(await GitHubService.isAuthenticatedAsync())) return false;
   const repos = await StorageService.getSavedRepositories();
   if (repos.length === 0) return false;
   const net = await NetInfo.fetch();

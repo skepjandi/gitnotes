@@ -10,7 +10,10 @@ jest.mock('@/services/ai/thoughtDumpIndexing', () => ({
 }));
 
 jest.mock('@/services/GitHubService', () => ({
-  GitHubService: { isAuthenticated: jest.fn() },
+  GitHubService: {
+    isAuthenticated: jest.fn(),
+    isAuthenticatedAsync: jest.fn(),
+  },
 }));
 
 jest.mock('@/services/StorageService', () => ({
@@ -69,6 +72,7 @@ describe('ForegroundSyncService watchdog vs success regression', () => {
     });
 
     jest.mocked(GitHubService.isAuthenticated).mockReturnValue(true);
+    jest.mocked(GitHubService.isAuthenticatedAsync).mockResolvedValue(true);
     jest.mocked(StorageService.getSavedRepositories).mockResolvedValue([
       { id: 'r1', path: 'me/my-repo', branch: 'main', provider: 'github', hostId: 'h1' },
     ]);

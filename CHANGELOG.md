@@ -8,6 +8,22 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-10-07
+
+### fix(chat): recover old-chat and bound tool-call continuation
+
+**What:** Two reliability bugs in chat: old thread lists could fail to load silently when the GitHub API returned network or server errors, and unbounded tool-call loops could continue indefinitely without user control.
+
+**Fix:** `ChatStorageService.loadThreadSummaries` now classifies errors into nine typed codes (`NETWORK_ERROR`, `SERVER_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `RATE_LIMITED`, `NOT_FOUND`, `INVALID_PAYLOAD`, `PARSE_ERROR`, `UNKNOWN`) and uses cached summaries only for transient network or 5xx failures, surfacing a warning while preserving stale data. `chatStore.loadThreads` propagates the warning to the UI and keeps cached threads visible instead of showing a blank list. Tool-call execution is wrapped in a 30-second timeout (`TOOL_EXECUTION_TIMEOUT_MS = 30_000`), bounded to a maximum of five continuation rounds (`MAX_TOOL_ROUNDS = 5`) per streaming session, and deduplicated by `(toolName, argsJSON)` to prevent re-execution after confirmation. The `executeRound` loop uses a manual continuation controller; it does not rely on SDK auto-execution.
+
+**Files changed:**
+- `src/services/ChatStorageService.ts` — `ChatStorageError`, `ChatStorageErrorCode`, `classifyError`, `isCacheableError`, `validateChatIndex`
+- `src/stores/chatStore.ts` — `loadThreads` error handling with cached summaries and warning
+- `src/components/chat/useChatScreenController.ts` — bounded `executeRound` with `executeWithTimeout`
+- `src/components/chat/continuationHelpers.ts` — `executeWithTimeout`, `computeShouldContinue`, `makeToolCallKey`
+- `src/components/chat/continuationMessages.ts` — `toContinuationMessages`
+- `src/services/ai/config.ts` — `MAX_TOOL_ROUNDS`, `TOOL_EXECUTION_TIMEOUT_MS`
+
 ## 2026-10-06
 
 ### fix(editor): keep typing tools usable above the keyboard

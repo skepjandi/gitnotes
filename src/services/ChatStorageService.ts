@@ -382,6 +382,101 @@ export async function initializeChatStorage(owner: string, repo: string, branch:
   return true;
 }
 
+/**
+ * Error codes for chat storage operations.
+ * Used to classify errors for appropriate recovery strategies.
+ */
+export enum ChatStorageErrorCode {
+  /** GitHub API returned 404 - index doesn't exist yet */
+  NOT_FOUND = 'NOT_FOUND',
+  /** GitHub API returned 401 - credentials invalid or expired */
+  UNAUTHORIZED = 'UNAUTHORIZED',
+  /** GitHub API returned 403 - token lacks required permissions */
+  FORBIDDEN = 'FORBIDDEN',
+  /** GitHub API returned 429 - rate limit exceeded */
+  RATE_LIMITED = 'RATE_LIMITED',
+  /** GitHub API returned 5xx - server error, may be transient */
+  SERVER_ERROR = 'SERVER_ERROR',
+  /** Network-level failure (no connection, timeout, etc) */
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  /** Response body was valid JSON but payload shape was invalid */
+  INVALID_PAYLOAD = 'INVALID_PAYLOAD',
+  /** Response body was not valid JSON */
+  PARSE_ERROR = 'PARSE_ERROR',
+  /** Unknown error */
+  UNKNOWN = 'UNKNOWN',
+}
+
+export class ChatStorageError extends Error {
+  code: ChatStorageErrorCode;
+  status?: number;
+  warning?: string;
+  cachedData?: ChatThreadSummary[];
+
+  constructor(code: ChatStorageErrorCode, message: string, status?: number, warning?: string, cachedData?: ChatThreadSummary[]) {
+    super(message);
+    this.name = 'ChatStorageError';
+    this.code = code;
+    this.status = status;
+    this.warning = warning;
+    this.cachedData = cachedData;
+  }
+}
+
+/**
+ * Classifies a GitHub API error by examining status codes and error types.
+ * Returns a typed ChatStorageError with appropriate error code.
+ */
+function classifyError(error: unknown, fallbackMessage?: string): ChatStorageError {
+  const message = fallbackMessage ?? (error instanceof Error ? error.message : String(error));
+  const status = getStatus(error);
+
+  if (status === 404) {
+    return new ChatStorageError(ChatStorageErrorCode.NOT_FOUND, 'Chat index not found', status);
+  }
+  if (status === 401) {
+    return new ChatStorageError(ChatStorageErrorCode.UNAUTHORIZED, 'GitHub credentials are invalid or expired', status);
+  }
+  if (status === 403) {
+    return new ChatStorageError(ChatStorageErrorCode.FORBIDDEN, 'Token lacks repository access permissions', status);
+  }
+  if (status === 429) {
+    return new ChatStorageError(ChatStorageErrorCode.RATE_LIMITED, 'GitHub API rate limit exceeded', status);
+  }
+  if (status !== undefined && status >= 500) {
+    return new ChatStorageError(ChatStorageErrorCode.SERVER_ERROR, 'GitHub server error', status);
+  }
+  if (error instanceof TypeError || (error instanceof Error && error.message.includes('network'))) {
+    return new ChatStorageError(ChatStorageErrorCode.NETWORK_ERROR, 'Network error');
+  }
+  return new ChatStorageError(ChatStorageErrorCode.UNKNOWN, message);
+}
+
+/**
+ * Returns true if the error code warrants using cached data as fallback.
+ * Only network/5xx errors should use cache fallback.
+ */
+function isCacheableError(error: ChatStorageError): boolean {
+  return error.code === ChatStorageErrorCode.NETWORK_ERROR || error.code === ChatStorageErrorCode.SERVER_ERROR;
+}
+
+/**
+ * Validates that the parsed index has the expected { threads: ChatThreadSummary[] } shape.
+ * Throws ChatStorageError with INVALID_PAYLOAD if validation fails.
+ */
+function validateChatIndex(parsed: unknown): asserts parsed is ChatIndex {
+  if (parsed === null || typeof parsed !== 'object') {
+    throw new ChatStorageError(ChatStorageErrorCode.INVALID_PAYLOAD, 'Invalid chat index: not an object');
+  }
+  const obj = parsed as Record<string, unknown>;
+  if (!('threads' in obj)) {
+    throw new ChatStorageError(ChatStorageErrorCode.INVALID_PAYLOAD, 'Invalid chat index: missing threads property');
+  }
+  if (!Array.isArray(obj.threads)) {
+    throw new ChatStorageError(ChatStorageErrorCode.INVALID_PAYLOAD, 'Invalid chat index: threads is not an array');
+  }
+}
+
 async function loadThreadSummariesInternal(owner: string, repo: string, branch: string = 'main'): Promise<ChatThreadSummary[]> {
   const cacheKey = getScopedIndexCacheKey(owner, repo, branch);
 
@@ -392,8 +487,17 @@ async function loadThreadSummariesInternal(owner: string, repo: string, branch: 
       return [];
     }
 
-    const parsed = JSON.parse(fromBase64(indexFile.content)) as ChatIndex;
-    const threads = sortThreads(Array.isArray(parsed.threads) ? parsed.threads : []);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(fromBase64(indexFile.content));
+    } catch {
+      throw new ChatStorageError(ChatStorageErrorCode.PARSE_ERROR, 'Failed to parse chat index JSON');
+    }
+
+    validateChatIndex(parsed);
+
+    const typedParsed = parsed as ChatIndex;
+    const threads = sortThreads(typedParsed.threads);
     const repairedThreads = sortThreads(
       await Promise.all(threads.map((summary) => repairSummaryIfNeeded(owner, repo, branch, summary))),
     );
@@ -405,23 +509,67 @@ async function loadThreadSummariesInternal(owner: string, repo: string, branch: 
     }
     return repairedThreads;
   } catch (error) {
-    if (getStatus(error) === 404) {
+    if (error instanceof Error && 'code' in error) {
+      const chatError = error as ChatStorageError;
+      if (chatError.code === ChatStorageErrorCode.NOT_FOUND) {
+        await AsyncStorage.setItem(cacheKey, JSON.stringify([]));
+        return [];
+      }
+      if (isCacheableError(chatError)) {
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            const parsedCache = JSON.parse(cached);
+            validateChatIndex(parsedCache);
+            const parsed = parsedCache as ChatIndex;
+            const cachedThreads = await Promise.all(parsed.threads.map((summary) => repairCachedSummaryIfNeeded(owner, repo, branch, summary)));
+            throw new ChatStorageError(
+              chatError.code,
+              'Using cached thread list - data may be stale due to network issue',
+              chatError.status,
+              'Using cached thread list - data may be stale due to network issue',
+              cachedThreads
+            );
+          } catch (cacheError) {
+            if (cacheError instanceof ChatStorageError) throw cacheError;
+            console.warn('[ChatStorageService] Failed to parse cached thread summaries:', error);
+            await AsyncStorage.removeItem(cacheKey);
+          }
+        }
+        return [];
+      }
+      // Non-cacheable errors (auth/429/parse/invalid) should not use cache
+      throw error;
+    }
+
+    const classified = classifyError(error);
+    if (classified.code === ChatStorageErrorCode.NOT_FOUND) {
       await AsyncStorage.setItem(cacheKey, JSON.stringify([]));
       return [];
     }
-
-    const cached = await AsyncStorage.getItem(cacheKey);
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached) as ChatThreadSummary[];
-        return Promise.all(parsed.map((summary) => repairCachedSummaryIfNeeded(owner, repo, branch, summary)));
-      } catch (error) {
-        console.warn('[ChatStorageService] Failed to parse thread summaries:', error);
-        await AsyncStorage.removeItem(cacheKey);
+    if (isCacheableError(classified)) {
+      const cached = await AsyncStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          validateChatIndex(parsed);
+          const typedParsed = parsed as ChatIndex;
+          const cachedThreads = await Promise.all(typedParsed.threads.map((summary) => repairCachedSummaryIfNeeded(owner, repo, branch, summary)));
+          throw new ChatStorageError(
+            classified.code,
+            'Using cached thread list - data may be stale due to network issue',
+            classified.status,
+            'Using cached thread list - data may be stale due to network issue',
+            cachedThreads
+          );
+        } catch (cacheError) {
+          if (cacheError instanceof ChatStorageError) throw cacheError;
+          await AsyncStorage.removeItem(cacheKey);
+        }
       }
+      return [];
     }
-
-    throw error;
+    throw classified;
   }
 }
 

@@ -33,12 +33,51 @@ import {
   type PendingConfirmation,
   type RetryPayload,
 } from './chatScreenShared';
+import { toContinuationMessages } from './continuationMessages';
+import {
+  computeShouldContinue,
+  executeWithTimeout,
+  makeToolCallKey,
+  newExecutedToolCalls,
+  type ExecutedToolCalls,
+  type ContinuationSignal,
+} from './continuationHelpers';
+import { MAX_TOOL_ROUNDS } from '../../services/ai/config';
 
 type ToolListItem = {
   title?: string;
   text?: string;
   completed?: boolean;
 };
+
+/**
+ * Persists the primed thread (thread with user message) to storage.
+ * Exported for unit testing - accepts dependencies as parameters.
+ *
+ * @param threadId - The thread ID to persist
+ * @param getActiveThread - Returns current active thread from store
+ * @param saveThread - Persists thread to storage service
+ * @param onError - Callback to surface retryable error to UI
+ */
+export async function persistPrimedThreadToStorage(
+  threadId: string,
+  getActiveThread: () => { id: string; messages: ChatMessage[] } | null,
+  saveThread: (thread: { id: string; messages: ChatMessage[] }) => Promise<void>,
+  onError: (message: string) => void,
+): Promise<void> {
+  const latestThread = getActiveThread();
+  if (!latestThread || latestThread.id !== threadId) {
+    return;
+  }
+
+  try {
+    await saveThread(latestThread);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn('[ChatScreen] persistPrimedThread failed:', message);
+    onError(message);
+  }
+}
 
 export function buildChatToolsMap(enabled: boolean = useAIStore.getState().githubToolsEnabled) {
   return enabled ? { ...chatTools, ...githubTools } : chatTools;
@@ -230,6 +269,14 @@ export function useChatScreenController(threadId: string) {
   // second one once execution finishes).
   const toolMessageIdsRef = useRef<Record<string, string>>({});
   const abortRef = useRef<AbortController | null>(null);
+  // Tracks the current round number for bounded continuation loop
+  const continuationRoundRef = useRef<number>(0);
+  // Set by handleConfirmApply to signal the next round should continue
+  const continuationSignalRef = useRef<ContinuationSignal | null>(null);
+  // Tracks executed tool call ids across ALL rounds of a single streaming session
+  const executedToolCallIdsRef = useRef<ExecutedToolCalls>(newExecutedToolCalls());
+  // Tracks executed (toolName, argsJSON) pairs to prevent re-execution after confirmation Apply
+  const executedToolCallsRef = useRef<ExecutedToolCalls>(newExecutedToolCalls());
   const { t } = useTranslation();
 
   const [attachedContexts, setAttachedContexts] = useState<AIContextItem[]>([]);
@@ -253,7 +300,13 @@ export function useChatScreenController(threadId: string) {
       return;
     }
 
-    await ChatStorageService.saveThread(latestThread).catch(() => { return; });
+    try {
+      await ChatStorageService.saveThread(latestThread);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn('[ChatScreen] persistPrimedThread failed:', message);
+      setLocalError(message);
+    }
   }, []);
 
   const getSelectedModelConfig = useCallback(() => {
@@ -272,7 +325,9 @@ export function useChatScreenController(threadId: string) {
     try {
       const mode = useAIStore.getState().actionMode;
       const effectiveMode = options?.allowConfirmation === false ? 'auto' : mode;
-      const result = await executeToolCall(toolName, args, effectiveMode);
+
+      const result = await executeWithTimeout(executeToolCall(toolName, args, effectiveMode));
+
       const resultText = formatExecutorResult(result);
 
       if (options?.messageId) updateMessage(options.messageId, { toolCallResult: resultText });
@@ -287,7 +342,8 @@ export function useChatScreenController(threadId: string) {
 
       return result;
     } catch (error) {
-      const message = error instanceof Error ? error.message : t('chat.toolExecutionFailed');
+      const isTimeout = error instanceof Error && error.message === 'TIMEOUT';
+      const message = isTimeout ? t('chat.toolTimedOut') : error instanceof Error ? error.message : t('chat.toolExecutionFailed');
       if (options?.messageId) updateMessage(options.messageId, { toolCallResult: message });
       addMessage({ id: generateId(), role: 'system', content: t('chat.toolError', { message }), timestamp: Date.now() });
       return {
@@ -298,223 +354,355 @@ export function useChatScreenController(threadId: string) {
     }
   }, [addMessage, updateMessage, t]);
 
+  const executeRound = useCallback(
+    async (
+      round: number,
+      text: string,
+      contexts: AIContextItem[],
+      _priorAssistantMessages: ChatMessage[],
+      _continuationSignal: { success: true; resultText?: string } | null,
+    ) => {
+      continuationRoundRef.current = round;
+
+      const currentThread = useChatStore.getState().activeThread;
+      if (!currentThread) {
+        setLocalError(t('chat.threadNotLoaded'));
+        return;
+      }
+
+      if (round >= MAX_TOOL_ROUNDS) {
+        return;
+      }
+
+      const trimmedText = text.trim();
+      const userMessage: ChatMessage | null =
+        text && round === 0
+          ? { id: generateId(), role: 'user', content: trimmedText, timestamp: Date.now(), attachedContexts: contexts }
+          : null;
+
+      if (userMessage) {
+        addMessage(userMessage);
+        void persistPrimedThread(currentThread.id);
+      }
+
+      setRetryPayload(userMessage ? { text: userMessage.content, contexts } : null);
+      setLocalError(null);
+      clearError();
+      setPendingConfirmation(null);
+      setStreamStartedAt(Date.now());
+      setStreaming(true);
+
+      abortRef.current?.abort();
+      const abortController = new AbortController();
+      abortRef.current = abortController;
+      const assistantMessageId = generateId();
+      addMessage({ id: assistantMessageId, role: 'assistant', content: '', timestamp: Date.now() });
+
+      let assistantText = '';
+      let handledToolCount = 0;
+      let pausedForConfirmation = false;
+      let pendingFlush: ReturnType<typeof setTimeout> | null = null;
+      const fallbackToolResponses: string[] = [];
+
+      const flushAssistantText = () => {
+        pendingFlush = null;
+        updateMessage(assistantMessageId, { content: assistantText });
+      };
+
+      const scheduleFlush = () => {
+        if (pendingFlush) return;
+        const scale = 1 + Math.floor(assistantText.length / 2000);
+        pendingFlush = setTimeout(flushAssistantText, STREAM_RENDER_FLUSH_MS * scale);
+      };
+
+      const clearContinuationSignal = () => {
+        continuationSignalRef.current = null;
+      };
+
+      const executeToolCallRef = async (
+        toolName: string,
+        args: Record<string, unknown>,
+        options?: { allowConfirmation?: boolean; messageId?: string },
+      ) => {
+        const result = await runToolCall(toolName, args, options);
+        if (result.requiresConfirmation) {
+          setPendingConfirmation({
+            toolName,
+            args,
+            description: result.proposedChanges?.description ?? '',
+            details: result.proposedChanges?.details ?? {},
+            messageId: options?.messageId ?? '',
+          });
+          continuationSignalRef.current = { success: true };
+          await saveActiveThread();
+        }
+        return result;
+      };
+
+      try {
+        const aiState = useAIStore.getState();
+        const githubAccountLogin = githubToolsEnabled
+          ? (await AuthService.checkAuthState()).user?.login
+          : undefined;
+        const { model, provider } = getSelectedModelConfig();
+        const runtimeThread = useChatStore.getState().activeThread;
+        if (!runtimeThread) throw new Error(t('chat.threadNotAvailable'));
+
+        const aggregatedContexts = dedupeContexts([
+          ...runtimeThread.messages.flatMap((message) => message.attachedContexts ?? []),
+          ...contexts,
+        ]);
+        const contextString = aggregatedContexts.length ? await buildContextString(aggregatedContexts) : undefined;
+        const history = runtimeThread.messages
+          .filter((message) => message.id !== assistantMessageId)
+          .map(formatHistoryMessage);
+        const toolsEnabled = aiState.aiPersonalizationEnabled;
+        const basePrompt = buildSystemPrompt({
+          attachedContexts: contextString,
+          noteCount,
+          todoCount,
+          actionMode: aiState.actionMode,
+          githubToolsEnabled,
+          githubAccountLogin,
+          toolsEnabled,
+        });
+        const memoryBlock =
+          text && round === 0 ? await buildMemoryBlockForQuery(trimmedText, model, basePrompt.length) : null;
+        const prompt = memoryBlock
+          ? buildSystemPrompt({
+              attachedContexts: contextString,
+              noteCount,
+              todoCount,
+              actionMode: aiState.actionMode,
+              memoryBlock,
+              githubToolsEnabled,
+              githubAccountLogin,
+              toolsEnabled,
+            })
+          : basePrompt;
+        const modelInstance = await AIService.initializeModel(model, provider as AIProviderConfig | undefined);
+
+        let requestMessages: Parameters<typeof AIService.streamChatResponse>[1];
+        if (round === 0) {
+          requestMessages = [{ role: 'system', content: prompt }, ...history];
+        } else {
+          const allPriorMessages = runtimeThread.messages.filter(
+            (message) => message.id !== assistantMessageId,
+          );
+          const continuationMsgs = toContinuationMessages(allPriorMessages);
+          requestMessages = [{ role: 'system', content: prompt }, ...continuationMsgs];
+        }
+
+        for await (const chunk of AIService.streamChatResponse(
+          modelInstance,
+          requestMessages,
+          toolsEnabled ? buildChatToolsMap() : undefined,
+          abortController.signal,
+        )) {
+          if (abortController.signal.aborted) break;
+          const toolEvent = parseToolEvent(chunk);
+          if (!toolEvent) {
+            assistantText += decodeOverEscapedChunk(chunk);
+            scheduleFlush();
+            continue;
+          }
+
+          const toolCallId = toolEvent.toolCallId ?? generateId();
+          const existingArgs = toolArgsBufferRef.current[toolCallId] ?? '';
+          if (toolEvent.type === 'tool-call-streaming-start') {
+            toolArgsBufferRef.current[toolCallId] = existingArgs;
+            if (!toolMessageIdsRef.current[toolCallId]) {
+              const streamingToolName = sanitizeToolName(toolEvent.toolName, knownToolNames);
+              if (!streamingToolName) continue;
+              const streamingMessageId = generateId();
+              toolMessageIdsRef.current[toolCallId] = streamingMessageId;
+              addMessage({
+                id: streamingMessageId,
+                role: 'assistant',
+                content: '',
+                timestamp: Date.now(),
+                toolCallId,
+                toolCallName: streamingToolName,
+                toolCallArgs: {},
+              });
+              if (pendingFlush) {
+                clearTimeout(pendingFlush);
+                flushAssistantText();
+              }
+            }
+            continue;
+          }
+          if (toolEvent.type === 'tool-call-delta') {
+            toolArgsBufferRef.current[toolCallId] = existingArgs + (toolEvent.argsTextDelta ?? '');
+            continue;
+          }
+          if (toolEvent.type === 'tool-result') {
+            const streamedResultText = formatToolResult(toolEvent.result);
+            const existingToolMessageId = toolMessageIdsRef.current[toolCallId];
+            if (existingToolMessageId) {
+              const eventToolName = sanitizeToolName(toolEvent.toolName, knownToolNames);
+              updateMessage(existingToolMessageId, {
+                ...(eventToolName ? { toolCallName: eventToolName } : null),
+                toolCallResult: streamedResultText,
+              });
+              const fallbackToolResponse = eventToolName
+                ? buildFallbackToolResponse(eventToolName, streamedResultText, t)
+                : null;
+              if (fallbackToolResponse) fallbackToolResponses.push(fallbackToolResponse);
+            }
+            continue;
+          }
+
+          const resolvedToolName = sanitizeToolName(toolEvent.toolName, knownToolNames);
+          if (!resolvedToolName) continue;
+
+          if (executedToolCallIdsRef.current.toolCallIds.has(toolCallId)) {
+            continue;
+          }
+          executedToolCallIdsRef.current.toolCallIds.add(toolCallId);
+
+          const args = parseToolArgs(toolEvent.input, toolArgsBufferRef.current[toolCallId]);
+          const toolMessageId = toolMessageIdsRef.current[toolCallId] ?? generateId();
+          if (!toolMessageIdsRef.current[toolCallId]) {
+            toolMessageIdsRef.current[toolCallId] = toolMessageId;
+            addMessage({ id: toolMessageId, role: 'assistant', content: '', timestamp: Date.now(), toolCallId, toolCallName: resolvedToolName, toolCallArgs: args });
+          } else {
+            updateMessage(toolMessageId, { toolCallName: resolvedToolName, toolCallArgs: args });
+          }
+          const toolCallKey = makeToolCallKey(resolvedToolName, args);
+          if (executedToolCallsRef.current.toolCallKeys.has(toolCallKey)) {
+            delete toolArgsBufferRef.current[toolCallId];
+            delete toolMessageIdsRef.current[toolCallId];
+            continue;
+          }
+          executedToolCallsRef.current.toolCallKeys.add(toolCallKey);
+          const result = await executeToolCallRef(resolvedToolName, args, { messageId: toolMessageId });
+          const resultText = formatExecutorResult(result);
+          const fallbackToolResponse = buildFallbackToolResponse(resolvedToolName, resultText, t);
+          if (fallbackToolResponse) fallbackToolResponses.push(fallbackToolResponse);
+          delete toolArgsBufferRef.current[toolCallId];
+          delete toolMessageIdsRef.current[toolCallId];
+          if (!result.requiresConfirmation) {
+            continuationSignalRef.current = { success: true };
+          }
+          if (result.requiresConfirmation) {
+            pausedForConfirmation = true;
+          }
+          continue;
+        }
+
+        handledToolCount += 1;
+
+        if (abortController.signal.aborted) {
+          updateMessage(assistantMessageId, { content: assistantText || t('chat.stopped') });
+        } else if (pausedForConfirmation) {
+          clearContinuationSignal();
+          await saveActiveThread();
+          return;
+        } else {
+          const shouldContinue = computeShouldContinue({
+            round,
+            handledToolCount,
+            pausedForConfirmation,
+            continuationSignal: continuationSignalRef.current,
+          });
+
+          if (shouldContinue) {
+            clearContinuationSignal();
+            const priorMsgs = useChatStore.getState().activeThread?.messages ?? [];
+            const priorAssistantMsgs = priorMsgs.filter(
+              (m) => m.role === 'assistant' && (m.content || m.toolCallName),
+            );
+            await executeRound(round + 1, '', [], priorAssistantMsgs, null);
+            return;
+          }
+
+          if (!assistantText.trim() && !pausedForConfirmation) {
+            const fallbackToolText = fallbackToolResponses.join('\n\n').trim();
+            if (handledToolCount > 0) {
+              if (fallbackToolText) {
+                assistantText = fallbackToolText;
+                updateMessage(assistantMessageId, { content: assistantText });
+              } else {
+                removeMessage(assistantMessageId);
+              }
+            } else {
+              updateMessage(assistantMessageId, { content: t('chat.noResponseReceived') });
+              setLocalError(t('chat.emptyResponse'));
+            }
+          } else {
+            const fallbackToolText = fallbackToolResponses.join('\n\n').trim();
+            const nextContent = mergeAssistantWithToolFallback(assistantText, fallbackToolText, handledToolCount, t);
+            if (!nextContent && handledToolCount > 0) removeMessage(assistantMessageId);
+            else updateMessage(assistantMessageId, { content: nextContent });
+          }
+          await saveActiveThread().catch((err) => console.warn('[ChatScreen] saveActiveThread failed:', err));
+        }
+
+        if (abortRef.current === abortController) abortRef.current = null;
+        setStreaming(false);
+        setStreamStartedAt(0);
+      } catch (error) {
+        if (pendingFlush) clearTimeout(pendingFlush);
+        if (abortRef.current === abortController) abortRef.current = null;
+        setStreaming(false);
+        setStreamStartedAt(0);
+        const aborted = (error as Error)?.name === 'AbortError' || abortController.signal.aborted;
+        if (aborted) updateMessage(assistantMessageId, { content: assistantText || t('chat.stopped') });
+        else {
+          const message =
+            error instanceof ProviderUnavailableError
+              ? describeAvailability(t, error.reason)
+              : error instanceof Error
+                ? error.message
+                : t('chat.failedToSend');
+          const fallbackToolText = fallbackToolResponses.join('\n\n').trim();
+          if (hasMeaningfulAssistantText(assistantText) || handledToolCount > 0 || fallbackToolText) {
+            const nextContent = mergeAssistantWithToolFallback(assistantText, fallbackToolText, handledToolCount, t);
+            if (!nextContent && handledToolCount > 0) removeMessage(assistantMessageId);
+            else updateMessage(assistantMessageId, { content: nextContent });
+            console.warn('[ChatScreen] stream finished with visible output but failed while persisting or post-processing:', message);
+          } else {
+            removeMessage(assistantMessageId);
+            setLocalError(message);
+          }
+        }
+      } finally {
+        if (abortRef.current === abortController) abortRef.current = null;
+        setStreaming(false);
+        setStreamStartedAt(0);
+      }
+    },
+    [
+      addMessage,
+      clearError,
+      getSelectedModelConfig,
+      githubToolsEnabled,
+      knownToolNames,
+      noteCount,
+      persistPrimedThread,
+      removeMessage,
+      runToolCall,
+      saveActiveThread,
+      setStreaming,
+      t,
+      todoCount,
+      updateMessage,
+    ],
+  );
+
   const streamAssistantResponse = useCallback(async (text: string, contexts: AIContextItem[]) => {
     const currentThread = useChatStore.getState().activeThread;
     if (!currentThread) {
       setLocalError(t('chat.threadNotLoaded'));
       return;
     }
-
-    const trimmedText = text.trim();
-    const userMessage: ChatMessage = { id: generateId(), role: 'user', content: trimmedText, timestamp: Date.now(), attachedContexts: contexts };
-    const assistantMessageId = generateId();
-    addMessage(userMessage);
-    void persistPrimedThread(currentThread.id);
-    addMessage({ id: assistantMessageId, role: 'assistant', content: '', timestamp: Date.now() });
-    setAttachedContexts([]);
-    setRetryPayload({ text: userMessage.content, contexts });
-    setLocalError(null);
-    clearError();
-    setPendingConfirmation(null);
-    setStreamStartedAt(Date.now());
-    setStreaming(true);
-
-    abortRef.current?.abort();
-    const abortController = new AbortController();
-    abortRef.current = abortController;
-    let assistantText = '';
-    let handledToolCount = 0;
-    let pausedForConfirmation = false;
-    let pendingFlush: ReturnType<typeof setTimeout> | null = null;
-    const fallbackToolResponses: string[] = [];
-
-    const flushAssistantText = () => {
-      pendingFlush = null;
-      updateMessage(assistantMessageId, { content: assistantText });
-    };
-
-    // Scale flush interval with accumulated length: full re-parse per
-    // flush is O(n²) over a long streaming response otherwise.
-    const scheduleFlush = () => {
-      if (pendingFlush) return;
-      const scale = 1 + Math.floor(assistantText.length / 2000);
-      pendingFlush = setTimeout(flushAssistantText, STREAM_RENDER_FLUSH_MS * scale);
-    };
-
-    try {
-      const aiState = useAIStore.getState();
-      const githubAccountLogin = githubToolsEnabled
-        ? (await AuthService.checkAuthState()).user?.login
-        : undefined;
-      const { model, provider } = getSelectedModelConfig();
-      const runtimeThread = useChatStore.getState().activeThread;
-      if (!runtimeThread) throw new Error(t('chat.threadNotAvailable'));
-
-      const aggregatedContexts = dedupeContexts([...runtimeThread.messages.flatMap((message) => message.attachedContexts ?? []), ...contexts]);
-      const contextString = aggregatedContexts.length ? await buildContextString(aggregatedContexts) : undefined;
-      const history = runtimeThread.messages.filter((message) => message.id !== assistantMessageId).map(formatHistoryMessage);
-      const toolsEnabled = aiState.aiPersonalizationEnabled;
-      const basePrompt = buildSystemPrompt({ attachedContexts: contextString, noteCount, todoCount, actionMode: aiState.actionMode, githubToolsEnabled, githubAccountLogin, toolsEnabled });
-      const memoryBlock = await buildMemoryBlockForQuery(trimmedText, model, basePrompt.length);
-      const prompt = memoryBlock
-        ? buildSystemPrompt({ attachedContexts: contextString, noteCount, todoCount, actionMode: aiState.actionMode, memoryBlock, githubToolsEnabled, githubAccountLogin, toolsEnabled })
-        : basePrompt;
-      const modelInstance = await AIService.initializeModel(model, provider as AIProviderConfig | undefined);
-      const requestMessages: Parameters<typeof AIService.streamChatResponse>[1] = [{ role: 'system', content: prompt }, ...history];
-
-      for await (const chunk of AIService.streamChatResponse(modelInstance, requestMessages, toolsEnabled ? buildChatToolsMap() : undefined, abortController.signal)) {
-        if (abortController.signal.aborted) break;
-        const toolEvent = parseToolEvent(chunk);
-        if (!toolEvent) {
-          assistantText += decodeOverEscapedChunk(chunk);
-          scheduleFlush();
-          continue;
-        }
-
-        const toolCallId = toolEvent.toolCallId ?? generateId();
-        const existingArgs = toolArgsBufferRef.current[toolCallId] ?? '';
-        if (toolEvent.type === 'tool-call-streaming-start') {
-          // Pre-create the bubble so the user immediately sees
-          // "create_note…" appear; otherwise nothing renders until the
-          // model finishes streaming the args and the tool actually runs.
-          toolArgsBufferRef.current[toolCallId] = existingArgs;
-          if (!toolMessageIdsRef.current[toolCallId]) {
-            const streamingToolName = sanitizeToolName(toolEvent.toolName, knownToolNames);
-            if (!streamingToolName) continue;
-            const streamingMessageId = generateId();
-            toolMessageIdsRef.current[toolCallId] = streamingMessageId;
-            addMessage({
-              id: streamingMessageId,
-              role: 'assistant',
-              content: '',
-              timestamp: Date.now(),
-              toolCallId,
-              toolCallName: streamingToolName,
-              toolCallArgs: {},
-            });
-            // Flush any pending assistant text so the new bubble lands
-            // after everything streamed so far, not mid-debounce.
-            if (pendingFlush) {
-              clearTimeout(pendingFlush);
-              flushAssistantText();
-            }
-          }
-          continue;
-        }
-        if (toolEvent.type === 'tool-call-delta') {
-          toolArgsBufferRef.current[toolCallId] = existingArgs + (toolEvent.argsTextDelta ?? '');
-          continue;
-        }
-        if (toolEvent.type === 'tool-result') {
-          const streamedResultText = formatToolResult(toolEvent.result);
-          const existingToolMessageId = toolMessageIdsRef.current[toolCallId];
-          if (existingToolMessageId) {
-            const eventToolName = sanitizeToolName(toolEvent.toolName, knownToolNames);
-            updateMessage(existingToolMessageId, {
-              ...(eventToolName ? { toolCallName: eventToolName } : null),
-              toolCallResult: streamedResultText,
-            });
-            const fallbackToolResponse = eventToolName
-              ? buildFallbackToolResponse(eventToolName, streamedResultText, t)
-              : null;
-            if (fallbackToolResponse) fallbackToolResponses.push(fallbackToolResponse);
-          }
-          continue;
-        }
-
-        const resolvedToolName = sanitizeToolName(toolEvent.toolName, knownToolNames);
-        if (!resolvedToolName) continue;
-
-        const args = parseToolArgs(toolEvent.input, toolArgsBufferRef.current[toolCallId]);
-        // Re-use the streaming bubble if we already showed one, otherwise
-        // (older providers that skip the streaming start event) create
-        // the bubble here.
-        const toolMessageId = toolMessageIdsRef.current[toolCallId] ?? generateId();
-        if (!toolMessageIdsRef.current[toolCallId]) {
-          toolMessageIdsRef.current[toolCallId] = toolMessageId;
-          addMessage({ id: toolMessageId, role: 'assistant', content: '', timestamp: Date.now(), toolCallId, toolCallName: resolvedToolName, toolCallArgs: args });
-        } else {
-          updateMessage(toolMessageId, { toolCallName: resolvedToolName, toolCallArgs: args });
-        }
-        handledToolCount += 1;
-        const result = await runToolCall(resolvedToolName, args, { messageId: toolMessageId });
-        const resultText = formatExecutorResult(result);
-        const fallbackToolResponse = buildFallbackToolResponse(resolvedToolName, resultText, t);
-        if (fallbackToolResponse) fallbackToolResponses.push(fallbackToolResponse);
-        delete toolArgsBufferRef.current[toolCallId];
-        delete toolMessageIdsRef.current[toolCallId];
-        if (result.requiresConfirmation) {
-          pausedForConfirmation = true;
-          break;
-        }
-      }
-
-      if (pendingFlush) clearTimeout(pendingFlush);
-
-      if (abortController.signal.aborted) {
-        updateMessage(assistantMessageId, { content: assistantText || t('chat.stopped') });
-      } else if (!assistantText.trim() && !pausedForConfirmation) {
-        const fallbackToolText = fallbackToolResponses.join('\n\n').trim();
-        // Stream finished with no text. If the model invoked tools the
-        // tool bubbles carry the actual output — keep this bubble as
-        // "Done." Otherwise the model really did return nothing
-        // (free-tier OpenRouter routes occasionally do this on the first
-        // try). Surface it as a retryable error so the toast's Retry
-        // button appears instead of leaving the user staring at a
-        // dead-end "No response received." bubble.
-        if (handledToolCount > 0) {
-          if (fallbackToolText) {
-            assistantText = fallbackToolText;
-            updateMessage(assistantMessageId, { content: assistantText });
-          } else {
-            removeMessage(assistantMessageId);
-          }
-        } else {
-          updateMessage(assistantMessageId, { content: t('chat.noResponseReceived') });
-          setLocalError(t('chat.emptyResponse'));
-        }
-      } else {
-        const fallbackToolText = fallbackToolResponses.join('\n\n').trim();
-        const nextContent = mergeAssistantWithToolFallback(assistantText, fallbackToolText, handledToolCount, t);
-        if (!nextContent && handledToolCount > 0) removeMessage(assistantMessageId);
-        else updateMessage(assistantMessageId, { content: nextContent });
-      }
-
-      if (abortRef.current === abortController) abortRef.current = null;
-      setStreaming(false);
-      setStreamStartedAt(0);
-      saveActiveThread().catch((err) => console.warn('[ChatScreen] saveActiveThread failed:', err));
-    } catch (error) {
-      if (pendingFlush) clearTimeout(pendingFlush);
-      if (abortRef.current === abortController) abortRef.current = null;
-      setStreaming(false);
-      setStreamStartedAt(0);
-      const aborted = (error as Error)?.name === 'AbortError' || abortController.signal.aborted;
-      if (aborted) updateMessage(assistantMessageId, { content: assistantText || t('chat.stopped') });
-      else {
-        const message =
-          error instanceof ProviderUnavailableError
-            ? describeAvailability(t, error.reason)
-            : error instanceof Error
-              ? error.message
-              : t('chat.failedToSend');
-        const fallbackToolText = fallbackToolResponses.join('\n\n').trim();
-        if (hasMeaningfulAssistantText(assistantText) || handledToolCount > 0 || fallbackToolText) {
-          const nextContent = mergeAssistantWithToolFallback(assistantText, fallbackToolText, handledToolCount, t);
-          if (!nextContent && handledToolCount > 0) removeMessage(assistantMessageId);
-          else updateMessage(assistantMessageId, { content: nextContent });
-          console.warn('[ChatScreen] stream finished with visible output but failed while persisting or post-processing:', message);
-        } else {
-          removeMessage(assistantMessageId);
-          setLocalError(message);
-        }
-      }
-    } finally {
-      if (abortRef.current === abortController) abortRef.current = null;
-      setStreaming(false);
-      setStreamStartedAt(0);
-    }
-  }, [addMessage, clearError, getSelectedModelConfig, githubToolsEnabled, knownToolNames, noteCount, persistPrimedThread, removeMessage, runToolCall, saveActiveThread, setStreaming, t, todoCount, updateMessage]);
+    continuationRoundRef.current = 0;
+    continuationSignalRef.current = null;
+    executedToolCallIdsRef.current = newExecutedToolCalls();
+    executedToolCallsRef.current = newExecutedToolCalls();
+    await executeRound(0, text, contexts, [], null);
+  }, [executeRound, t]);
 
   const stopStreaming = useCallback(() => abortRef.current?.abort(), []);
 
@@ -632,18 +820,29 @@ export function useChatScreenController(threadId: string) {
 
   const handleConfirmApply = useCallback(async () => {
     if (!pendingConfirmation) return;
+    const confirmation = pendingConfirmation;
     setPendingConfirmation(null);
     setLocalError(null);
     try {
-      await runToolCall(pendingConfirmation.toolName, pendingConfirmation.args, { allowConfirmation: false, messageId: pendingConfirmation.messageId });
-      await saveActiveThread();
+      await runToolCall(confirmation.toolName, confirmation.args, { allowConfirmation: false, messageId: confirmation.messageId });
+      executedToolCallsRef.current.toolCallKeys.add(makeToolCallKey(confirmation.toolName, confirmation.args));
+      continuationSignalRef.current = { success: true };
+      const priorMsgs = useChatStore.getState().activeThread?.messages ?? [];
+      const priorAssistantMsgs = priorMsgs.filter(
+        (m) => m.role === 'assistant' && (m.content || m.toolCallName),
+      );
+      await executeRound(continuationRoundRef.current + 1, '', [], priorAssistantMsgs, null);
     } catch (error) {
+      setPendingConfirmation(confirmation);
+      continuationSignalRef.current = null;
       setLocalError(error instanceof Error ? error.message : t('chat.failedToApplyTool'));
     }
-  }, [pendingConfirmation, runToolCall, saveActiveThread, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runToolCall, t, executeRound]);
 
   const handleConfirmCancel = useCallback(async () => {
     if (!pendingConfirmation) return;
+    continuationSignalRef.current = null;
     updateMessage(pendingConfirmation.messageId, { toolCallResult: t('chat.cancelled') });
     addMessage({ id: generateId(), role: 'system', content: t('chat.cancelledAction', { description: pendingConfirmation.description }), timestamp: Date.now() });
     setPendingConfirmation(null);
@@ -658,9 +857,9 @@ export function useChatScreenController(threadId: string) {
     return checkContextBudget(model, attachedBytes + historyAttachedBytes + historyTextBytes + 600);
   }, [attachedContexts, thread?.messages]);
 
-  const handleSend = useCallback((text: string) => {
+  const handleSend = useCallback((text: string): void | Promise<void> => {
     if (!text.trim() || isStreaming || isLoading) return;
-    void streamAssistantResponse(text, attachedContexts);
+    return streamAssistantResponse(text, attachedContexts);
   }, [attachedContexts, isLoading, isStreaming, streamAssistantResponse]);
 
   return {

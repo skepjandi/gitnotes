@@ -50,7 +50,7 @@ export async function syncTodoToGitHub(params: {
   }
   const tokenOverride = await resolveToken(accountId);
 
-  if (!tokenOverride && !GitHubService.isAuthenticated()) {
+  if (!tokenOverride && !(await GitHubService.isAuthenticatedAsync())) {
     return { success: false, error: 'GitHub not authenticated' };
   }
 

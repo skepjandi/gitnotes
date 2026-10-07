@@ -21,7 +21,7 @@ TaskManager.defineTask(TASK_NAME, async () => {
     // SECURITY: load token from storage first — on OS cold-launch the
     // singleton hasn't been initialized, so the auth check would silently no-op.
     await GitHubService.initialize();
-    if (!GitHubService.isAuthenticated()) {
+    if (!(await GitHubService.isAuthenticatedAsync())) {
       return BackgroundTask.BackgroundTaskResult.Success;
     }
 

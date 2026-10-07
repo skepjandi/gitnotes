@@ -319,7 +319,7 @@ export async function deleteNoteFromGitHub(params: {
   const { repo: repoPath, branch, filePath, title, accountId } = params;
   const tokenOverride = await resolveToken(accountId);
 
-  if (!tokenOverride && !GitHubService.isAuthenticated()) {
+  if (!tokenOverride && !(await GitHubService.isAuthenticatedAsync())) {
     return { success: false, error: 'GitHub not authenticated' };
   }
 
@@ -373,7 +373,7 @@ export async function syncNoteToGitHub(params: {
     return { success: false, error: `Refusing to write file exceeding 5 MB (${Math.round(content.length / 1024 / 1024)} MB) — possible data corruption` };
   }
 
-  if (!tokenOverride && !GitHubService.isAuthenticated()) {
+  if (!tokenOverride && !(await GitHubService.isAuthenticatedAsync())) {
     return { success: false, error: 'GitHub not authenticated' };
   }
 

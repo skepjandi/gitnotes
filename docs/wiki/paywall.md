@@ -136,21 +136,32 @@ interface ProState {
 | `bindAccount(appUserID)` | Bind RevenueCat account to GitNotēs account for cross-device Pro |
 | `unbindAccount()` | Remove account binding |
 
-### DEV_FORCE_PRO Override
+### Simulator Pro/Free Overrides
 
-In development (`__DEV__`) on iOS Simulator only, Pro is forced open for QA testing without real IAP:
+In development (`__DEV__`), the `EXPO_PUBLIC_FORCE_ENABLE_PRO_ON_SIMULATOR` variable controls QA access:
+
+- On iOS Simulator, the default (unset or any value other than `'false'`) forces Pro open without real IAP.
+- On iOS Simulator, setting it to `'false'` forces the derived Pro gate and status to Free so paywalls can be tested even when RevenueCat reports an entitlement.
+- On Android in development, the default forces Pro open; setting it to `'false'` disables that Pro bypass and uses the real entitlement.
+- Physical iOS devices and production builds always use the real entitlement.
 
 ```typescript
 export const DEV_FORCE_PRO =
   __DEV__ &&
+  ((Platform.OS === 'ios' && isSimulator()) || Platform.OS === 'android') &&
+  process.env.EXPO_PUBLIC_FORCE_ENABLE_PRO_ON_SIMULATOR !== 'false';
+
+export const DEV_FORCE_FREE =
+  __DEV__ &&
   Platform.OS === 'ios' &&
   isSimulator() &&
-  process.env.EXPO_PUBLIC_FORCE_ENABLE_PRO_ON_SIMULATOR !== 'false';
+  process.env.EXPO_PUBLIC_FORCE_ENABLE_PRO_ON_SIMULATOR === 'false';
 ```
 
-The gate quad: `__DEV__ && iOS && simulator && env !== 'false'`
+The Pro-bypass gate is `__DEV__ && (iOS simulator || Android) && env !== 'false'`.
+The Free-for-paywall-QA gate is `__DEV__ && iOS simulator && env === 'false'`.
 
-> **Note:** This does NOT bypass RevenueCat calls. The SDK still initializes and makes API calls — only the derived `isPro` gate is forced to `true`.
+> **Note:** These overrides do NOT bypass or alter RevenueCat calls. The SDK still initializes and makes API calls; only the derived gate and status are overridden.
 
 ---
 

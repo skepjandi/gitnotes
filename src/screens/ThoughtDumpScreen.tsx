@@ -52,7 +52,7 @@ export default function ThoughtDumpScreen({ onDumpChange }: Props) {
   const [repoPath, setRepoPath] = useState('');
   const [pickerVisible, setPickerVisible] = useState(false);
   const [savedRepos, setSavedRepos] = useState<GitRepository[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
 
   const selectionMode = selectedIds.size > 0;

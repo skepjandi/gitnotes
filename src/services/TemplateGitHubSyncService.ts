@@ -24,7 +24,7 @@ export async function syncTemplateToGitHub(params: {
     return { success: false, error: 'No repository configured' };
   }
 
-  if (!GitHubService.isAuthenticated()) {
+  if (!(await GitHubService.isAuthenticatedAsync())) {
     return { success: false, error: 'GitHub not authenticated' };
   }
 
@@ -54,7 +54,7 @@ export async function deleteTemplateFromGitHub(params: {
 }): Promise<TemplateSyncResult> {
   const { repoPath, branch, filePath, name } = params;
 
-  if (!GitHubService.isAuthenticated()) {
+  if (!(await GitHubService.isAuthenticatedAsync())) {
     return { success: false, error: 'GitHub not authenticated' };
   }
 

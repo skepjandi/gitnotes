@@ -17,6 +17,7 @@ All notable fixes and feature changes to GitNotēs are documented here.
 **Fix:** `ChatStorageService.loadThreadSummaries` now classifies errors into nine typed codes (`NETWORK_ERROR`, `SERVER_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `RATE_LIMITED`, `NOT_FOUND`, `INVALID_PAYLOAD`, `PARSE_ERROR`, `UNKNOWN`) and uses cached summaries only for transient network or 5xx failures, surfacing a warning while preserving stale data. `chatStore.loadThreads` propagates the warning to the UI and keeps cached threads visible instead of showing a blank list. Tool-call execution is wrapped in a 30-second timeout (`TOOL_EXECUTION_TIMEOUT_MS = 30_000`), bounded to a maximum of five continuation rounds (`MAX_TOOL_ROUNDS = 5`) per streaming session, and deduplicated by `(toolName, argsJSON)` to prevent re-execution after confirmation. The `executeRound` loop uses a manual continuation controller; it does not rely on SDK auto-execution.
 
 **Files changed:**
+
 - `src/services/ChatStorageService.ts` — `ChatStorageError`, `ChatStorageErrorCode`, `classifyError`, `isCacheableError`, `validateChatIndex`
 - `src/stores/chatStore.ts` — `loadThreads` error handling with cached summaries and warning
 - `src/components/chat/useChatScreenController.ts` — bounded `executeRound` with `executeWithTimeout`

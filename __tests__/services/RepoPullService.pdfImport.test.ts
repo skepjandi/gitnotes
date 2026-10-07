@@ -79,6 +79,7 @@ jest.mock('@/services/git/engine/GitEngine', () => ({
 jest.mock('@/services/GitHubService', () => ({
   GitHubService: {
     isAuthenticated: jest.fn(() => true),
+    isAuthenticatedAsync: jest.fn(async () => true),
     getPathCommitDates: jest.fn(() => Promise.resolve({})),
   },
 }));

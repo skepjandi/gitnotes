@@ -382,7 +382,7 @@ export function useChatScreenController(threadId: string) {
 
       if (userMessage) {
         addMessage(userMessage);
-        void persistPrimedThread(currentThread.id);
+        await persistPrimedThread(currentThread.id);
       }
 
       setRetryPayload(userMessage ? { text: userMessage.content, contexts } : null);

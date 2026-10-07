@@ -60,31 +60,45 @@ export const ThoughtDumpRepoPickerModal: React.FC<ThoughtDumpRepoPickerModalProp
   const [isLoadingGithubRepos, setIsLoadingGithubRepos] = useState(false);
   const [isAddingRepoPath, setIsAddingRepoPath] = useState<string | null>(null);
   const [githubFetchError, setGithubFetchError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
-  const isAuthenticated = GitHubService.isAuthenticated();
   // Ref so each modal-open triggers exactly one fetch, even if auth state
   // happens to change between renders while the modal is visible.
   const didFetchGithubRef = useRef(false);
+  // Track mount state to prevent state updates after unmount.
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const fetchGithubRepos = useCallback(async () => {
-    if (!GitHubService.isAuthenticated()) return;
+    const isAuthAvailable = await GitHubService.isAuthenticatedAsync();
+    if (!isMountedRef.current) return;
+    setIsAuthenticated(isAuthAvailable);
+    if (!isAuthAvailable) return;
     setIsLoadingGithubRepos(true);
     setGithubFetchError(null);
     try {
       const repos = await GitHubService.getRepositories();
-      setGithubRepos(repos);
+      if (isMountedRef.current) setGithubRepos(repos);
     } catch (error) {
       console.warn('[ThoughtDumpRepoPickerModal] Failed to fetch GitHub repos:', error);
-      setGithubRepos([]);
-      setGithubFetchError('Could not load GitHub repos. Check network or token.');
+      if (isMountedRef.current) {
+        setGithubRepos([]);
+        setGithubFetchError('Could not load GitHub repos. Check network or token.');
+      }
     } finally {
-      setIsLoadingGithubRepos(false);
+      if (isMountedRef.current) setIsLoadingGithubRepos(false);
     }
   }, []);
 
   useEffect(() => {
     if (!visible) {
       didFetchGithubRef.current = false;
+      setIsAuthenticated(null);
       return;
     }
     if (didFetchGithubRef.current) return;
@@ -256,7 +270,7 @@ export const ThoughtDumpRepoPickerModal: React.FC<ThoughtDumpRepoPickerModalProp
       <View className="flex-1">
         <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-border" style={{ borderBottomWidth: StyleSheet.hairlineWidth }}>
           <View className="w-8 items-end">
-            {(visible && (isLoadingGithubRepos || isAuthenticated)) && (
+            {(visible && (isLoadingGithubRepos || isAuthenticated === true)) && (
               <TouchableOpacity
                 testID="thought-dump-repo-picker.button.refresh"
                 onPress={() => void fetchGithubRepos()}
@@ -291,7 +305,14 @@ export const ThoughtDumpRepoPickerModal: React.FC<ThoughtDumpRepoPickerModalProp
             {t('thoughtDump.repoPickerDescription')}
           </Text>
 
-          {isEmpty && isAuthenticated ? (
+          {isLoadingGithubRepos || isAuthenticated === null ? (
+            <View className="items-center py-10">
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text className="text-md text-center mt-4 text-text-secondary">
+                Checking repositories...
+              </Text>
+            </View>
+          ) : isEmpty && isAuthenticated ? (
             <View className="items-center py-10">
               <Ionicons
                 name="folder-open-outline"

@@ -315,7 +315,7 @@ describe('ChatStorageService regression', () => {
     it('falls back to OAuth token when no singleton token exists', async () => {
       jest.spyOn(GitHubService, 'isAuthenticated').mockReturnValueOnce(false);
       jest.spyOn(GitHubService, 'isAuthenticatedAsync').mockResolvedValueOnce(true);
-      jest.spyOn(AuthService, 'getActiveSummary').mockResolvedValueOnce(activeSummary as AccountSummary);
+      jest.spyOn(AuthService, 'listAccountSummaries').mockResolvedValueOnce([activeSummary as AccountSummary]);
       jest.spyOn(AccountStorage, 'getOAuthCredential').mockResolvedValueOnce(oauthCredential as GitHubOAuthCredentialRecord);
 
       const thread = makeThread();

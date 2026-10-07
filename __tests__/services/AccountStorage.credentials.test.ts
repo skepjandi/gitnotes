@@ -326,3 +326,50 @@ describe('AccountStorage.removeCredential', () => {
     });
   });
 });
+
+describe('AccountStorage.getActiveToken OAuth fallback', () => {
+  const ACTIVE_HOST_KEY = '@gitnotes:active_host_id';
+
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  afterEach(async () => {
+    await SecureStore.clear();
+  });
+
+  it('returns PAT token when both PAT and OAuth exist', async () => {
+    await AsyncStorage.setItem(ACTIVE_HOST_KEY, HOST_ID);
+    await SecureStore.setItemAsync(NATIVE_TOKEN_KEY, 'pat_token');
+    await SecureStore.setItemAsync(NATIVE_OAUTH_KEY, JSON.stringify(makeOAuthRecord(OAUTH_ID)));
+    await AsyncStorage.setItem(HOST_CREDENTIALS_KEY, JSON.stringify({ [HOST_ID]: [OAUTH_ID] }));
+
+    const token = await AccountStorage.getActiveToken();
+
+    expect(token).toBe('pat_token');
+  });
+
+  it('returns OAuth token when no PAT exists', async () => {
+    await AsyncStorage.setItem(ACTIVE_HOST_KEY, HOST_ID);
+    await SecureStore.setItemAsync(NATIVE_OAUTH_KEY, JSON.stringify(makeOAuthRecord(OAUTH_ID)));
+    await AsyncStorage.setItem(HOST_CREDENTIALS_KEY, JSON.stringify({ [HOST_ID]: [OAUTH_ID] }));
+
+    const token = await AccountStorage.getActiveToken();
+
+    expect(token).toBe('gho_test_token');
+  });
+
+  it('returns null when neither PAT nor OAuth exists', async () => {
+    await AsyncStorage.setItem(ACTIVE_HOST_KEY, HOST_ID);
+
+    const token = await AccountStorage.getActiveToken();
+
+    expect(token).toBeNull();
+  });
+
+  it('returns null when no active host is set', async () => {
+    const token = await AccountStorage.getActiveToken();
+
+    expect(token).toBeNull();
+  });
+});

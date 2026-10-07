@@ -38,7 +38,7 @@ cp .env.example .env
 Key variables:
 - `EXPO_PUBLIC_REVENUECAT_API_KEY_IOS` / `EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID` — RevenueCat SDK keys (required for Pro paywall)
 - `GITHUB_TEST_TOKEN` — PAT for E2E test suite (optional)
-- `EXPO_PUBLIC_FORCE_ENABLE_PRO_ON_SIMULATOR=false` — show paywalls even on iOS simulator in dev
+- `EXPO_PUBLIC_FORCE_ENABLE_PRO_ON_SIMULATOR=false` — show paywalls in iOS Simulator development builds, even when RevenueCat reports Pro; on Android development builds, this disables the Pro QA bypass and uses the real entitlement
 
 ## Troubleshooting
 

@@ -126,7 +126,7 @@
 - `markInterstitialShown`
 - `bindAccount`, `unbindAccount`
 
-**DEV_FORCE_PRO:** In `__DEV__` on iOS Simulator, Pro gate is forced open via `EXPO_PUBLIC_FORCE_ENABLE_PRO_ON_SIMULATOR` env var for QA testing without real IAP.
+**Simulator Pro/Free overrides:** In `__DEV__`, `EXPO_PUBLIC_FORCE_ENABLE_PRO_ON_SIMULATOR` forces the Pro gate open on iOS Simulator and Android unless set to `'false'`. On iOS Simulator, `'false'` forces the derived gate and status to Free for paywall QA; physical iOS devices and production builds use the real RevenueCat entitlement.
 
 ---
 

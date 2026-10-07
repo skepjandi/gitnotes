@@ -41,6 +41,17 @@ export const DEV_FORCE_PRO =
   ((Platform.OS === 'ios' && isSimulator()) || Platform.OS === 'android') &&
   process.env.EXPO_PUBLIC_FORCE_ENABLE_PRO_ON_SIMULATOR !== 'false';
 
+/** Dev-only override: keeps the Pro gate closed on iOS Simulator for paywall QA.
+ *
+ * RevenueCat state and calls remain unchanged; only the derived gate and status
+ * are forced to Free in this path.
+ */
+export const DEV_FORCE_FREE =
+  __DEV__ &&
+  Platform.OS === 'ios' &&
+  isSimulator() &&
+  process.env.EXPO_PUBLIC_FORCE_ENABLE_PRO_ON_SIMULATOR === 'false';
+
 const TRIAL_WAS_ACTIVE_KEY = '@gitnotes:trial_was_active';
 const TRIAL_EXPIRED_AT_KEY = '@gitnotes:trial_expired_at';
 const INTERSTITIAL_SHOWN_KEY = '@gitnotes:interstitial_offer_shown';
@@ -84,7 +95,13 @@ interface ProActions {
 }
 
 export const selectIsPro = (state: ProState): boolean =>
-  DEV_FORCE_PRO || state.entitlementActive;
+  DEV_FORCE_PRO || (!DEV_FORCE_FREE && state.entitlementActive);
+
+export function statusForEntitlement(entitlementActive: boolean): ProStatus {
+  if (DEV_FORCE_PRO) return 'pro';
+  if (DEV_FORCE_FREE) return 'free';
+  return entitlementActive ? 'pro' : 'free';
+}
 
 interface CustomerInfoLike {
   entitlements?: {
@@ -187,7 +204,7 @@ export const useProStore = create<ProState & ProActions>()((set, get) => ({
           const derived = deriveTrialInfo(info);
           set(() => ({
             ...derived,
-            status: DEV_FORCE_PRO ? 'pro' : (derived.entitlementActive ? 'pro' : 'free'),
+            status: statusForEntitlement(derived.entitlementActive),
           }));
           await evaluateInterstitial(derived.entitlementActive, set);
         });
@@ -200,7 +217,7 @@ export const useProStore = create<ProState & ProActions>()((set, get) => ({
       const derived = deriveTrialInfo(customerInfo);
       set({
         ...derived,
-        status: DEV_FORCE_PRO ? 'pro' : (derived.entitlementActive ? 'pro' : 'free'),
+        status: statusForEntitlement(derived.entitlementActive),
         ...(rcError ? { error: rcError } : {}),
       });
       await evaluateInterstitial(derived.entitlementActive, set);
@@ -215,7 +232,7 @@ export const useProStore = create<ProState & ProActions>()((set, get) => ({
       const derived = deriveTrialInfo(customerInfo);
       set(() => ({
         ...derived,
-        status: DEV_FORCE_PRO ? 'pro' : (derived.entitlementActive ? 'pro' : 'free'),
+        status: statusForEntitlement(derived.entitlementActive),
         error: null,
       }));
       await evaluateInterstitial(derived.entitlementActive, set);
@@ -348,7 +365,7 @@ export const useProStore = create<ProState & ProActions>()((set, get) => ({
     const derived = deriveTrialInfo(customerInfo);
     set(() => ({
       ...derived,
-      status: DEV_FORCE_PRO ? 'pro' : (derived.entitlementActive ? 'pro' : 'free'),
+      status: statusForEntitlement(derived.entitlementActive),
     }));
   },
 
@@ -360,7 +377,7 @@ export const useProStore = create<ProState & ProActions>()((set, get) => ({
       trialActive: false,
       trialEndsAt: null,
       entitlementExpiresAt: null,
-      status: 'free',
+      status: statusForEntitlement(false),
     });
   },
 }));

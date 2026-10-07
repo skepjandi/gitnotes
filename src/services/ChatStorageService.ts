@@ -81,19 +81,25 @@ export function setChatRepoAccount(accountId: string | null): void {
   chatRepoAccountId = accountId;
 }
 
+async function getOAuthToken(accountId?: string | null): Promise<string | null> {
+  const summaries = await AuthService.listAccountSummaries();
+  const hosts = summaries
+    .filter((summary) => !accountId || summary.account.id === accountId)
+    .flatMap((summary) => summary.hosts.filter((host) => host.provider === 'github'));
+  for (const host of hosts) {
+    const oauthCred = await AccountStorage.getOAuthCredential(host.id);
+    if (oauthCred?.accessToken) return oauthCred.accessToken;
+  }
+  return null;
+}
+
 async function getToken(): Promise<string> {
   if (chatRepoAccountId) {
     const scoped = await AuthService.getTokenById(chatRepoAccountId);
     if (scoped) return scoped;
     if (await GitHubService.isAuthenticatedAsync()) {
-      const summary = (await AuthService.listAccountSummaries()).find(
-        (item) => item.account.id === chatRepoAccountId,
-      );
-      const host = summary?.hosts.find((item) => item.id === summary.activeHostId) ?? summary?.hosts[0];
-      if (host) {
-        const oauthCred = await AccountStorage.getOAuthCredential(host.id);
-        if (oauthCred?.accessToken) return oauthCred.accessToken;
-      }
+      const oauthToken = await getOAuthToken(chatRepoAccountId);
+      if (oauthToken) return oauthToken;
     }
     throw new Error('GitHub not authenticated');
   }
@@ -104,12 +110,8 @@ async function getToken(): Promise<string> {
   }
 
   if (await GitHubService.isAuthenticatedAsync()) {
-    const summary = await AuthService.getActiveSummary();
-    const host = summary?.hosts.find((item) => item.id === summary.activeHostId) ?? summary?.hosts[0];
-    if (host) {
-      const oauthCred = await AccountStorage.getOAuthCredential(host.id);
-      if (oauthCred?.accessToken) return oauthCred.accessToken;
-    }
+    const oauthToken = await getOAuthToken();
+    if (oauthToken) return oauthToken;
   }
 
   throw new Error('GitHub not authenticated');

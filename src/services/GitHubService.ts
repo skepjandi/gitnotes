@@ -409,11 +409,13 @@ class GitHubServiceClass {
 
   async isAuthenticatedAsync(): Promise<boolean> {
     if (this.isAuthenticated()) return true;
-    const summary = await AuthService.getActiveSummary();
-    const host = summary?.hosts.find((item) => item.id === summary.activeHostId) ?? summary?.hosts[0];
-    if (!host) return false;
-    const availability = await AuthService.getProviderAuthAvailability(host.id, host.provider);
-    return availability.isAvailable;
+    const summaries = await AuthService.listAccountSummaries();
+    const githubHosts = summaries.flatMap((summary) => summary.hosts.filter((host) => host.provider === 'github'));
+    for (const host of githubHosts) {
+      const availability = await AuthService.getProviderAuthAvailability(host.id, 'github');
+      if (availability.isAvailable) return true;
+    }
+    return false;
   }
 
   /**
@@ -421,12 +423,13 @@ class GitHubServiceClass {
    * is available (OAuth-only users). Returns null when no OAuth credential exists.
    */
   private async resolveOAuthTokenForActiveHost(): Promise<string | null> {
-    const summary = await AuthService.getActiveSummary();
-    if (!summary) return null;
-    const host = summary.hosts.find((item) => item.id === summary.activeHostId) ?? summary.hosts[0];
-    if (!host) return null;
-    const oauthCred = await AccountStorage.getOAuthCredential(host.id);
-    return oauthCred?.accessToken ?? null;
+    const summaries = await AuthService.listAccountSummaries();
+    const githubHosts = summaries.flatMap((summary) => summary.hosts.filter((host) => host.provider === 'github'));
+    for (const host of githubHosts) {
+      const oauthCred = await AccountStorage.getOAuthCredential(host.id);
+      if (oauthCred?.accessToken) return oauthCred.accessToken;
+    }
+    return null;
   }
 
   getUser(): GitHubUser | null {

@@ -95,7 +95,8 @@ function giteaUserToHostUser(
   };
 }
 
-function snapshotGitHub(): HostAuthState {
+async function snapshotGitHub(): Promise<HostAuthState> {
+  const isAuthAsync = await GitHubService.isAuthenticatedAsync();
   const u = GitHubService.getUser();
   return {
     provider: 'github',
@@ -108,7 +109,7 @@ function snapshotGitHub(): HostAuthState {
           avatarUrl: u.avatar_url ?? null,
         }
       : null,
-    isAuthenticated: GitHubService.isAuthenticated(),
+    isAuthenticated: isAuthAsync,
     baseUrl: GIT_HOST_API_BASES.github,
   };
 }
@@ -160,7 +161,13 @@ interface HostAuthProviderProps {
 export function HostAuthProvider({ children }: HostAuthProviderProps) {
   const [hosts, setHosts] = useState<Record<GitHostProvider, HostAuthState>>(
     () => ({
-      github: snapshotGitHub(),
+      github: {
+        provider: 'github',
+        label: GIT_HOST_LABELS.github,
+        user: null,
+        isAuthenticated: false,
+        baseUrl: GIT_HOST_API_BASES.github,
+      },
       gitlab: {
         provider: 'gitlab',
         label: GIT_HOST_LABELS.gitlab,

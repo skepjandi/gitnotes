@@ -177,6 +177,17 @@ describe('FloatingAIButton — pan/hold mutual exclusivity (component)', () => {
     jest.useRealTimers();
   });
 
+  it('remains visible on the ChatScreen route', () => {
+    const { getByTestId } = render(
+      React.createElement(
+        require('@/components/ai/FloatingAIButton').FloatingAIButton,
+        { currentRouteName: 'ChatScreen' },
+      ),
+    );
+
+    expect(getByTestId('floating-ai.button.navigate-chat')).toBeTruthy();
+  });
+
   it('setPanBeganDuringPress is wired and called when pan gesture onStart fires', async () => {
     const { getByTestId } = render(
       React.createElement(

@@ -636,12 +636,16 @@ export function useChatScreenController(threadId: string) {
             if (!nextContent && handledToolCount > 0) removeMessage(assistantMessageId);
             else updateMessage(assistantMessageId, { content: nextContent });
           }
-          await saveActiveThread().catch((err) => console.warn('[ChatScreen] saveActiveThread failed:', err));
         }
 
         if (abortRef.current === abortController) abortRef.current = null;
         setStreaming(false);
         setStreamStartedAt(0);
+        await saveActiveThread().catch((err) => {
+          const message = err instanceof Error ? err.message : String(err);
+          console.warn('[ChatScreen] saveActiveThread failed:', err);
+          setLocalError(message);
+        });
       } catch (error) {
         if (pendingFlush) clearTimeout(pendingFlush);
         if (abortRef.current === abortController) abortRef.current = null;

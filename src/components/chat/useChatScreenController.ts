@@ -382,7 +382,6 @@ export function useChatScreenController(threadId: string) {
 
       if (userMessage) {
         addMessage(userMessage);
-        await persistPrimedThread(currentThread.id);
       }
 
       setRetryPayload(userMessage ? { text: userMessage.content, contexts } : null);
@@ -395,6 +394,18 @@ export function useChatScreenController(threadId: string) {
       abortRef.current?.abort();
       const abortController = new AbortController();
       abortRef.current = abortController;
+
+      if (userMessage) {
+        await persistPrimedThread(currentThread.id);
+      }
+
+      if (abortController.signal.aborted) {
+        if (abortRef.current === abortController) abortRef.current = null;
+        setStreaming(false);
+        setStreamStartedAt(0);
+        return;
+      }
+
       const assistantMessageId = generateId();
       addMessage({ id: assistantMessageId, role: 'assistant', content: '', timestamp: Date.now() });
 

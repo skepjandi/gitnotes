@@ -419,6 +419,33 @@ describe('useChatScreenController — first-message persistence', () => {
     expect(ChatStorageService.saveThread).toHaveBeenCalled();
   });
 
+  it('keeps a priming-save 409 visible through tool continuation', async () => {
+    const model = {} as LanguageModel;
+    mockInitializeModel.mockResolvedValueOnce(model);
+    ChatStorageService.saveThread
+      .mockRejectedValueOnce(new Error('Request failed with status code 409'))
+      .mockResolvedValue(undefined);
+    mockStreamChatResponse
+      .mockImplementationOnce(async function* (): AsyncGenerator<string> {
+        yield toolCall('tc-409', 'search_notes', { query: 'test' });
+      })
+      .mockImplementationOnce(async function* (): AsyncGenerator<string> {
+        yield textDelta('I found it.');
+      });
+    mockExecuteToolCall.mockResolvedValueOnce({
+      success: true,
+      data: { matches: [] },
+      requiresConfirmation: false,
+    });
+
+    setupStores({ activeThread });
+    const { result } = renderHook(() => useChatScreenController(THREAD_ID));
+
+    await act(async () => { await result.current.handleSend('Search'); });
+
+    expect(result.current.localError).toBe('Request failed with status code 409');
+  });
+
   it('clears streaming state before a slow completed-response save resolves', async () => {
     const model = {} as LanguageModel;
     mockInitializeModel.mockResolvedValueOnce(model);

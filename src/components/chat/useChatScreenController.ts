@@ -385,8 +385,10 @@ export function useChatScreenController(threadId: string) {
       }
 
       setRetryPayload(userMessage ? { text: userMessage.content, contexts } : null);
-      setLocalError(null);
-      clearError();
+      if (round === 0) {
+        setLocalError(null);
+        clearError();
+      }
       setPendingConfirmation(null);
       setStreamStartedAt(Date.now());
       setStreaming(true);

@@ -170,7 +170,7 @@ export function ChatInputBar({
           multiline
           value={text}
           onChangeText={handleTextChange}
-          editable={!disabled && !isStreaming}
+          editable={!disabled}
         />
 
         {isStreaming && onStop ? (

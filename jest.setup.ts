@@ -163,6 +163,7 @@ jest.mock('react-native', () => {
     FlatList: View,
     SectionList: View,
     TextInput,
+    useColorScheme: () => 'light',
     Switch: View,
     ActivityIndicator: View,
     RefreshControl: View,

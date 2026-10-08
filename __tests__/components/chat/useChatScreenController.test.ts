@@ -12,7 +12,7 @@ import { useAIStore } from '@/stores/aiStore';
 import { useNoteStore } from '@/stores/noteStore';
 import { useTodoStore } from '@/stores/todoStore';
 import * as ChatStorageService from '@/services/ChatStorageService';
-import { renderHook, act } from '@testing-library/react-native';
+import { renderHook, act, waitFor } from '@testing-library/react-native';
 
 jest.mock('@/services/AIService');
 jest.mock('@/services/ai/actionExecutor');
@@ -391,5 +391,56 @@ describe('useChatScreenController — first-message persistence', () => {
     await act(async () => { await result.current.handleSend('Hello'); });
 
     expect(ChatStorageService.saveThread).toHaveBeenCalled();
+  });
+
+  it('clears streaming state before a slow completed-response save resolves', async () => {
+    const model = {} as LanguageModel;
+    mockInitializeModel.mockResolvedValueOnce(model);
+
+    let resolveSave!: () => void;
+    const slowSave = new Promise<void>((resolve) => {
+      resolveSave = resolve;
+    });
+    ChatStorageService.saveThread
+      .mockResolvedValueOnce(undefined)
+      .mockImplementationOnce(() => slowSave);
+    mockStreamChatResponse.mockImplementation(async function* (): AsyncGenerator<string> {
+      yield textDelta('Hello!');
+    });
+
+    setupStores({ activeThread });
+    const { result } = renderHook(() => useChatScreenController(THREAD_ID));
+    const sendPromise = result.current.handleSend('Hello') as Promise<void>;
+
+    await act(async () => {
+      await waitFor(() => expect(ChatStorageService.saveThread).toHaveBeenCalledTimes(2));
+    });
+
+    expect(chatState.setStreaming).toHaveBeenLastCalledWith(false);
+    resolveSave();
+    await act(async () => {
+      await sendPromise;
+    });
+  });
+
+  it('surfaces a completed-response save failure after clearing streaming state', async () => {
+    const model = {} as LanguageModel;
+    mockInitializeModel.mockResolvedValueOnce(model);
+    ChatStorageService.saveThread
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('disk full'));
+    mockStreamChatResponse.mockImplementation(async function* (): AsyncGenerator<string> {
+      yield textDelta('Hello!');
+    });
+
+    setupStores({ activeThread });
+    const { result } = renderHook(() => useChatScreenController(THREAD_ID));
+
+    await act(async () => {
+      await result.current.handleSend('Hello');
+    });
+
+    expect(result.current.localError).toBe('disk full');
+    expect(chatState.setStreaming).toHaveBeenLastCalledWith(false);
   });
 });

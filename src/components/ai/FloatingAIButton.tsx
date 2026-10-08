@@ -228,7 +228,6 @@ export function FloatingAIButton({ currentRouteName }: FloatingAIButtonProps) {
     !isEnabled
     || !isPro
     || currentRouteName === 'ChatThreadList'
-    || currentRouteName === 'ChatScreen'
   ) {
     return null;
   }

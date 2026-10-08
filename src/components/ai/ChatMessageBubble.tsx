@@ -292,7 +292,7 @@ function ChatMessageBubbleImpl({ message, isStreaming, onLongPress }: ChatMessag
             {message.content}
           </Text>
         ) : (
-          <View>
+          <View style={{ width: '100%' }}>
             {thoughtContent ? (
               thoughtExpanded ? (
                 <View

@@ -5,6 +5,8 @@ import { ChatThread, ChatThreadSummary } from '../models/Chat';
 import { buildThreadSummary, isDefaultChatTitle } from '../utils/chatThreadSummary';
 import { GitHubService } from './GitHubService';
 import { AccountStorage } from './AccountStorage';
+import { GitFsService } from './git/GitFsService';
+import { emitGitContentRefresh } from '../hooks/useGitRefreshEvent';
 
 const GITHUB_API = 'https://api.github.com';
 const CHAT_DIR = 'chat';
@@ -314,6 +316,27 @@ async function enqueueRepoWrite<T>(
 
   repoWriteQueue.set(key, tracked);
   return next;
+}
+
+/**
+ * Best-effort refresh of the local clone after a successful chat mutation.
+ * If the repo is cloned locally, pull the latest changes and emit a refresh event
+ * so the Git tab's file list reflects the new/deleted chat file.
+ * Failures are intentionally swallowed — the remote write already succeeded.
+ */
+async function refreshCloneAfterChatMutation(owner: string, repo: string, branch: string): Promise<void> {
+  try {
+    const repoPath = `${owner}/${repo}`;
+    if (!(await GitFsService.isCloned({ repoPath }))) {
+      return;
+    }
+    const result = await GitFsService.pullWithFastForward({ repoPath, branch });
+    if (result.ok) {
+      emitGitContentRefresh({ kind: 'content' });
+    }
+  } catch {
+    // best-effort — local clone refresh failure must not propagate
+  }
 }
 
 function normalizeLoadedThread(thread: ChatThread): ChatThread {
@@ -670,6 +693,7 @@ async function saveThreadNow(thread: ChatThread): Promise<void> {
 
   await writeIndex(owner, repo, branch, nextSummaries);
   await AsyncStorage.setItem(getThreadCacheKey(owner, repo, branch, thread.id), JSON.stringify(thread));
+  await refreshCloneAfterChatMutation(owner, repo, branch);
 }
 
 export async function saveThread(thread: ChatThread): Promise<void> {
@@ -707,6 +731,7 @@ export async function deleteThread(
     const nextSummaries = latestSummaries.filter((summary) => summary.id !== threadId);
     await writeIndex(owner, repo, branch, nextSummaries);
     await AsyncStorage.removeItem(getThreadCacheKey(owner, repo, branch, threadId));
+    await refreshCloneAfterChatMutation(owner, repo, branch);
     return true;
   });
 }

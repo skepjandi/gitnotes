@@ -42,6 +42,17 @@ jest.mock('@/services/AccountStorage');
 const MockAccountStorage = require('@/services/AccountStorage');
 MockAccountStorage.AccountStorage.getOAuthCredential = jest.fn(() => Promise.resolve(null));
 
+jest.mock('@/services/git/GitFsService', () => ({
+  GitFsService: {
+    isCloned: jest.fn(() => Promise.resolve(false)),
+    pullWithFastForward: jest.fn(() => Promise.resolve({ ok: false, reason: 'unknown' })),
+  },
+}));
+
+jest.mock('@/hooks/useGitRefreshEvent', () => ({
+  emitGitContentRefresh: jest.fn(),
+}));
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ChatThread, ChatThreadSummary } from '@/models/Chat';
 import type { AccountSummary } from '@/services/AuthService';
@@ -51,6 +62,8 @@ import * as ChatStorageService from '@/services/ChatStorageService';
 import { GitHubService } from '@/services/GitHubService';
 import AuthService from '@/services/AuthService';
 import { AccountStorage } from '@/services/AccountStorage';
+import { GitFsService } from '@/services/git/GitFsService';
+import { emitGitContentRefresh } from '@/hooks/useGitRefreshEvent';
 
 const OWNER = 'test-owner';
 const REPO = 'test-repo';
@@ -359,6 +372,186 @@ describe('ChatStorageService regression', () => {
 
       await expect(ChatStorageService.loadThread(OWNER, REPO, THREAD_ID, BRANCH))
         .rejects.toThrow('GitHub not authenticated');
+    });
+  });
+
+  describe('local clone refresh after save — issue #1770', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockRequest.mockReset();
+      mockRequest.mockResolvedValue({ data: null });
+      (GitHubService.isAuthenticated as jest.Mock).mockReset();
+      (GitHubService.isAuthenticated as jest.Mock).mockReturnValue(true);
+      (GitHubService.isAuthenticatedAsync as jest.Mock).mockReset();
+      (GitHubService.isAuthenticatedAsync as jest.Mock).mockResolvedValue(true);
+      (AuthService.getToken as jest.Mock).mockResolvedValue('test-token');
+      (AuthService.getTokenById as jest.Mock).mockResolvedValue('test-token');
+      MockAuthService.default.getToken = jest.fn(() => Promise.resolve('test-token'));
+      MockAuthService.getToken = MockAuthService.default.getToken;
+      MockAuthService.default.getTokenById = jest.fn(() => Promise.resolve('test-token'));
+      MockAuthService.getTokenById = MockAuthService.default.getTokenById;
+      ChatStorageService.setChatRepoAccount(null);
+      (GitFsService.isCloned as jest.Mock).mockResolvedValue(false);
+      (GitFsService.pullWithFastForward as jest.Mock).mockResolvedValue({ ok: false, reason: 'unknown' });
+    });
+
+    it('calls pullWithFastForward with correct repoPath and branch when clone exists', async () => {
+      (GitFsService.isCloned as jest.Mock).mockResolvedValue(true);
+      (GitFsService.pullWithFastForward as jest.Mock).mockResolvedValue({ ok: true });
+
+      const thread = makeThread();
+      mockRequest
+        .mockRejectedValueOnce(createAxiosError('Not Found', 404))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce({ data: null });
+
+      await ChatStorageService.saveThread(thread);
+
+      expect(GitFsService.isCloned).toHaveBeenCalledWith({ repoPath: `${OWNER}/${REPO}` });
+      expect(GitFsService.pullWithFastForward).toHaveBeenCalledWith({
+        repoPath: `${OWNER}/${REPO}`,
+        branch: BRANCH,
+      });
+    });
+
+    it('emits GitContentRefresh event after successful pull on save', async () => {
+      (GitFsService.isCloned as jest.Mock).mockResolvedValue(true);
+      (GitFsService.pullWithFastForward as jest.Mock).mockResolvedValue({ ok: true });
+
+      const thread = makeThread();
+      mockRequest
+        .mockRejectedValueOnce(createAxiosError('Not Found', 404))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce({ data: null });
+
+      await ChatStorageService.saveThread(thread);
+
+      expect(emitGitContentRefresh).toHaveBeenCalledWith({ kind: 'content' });
+    });
+
+    it('does not call pull when no local clone exists on save', async () => {
+      (GitFsService.isCloned as jest.Mock).mockResolvedValue(false);
+
+      const thread = makeThread();
+      mockRequest
+        .mockRejectedValueOnce(createAxiosError('Not Found', 404))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce({ data: null });
+
+      await ChatStorageService.saveThread(thread);
+
+      expect(GitFsService.pullWithFastForward).not.toHaveBeenCalled();
+      expect(emitGitContentRefresh).not.toHaveBeenCalled();
+    });
+
+    it('does not emit refresh when pull fails with diverged on save', async () => {
+      (GitFsService.isCloned as jest.Mock).mockResolvedValue(true);
+      (GitFsService.pullWithFastForward as jest.Mock).mockResolvedValue({ ok: false, reason: 'diverged' });
+
+      const thread = makeThread();
+      mockRequest
+        .mockRejectedValueOnce(createAxiosError('Not Found', 404))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce({ data: null });
+
+      await ChatStorageService.saveThread(thread);
+
+      expect(emitGitContentRefresh).not.toHaveBeenCalled();
+    });
+
+    it('saveThread still succeeds when pull throws unexpectedly', async () => {
+      (GitFsService.isCloned as jest.Mock).mockResolvedValue(true);
+      (GitFsService.pullWithFastForward as jest.Mock).mockRejectedValueOnce(new Error('pull error'));
+
+      const thread = makeThread();
+      mockRequest
+        .mockRejectedValueOnce(createAxiosError('Not Found', 404))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify({ threads: [] })))
+        .mockResolvedValueOnce({ data: null });
+
+      await ChatStorageService.saveThread(thread);
+
+      const cached = await AsyncStorage.getItem(`chat-thread-${OWNER}-${REPO}-${BRANCH}-${THREAD_ID}`);
+      expect(cached).not.toBeNull();
+    });
+  });
+
+  describe('local clone refresh after delete — issue #1770', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockRequest.mockClear();
+      (GitFsService.isCloned as jest.Mock).mockClear();
+      (GitFsService.pullWithFastForward as jest.Mock).mockClear();
+      (GitFsService.isCloned as jest.Mock).mockResolvedValue(false);
+      (GitFsService.pullWithFastForward as jest.Mock).mockResolvedValue({ ok: false, reason: 'unknown' });
+
+      mockRequest.mockImplementation((request: { method?: string; url?: string }) => {
+        if (request.method === 'DELETE') return Promise.resolve({ data: null });
+        if (request.url?.includes('index.json')) {
+          return Promise.resolve(mockGitHubFileResponse(JSON.stringify({ threads: [{ id: THREAD_ID, title: 'Thread', updatedAt: Date.now(), messageCount: 0, preview: '' }] })));
+        }
+        return Promise.resolve(mockGitHubFileResponse(JSON.stringify({ title: 'Thread', messages: [] })));
+      });
+    });
+
+    it('calls pullWithFastForward with correct repoPath and branch when clone exists', async () => {
+      (GitFsService.isCloned as jest.Mock).mockResolvedValue(true);
+      (GitFsService.pullWithFastForward as jest.Mock).mockResolvedValue({ ok: true });
+
+      await ChatStorageService.deleteThread(OWNER, REPO, THREAD_ID, BRANCH);
+
+      expect(GitFsService.isCloned).toHaveBeenCalledWith({ repoPath: `${OWNER}/${REPO}` });
+      expect(GitFsService.pullWithFastForward).toHaveBeenCalledWith({
+        repoPath: `${OWNER}/${REPO}`,
+        branch: BRANCH,
+      });
+    });
+
+    it('emits GitContentRefresh event after successful pull on delete', async () => {
+      (GitFsService.isCloned as jest.Mock).mockResolvedValue(true);
+      (GitFsService.pullWithFastForward as jest.Mock).mockResolvedValue({ ok: true });
+
+      await ChatStorageService.deleteThread(OWNER, REPO, THREAD_ID, BRANCH);
+
+      expect(emitGitContentRefresh).toHaveBeenCalledWith({ kind: 'content' });
+    });
+
+    it('does not call pull when no local clone exists on delete', async () => {
+      (GitFsService.isCloned as jest.Mock).mockResolvedValue(false);
+
+      await ChatStorageService.deleteThread(OWNER, REPO, THREAD_ID, BRANCH);
+
+      expect(GitFsService.pullWithFastForward).not.toHaveBeenCalled();
+      expect(emitGitContentRefresh).not.toHaveBeenCalled();
+    });
+
+    it('does not emit refresh when pull fails with network error on delete', async () => {
+      (GitFsService.isCloned as jest.Mock).mockResolvedValue(true);
+      (GitFsService.pullWithFastForward as jest.Mock).mockResolvedValue({ ok: false, reason: 'network' });
+
+      await ChatStorageService.deleteThread(OWNER, REPO, THREAD_ID, BRANCH);
+
+      expect(emitGitContentRefresh).not.toHaveBeenCalled();
+    });
+
+    it('deleteThread still succeeds when pull throws unexpectedly', async () => {
+      (GitFsService.isCloned as jest.Mock).mockResolvedValue(true);
+      (GitFsService.pullWithFastForward as jest.Mock).mockRejectedValueOnce(new Error('pull error'));
+
+      await ChatStorageService.deleteThread(OWNER, REPO, THREAD_ID, BRANCH);
+
+      const cached = await AsyncStorage.getItem(`chat-thread-${OWNER}-${REPO}-${BRANCH}-${THREAD_ID}`);
+      expect(cached).toBeNull();
     });
   });
 });

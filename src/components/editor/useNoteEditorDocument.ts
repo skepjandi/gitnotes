@@ -391,6 +391,7 @@ export function useNoteEditorDocument({
           return;
         }
         savedNoteId = newNote.id;
+        currentFilePathRef.current = newNote.filePath;
         HapticService.success();
       }
 

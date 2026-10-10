@@ -7,6 +7,7 @@
 
 import * as FileSystem from 'expo-file-system/legacy';
 import { parseRepoPath } from '../utils/gitPathParser';
+import { GitFsService } from './git/GitFsService';
 
 const CLONES_SUBDIR = 'GitNotes/';
 
@@ -174,5 +175,9 @@ export const CloneSyncService = {
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
+  },
+
+  async listTree(repoPath: string, ref: string) {
+    return GitFsService.listTree({ repoPath, ref });
   },
 };

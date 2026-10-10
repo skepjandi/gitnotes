@@ -325,6 +325,8 @@ jest.mock('@react-native-async-storage/async-storage', () => {
   let store: Record<string, string> = {};
   return {
     __esModule: true,
+    __resetStore: () => { store = {}; },
+    __getStore: () => store,
     default: {
       getItem: jest.fn(async (k: string) => (k in store ? store[k] : null)),
       setItem: jest.fn(async (k: string, v: string) => { store[k] = v; }),

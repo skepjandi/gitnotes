@@ -122,7 +122,6 @@ onRemoveAccount: (id: string, login: string) => void;
   onOpenRenderStyleSettings: () => void;
   onClearData: () => void;
   onResetOnboarding: () => void;
-  onStartQuickSetup: () => void;
   isPro: boolean;
   isProLoading: boolean;
   proStatusLabel: string;
@@ -238,7 +237,6 @@ export function SettingsContent(props: SettingsContentProps) {
     onOpenRenderStyleSettings,
     onClearData,
     onResetOnboarding,
-    onStartQuickSetup,
     isPro,
     isProLoading,
     proStatusLabel,
@@ -345,8 +343,6 @@ export function SettingsContent(props: SettingsContentProps) {
       .flatMap((summary) => summary.hosts)
       .filter((host) => host.provider === 'github')
       .map((host) => host.id);
-
-    if (githubHostIds.length === 0) return;
 
     void Promise.all(
       githubHostIds.map(async (hostId) => {
@@ -620,186 +616,173 @@ export function SettingsContent(props: SettingsContentProps) {
         ) : null}
       </Group>
 
-      <Group title={t('settings.quickSetup')} testID="settings.group.quick-setup">
-        <GroupRow
-          testID="settings.button.quick-setup"
-          onPress={onStartQuickSetup}
-          leading={<Ionicons name="flash-outline" size={20} color={colors.primary} />}
-          trailing={<Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />}
-        >
-          <Text style={[styles.settingLabel, { color: colors.primary }]}>
-            {t('settings.quickSetup')}
-          </Text>
-        </GroupRow>
-      </Group>
-
       <Group title={t('accounts.title')}>
-          {accountSummaries.length === 0 ? (
-            <>
-              {/* PAT-based Connect Host */}
-              <GroupRow
-                testID="settings.button.connect-host"
-                onPress={() => onAddHost()}
-                leading={<Ionicons name="add-circle-outline" size={20} color={colors.primary} />}
-                trailing={<Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />}
-              >
-                <Text style={[styles.settingLabel, { color: colors.primary }]}>
-                  {t('connectHost.connectHost')}
-                </Text>
-              </GroupRow>
-              {/* OAuth-based GitHub connect — fresh install path */}
-              <GroupRow
-                testID="settings.button.connect-github-oauth"
-                onPress={() => onConnectOAuth(null)}
-                leading={<Ionicons name="logo-github" size={20} color={colors.primary} />}
-                trailing={
-                  oauthLoading['__fresh__'] ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : oauthError['__fresh__'] ? (
-                    <Text style={{ fontSize: type.xs, color: colors.error }}>{oauthError['__fresh__']}</Text>
-                  ) : (
-                    <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                  )
+        {accountSummaries.length === 0 ? (
+          <>
+            {/* PAT-based Connect Host */}
+            <GroupRow
+              testID="settings.button.connect-host"
+              onPress={() => onAddHost()}
+              leading={<Ionicons name="add-circle-outline" size={20} color={colors.primary} />}
+              trailing={<Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />}
+            >
+              <Text style={[styles.settingLabel, { color: colors.primary }]}>
+                {t('connectHost.connectHost')}
+              </Text>
+            </GroupRow>
+            {/* OAuth-based GitHub connect — fresh install path */}
+            <GroupRow
+              testID="settings.button.connect-github-oauth"
+              onPress={() => onConnectOAuth(null)}
+              leading={<Ionicons name="logo-github" size={20} color={colors.primary} />}
+              trailing={
+                oauthLoading['__fresh__'] ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : oauthError['__fresh__'] ? (
+                  <Text style={{ fontSize: type.xs, color: colors.error }}>{oauthError['__fresh__']}</Text>
+                ) : (
+                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                )
+              }
+            >
+              <Text style={[styles.settingLabel, { color: colors.primary }]}>
+                {t('settings.connectWithGitHub')}
+              </Text>
+            </GroupRow>
+            <View style={{ paddingHorizontal: spacing[4], paddingBottom: spacing[2] }}>
+              <Text style={{ fontSize: type.xs, color: colors.textSecondary }}>
+                {t('settings.oauthFullAccessWarning')}
+              </Text>
+            </View>
+          </>
+        ) : (
+          <>
+            <GroupRow
+              testID="settings.button.connect-github-oauth-existing"
+              onPress={() => {
+                if (isProLoading || oauthLoading['__fresh__']) return;
+                if (isPro) {
+                  onConnectOAuth(null);
+                } else {
+                  onOpenPaywall();
                 }
-              >
-                <Text style={[styles.settingLabel, { color: colors.primary }]}>
-                  {t('settings.connectWithGitHub')}
-                </Text>
-              </GroupRow>
-              <View style={{ paddingHorizontal: spacing[4], paddingBottom: spacing[2] }}>
-                <Text style={{ fontSize: type.xs, color: colors.textSecondary }}>
-                  {t('settings.oauthFullAccessWarning')}
-                </Text>
-              </View>
-            </>
-          ) : (
-            <>
-              <GroupRow
-                testID="settings.button.connect-github-oauth-existing"
-                onPress={() => {
-                  if (isProLoading || oauthLoading['__fresh__']) return;
-                  if (isPro) {
-                    onConnectOAuth(null);
-                  } else {
-                    onOpenPaywall();
-                  }
-                }}
-                leading={<Ionicons name="logo-github" size={20} color={colors.primary} />}
-                trailing={
-                  isProLoading || oauthLoading['__fresh__'] ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
-                  ) : oauthError['__fresh__'] ? (
-                    <Text style={{ fontSize: type.xs, color: colors.error }}>{oauthError['__fresh__']}</Text>
-                  ) : (
-                    <Ionicons
-                      name={isPro ? 'chevron-forward' : 'lock-closed-outline'}
-                      size={20}
-                      color={colors.textSecondary}
-                    />
-                  )
-                }
-              >
-                <Text style={[styles.settingLabel, { color: colors.primary }]}>
-                  {t('settings.connectWithGitHub')}
-                </Text>
-              </GroupRow>
-              {accountSummaries.map((summary) => {
-                const isActive = summary.accountId === activeAccountId;
-                return (
-                  <React.Fragment key={summary.accountId}>
-                    <View testID="settings.row.account">
-                      <GroupRow
-                        leading={summary.account.avatarUrl ? <Image source={{ uri: summary.account.avatarUrl }} style={styles.avatar} /> : null}
-                      >
-                        <Text style={[styles.settingLabel, { color: colors.text }]}>
-                          {summary.account.name || summary.account.login}
-                          {isActive ? ` · ${t('accounts.active')}` : ''}
-                        </Text>
-                        <Text style={[styles.settingValue, { color: colors.textSecondary }]}>@{summary.account.login}</Text>
-                      </GroupRow>
-                    </View>
-                    {summary.hosts.map((host) => {
-                      const isHostActive = host.id === summary.activeHostId;
-                      const isHostExpanded = !shouldCollapseHosts || expandedHostIds.has(host.id);
-                      const hostLogin = host.hostLogin || GIT_HOST_LABELS[host.provider];
-                      const idLabel = host.instanceBaseUrl
-                        ? `${hostLogin}@${host.instanceBaseUrl.replace(/^https?:\/\//, '')}`
-                        : hostLogin;
-                      const isGithubHost = host.provider === 'github';
-                      return (
-                        <React.Fragment key={host.id}>
-                          <View testID={`settings.row.host.${host.id}`}>
-                            <GroupRow
-                              leading={<Ionicons name="globe-outline" size={19} color={colors.textSecondary} />}
-                              trailing={
-                                <View className="flex-row items-center gap-2">
-                                  {shouldCollapseHosts ? (
-                                    <TouchableOpacity
-                                      testID={`settings.button.host-collapse-toggle.${host.id}`}
-                                      onPress={() => toggleHostExpansion(host.id)}
-                                      accessibilityRole="button"
-                                      accessibilityLabel={isHostExpanded ? 'Collapse credentials' : 'Expand credentials'}
-                                      hitSlop={8}
-                                    >
-                                      <Ionicons
-                                        name={isHostExpanded ? 'chevron-down' : 'chevron-forward'}
-                                        size={18}
-                                        color={colors.textSecondary}
-                                      />
-                                    </TouchableOpacity>
-                                  ) : null}
+              }}
+              leading={<Ionicons name="logo-github" size={20} color={colors.primary} />}
+              trailing={
+                isProLoading || oauthLoading['__fresh__'] ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : oauthError['__fresh__'] ? (
+                  <Text style={{ fontSize: type.xs, color: colors.error }}>{oauthError['__fresh__']}</Text>
+                ) : (
+                  <Ionicons
+                    name={isPro ? 'chevron-forward' : 'lock-closed-outline'}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                )
+              }
+            >
+              <Text style={[styles.settingLabel, { color: colors.primary }]}>
+                {t('settings.connectWithGitHub')}
+              </Text>
+            </GroupRow>
+            {accountSummaries.map((summary) => {
+              const isActive = summary.accountId === activeAccountId;
+              return (
+                <React.Fragment key={summary.accountId}>
+                  <View testID="settings.row.account">
+                    <GroupRow
+                      leading={summary.account.avatarUrl ? <Image source={{ uri: summary.account.avatarUrl }} style={styles.avatar} /> : null}
+                    >
+                      <Text style={[styles.settingLabel, { color: colors.text }]}>
+                        {summary.account.name || summary.account.login}
+                        {isActive ? ` · ${t('accounts.active')}` : ''}
+                      </Text>
+                      <Text style={[styles.settingValue, { color: colors.textSecondary }]}>@{summary.account.login}</Text>
+                    </GroupRow>
+                  </View>
+                  {summary.hosts.map((host) => {
+                    const isHostActive = host.id === summary.activeHostId;
+                    const isHostExpanded = !shouldCollapseHosts || expandedHostIds.has(host.id);
+                    const hostLogin = host.hostLogin || GIT_HOST_LABELS[host.provider];
+                    const idLabel = host.instanceBaseUrl
+                      ? `${hostLogin}@${host.instanceBaseUrl.replace(/^https?:\/\//, '')}`
+                      : hostLogin;
+                    const isGithubHost = host.provider === 'github';
+                    return (
+                      <React.Fragment key={host.id}>
+                        <View testID={`settings.row.host.${host.id}`}>
+                          <GroupRow
+                            leading={<Ionicons name="globe-outline" size={19} color={colors.textSecondary} />}
+                            trailing={
+                              <View className="flex-row items-center gap-2">
+                                {shouldCollapseHosts ? (
                                   <TouchableOpacity
-                                    testID={`settings.button.host-overflow.${host.id}`}
-                                    onPress={() => setOverflowHostId(host.id)}
+                                    testID={`settings.button.host-collapse-toggle.${host.id}`}
+                                    onPress={() => toggleHostExpansion(host.id)}
                                     accessibilityRole="button"
-                                    accessibilityLabel={`${GIT_HOST_LABELS[host.provider]} actions`}
+                                    accessibilityLabel={isHostExpanded ? 'Collapse credentials' : 'Expand credentials'}
                                     hitSlop={8}
                                   >
-                                    <Ionicons name="ellipsis-horizontal" size={22} color={colors.textSecondary} />
+                                    <Ionicons
+                                      name={isHostExpanded ? 'chevron-down' : 'chevron-forward'}
+                                      size={18}
+                                      color={colors.textSecondary}
+                                    />
                                   </TouchableOpacity>
-                                </View>
-                              }
-                            >
-                              <View className="flex-row items-center gap-2">
-                                <Text numberOfLines={1} style={{ fontSize: type.sm, fontWeight: '600', color: colors.text }}>
-                                  {GIT_HOST_LABELS[host.provider]}
-                                </Text>
-                                {isHostActive ? (
-                                  <View style={{ paddingHorizontal: 6, minHeight: 18, alignItems: 'center', justifyContent: 'center', borderRadius: 6, backgroundColor: colors.primary }}>
-                                    <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '800', letterSpacing: 0.6 }}>
-                                      {t('accounts.active').toUpperCase()}
-                                    </Text>
-                                  </View>
                                 ) : null}
+                                <TouchableOpacity
+                                  testID={`settings.button.host-overflow.${host.id}`}
+                                  onPress={() => setOverflowHostId(host.id)}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={`${GIT_HOST_LABELS[host.provider]} actions`}
+                                  hitSlop={8}
+                                >
+                                  <Ionicons name="ellipsis-horizontal" size={22} color={colors.textSecondary} />
+                                </TouchableOpacity>
                               </View>
-                              <Text numberOfLines={1} style={{ fontSize: type.xs, color: colors.textSecondary, fontFamily: 'Menlo', marginTop: 3 }}>
-                                {idLabel}
+                            }
+                          >
+                            <View className="flex-row items-center gap-2">
+                              <Text numberOfLines={1} style={{ fontSize: type.sm, fontWeight: '600', color: colors.text }}>
+                                {GIT_HOST_LABELS[host.provider]}
                               </Text>
-                            </GroupRow>
-                          </View>
+                              {isHostActive ? (
+                                <View style={{ paddingHorizontal: 6, minHeight: 18, alignItems: 'center', justifyContent: 'center', borderRadius: 6, backgroundColor: colors.primary }}>
+                                  <Text style={{ color: '#ffffff', fontSize: 9, fontWeight: '800', letterSpacing: 0.6 }}>
+                                    {t('accounts.active').toUpperCase()}
+                                  </Text>
+                                </View>
+                              ) : null}
+                            </View>
+                            <Text numberOfLines={1} style={{ fontSize: type.xs, color: colors.textSecondary, fontFamily: 'Menlo', marginTop: 3 }}>
+                              {idLabel}
+                            </Text>
+                          </GroupRow>
+                        </View>
 
-                          {isHostExpanded ? (
-                            <>
-                              <HostCredentialRow
-                                kind="ssh"
-                                hostId={host.id}
-                                sshEnabled={hostUseSsh[host.id] ?? false}
-                                oauthConnected={false}
-                                oauthLoading={false}
-                                oauthError={null}
-                                appCredential={null}
-                                appLoading={false}
-                                appError={null}
-                                hasPat={false}
-                                patLoading={false}
-                                patError={null}
-                                onToggleSSH={() => onToggleSSH(host.id)}
-                                onOAuthPress={() => undefined}
-                                onAppPress={() => undefined}
-                                onPatPress={() => undefined}
-                              />
-                              {isGithubHost ? (
-                                <>
+                        {isHostExpanded ? (
+                          <>
+                            <HostCredentialRow
+                              kind="ssh"
+                              hostId={host.id}
+                              sshEnabled={hostUseSsh[host.id] ?? false}
+                              oauthConnected={false}
+                              oauthLoading={false}
+                              oauthError={null}
+                              appCredential={null}
+                              appLoading={false}
+                              appError={null}
+                              hasPat={false}
+                              patLoading={false}
+                              patError={null}
+                              onToggleSSH={() => onToggleSSH(host.id)}
+                              onOAuthPress={() => undefined}
+                              onAppPress={() => undefined}
+                              onPatPress={() => undefined}
+                            />
+                            {isGithubHost ? (
+                              <>
                             <HostCredentialRow
                               kind="oauth"
                               hostId={host.id}
@@ -872,99 +855,100 @@ export function SettingsContent(props: SettingsContentProps) {
                           </>
                         ) : null}
 
-                          <ContextMenu
-                            visible={overflowHostId === host.id}
-                            onClose={() => setOverflowHostId(null)}
-                            title={GIT_HOST_LABELS[host.provider]}
-                            subtitle={idLabel}
-                            headerIcon="ellipsis-horizontal-circle-outline"
-                            items={[
-                              {
-                                icon: 'unlink-outline',
-                                label: t('accounts.disconnect'),
-                                destructive: true,
-                                testID: `settings.button.disconnect-host.${host.id}`,
-                                onPress: () => onDisconnectHost(host.id),
-                              },
-                            ]}
-                          />
-                        </React.Fragment>
-                      );
-                    })}
-                  </React.Fragment>
-                );
-              })}
-            </>
-          )}
+                        <ContextMenu
+                          visible={overflowHostId === host.id}
+                          onClose={() => setOverflowHostId(null)}
+                          title={GIT_HOST_LABELS[host.provider]}
+                          subtitle={idLabel}
+                          headerIcon="ellipsis-horizontal-circle-outline"
+                          items={[
+                            {
+                              icon: 'unlink-outline',
+                              label: t('accounts.disconnect'),
+                              destructive: true,
+                              testID: `settings.button.disconnect-host.${host.id}`,
+                              onPress: () => onDisconnectHost(host.id),
+                            },
+                          ]}
+                        />
+                      </React.Fragment>
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
+          </>
+        )}
+          </Group>
 
-            <Group>
-              {accountSummaries.length > 0 ? (
-                <>
+          <Group>
+            {accountSummaries.length > 0 ? (
+              <>
+                <GroupRow
+                  testID={isPro ? 'settings.button.connect-host' : 'settings.row.connect-host-locked'}
+                  onPress={isPro ? () => onAddHost() : onAddHostLocked}
+                  leading={<Ionicons name="add-circle-outline" size={20} color={colors.primary} />}
+                  trailing={
+                    isPro ? (
+                      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                    ) : (
+                      <Ionicons name="lock-closed" size={18} color={colors.textSecondary} />
+                    )
+                  }
+                >
+                  <Text style={[styles.settingLabel, { color: colors.primary }]}>
+                    {t('connectHost.connectHost')}
+                  </Text>
+                </GroupRow>
+
+                {accountSummaries.length < 2 && accountSummaries.every((s) => s.hosts.length <= 1) ? null : (
                   <GroupRow
-                    testID={isPro ? 'settings.button.connect-host' : 'settings.row.connect-host-locked'}
-                    onPress={isPro ? () => onAddHost() : onAddHostLocked}
-                    leading={<Ionicons name="add-circle-outline" size={20} color={colors.primary} />}
-                    trailing={
-                      isPro ? (
-                        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                      ) : (
-                        <Ionicons name="lock-closed" size={18} color={colors.textSecondary} />
-                      )
-                    }
+                    testID="settings.button.remove-token"
+                    onPress={onRemoveToken}
+                    accessibilityRole="button"
+                    leading={<Ionicons name="trash-outline" size={18} color={colors.error} />}
+                    trailing={<HintIcon hintKey="hints.settings.disconnectAllHosts" testID="hint.disconnect-all-hosts" />}
                   >
-                    <Text style={[styles.settingLabel, { color: colors.primary }]}>
-                      {t('connectHost.connectHost')}
+                    <Text
+                      style={[styles.settingLabel, { color: colors.error }]}
+                    >
+                      {t('accounts.disconnectAllHosts')}
                     </Text>
                   </GroupRow>
-
-                  {accountSummaries.length < 2 && accountSummaries.every((s) => s.hosts.length <= 1) ? null : (
-                    <GroupRow
-                      testID="settings.button.remove-token"
-                      onPress={onRemoveToken}
-                      accessibilityRole="button"
-                      leading={<Ionicons name="trash-outline" size={18} color={colors.error} />}
-                      trailing={<HintIcon hintKey="hints.settings.disconnectAllHosts" testID="hint.disconnect-all-hosts" />}
-                    >
-                      <Text
-                        style={[styles.settingLabel, { color: colors.error }]}
-                      >
-                        {t('accounts.disconnectAllHosts')}
-                      </Text>
-                    </GroupRow>
-                  )}
-                </>
-              ) : null}
-          <GroupRow
-            testID="settings.button.install-github-app"
-            onPress={() => {
-              if (!isPro && accountSummaries.length > 0) {
-                onOpenPaywall();
-              } else {
-                onConnectGitHubApp(null);
-              }
-            }}
-            leading={<Ionicons name="cube-outline" size={20} color={colors.primary} />}
-            trailing={
-              appLoading['__fresh__'] ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : appError['__fresh__'] ? (
-                <Text style={{ fontSize: type.xs, color: colors.error }}>{appError['__fresh__']}</Text>
-              ) : (
-                <Ionicons
-                  name={!isPro && accountSummaries.length > 0 ? 'lock-closed-outline' : 'chevron-forward'}
-                  size={20}
-                  color={colors.textSecondary}
-                />
-              )
+                )}
+              </>
+            ) : null}
+        <GroupRow
+          testID="settings.button.install-github-app"
+          onPress={() => {
+            if (!isPro && accountSummaries.length > 0) {
+              onOpenPaywall();
+            } else {
+              onConnectGitHubApp(null);
             }
-          >
-            <Text style={[styles.settingLabel, { color: colors.primary }]}>
-              {t('settings.installGithubApp')}
-            </Text>
-          </GroupRow>
-        </Group>
+          }}
+          leading={<Ionicons name="cube-outline" size={20} color={colors.primary} />}
+          trailing={
+            appLoading['__fresh__'] ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : appError['__fresh__'] ? (
+              <Text style={{ fontSize: type.xs, color: colors.error }}>{appError['__fresh__']}</Text>
+            ) : (
+              <Ionicons
+                name={!isPro && accountSummaries.length > 0 ? 'lock-closed-outline' : 'chevron-forward'}
+                size={20}
+                color={colors.textSecondary}
+              />
+            )
+          }
+        >
+          <Text style={[styles.settingLabel, { color: colors.primary }]}>
+            {t('settings.installGithubApp')}
+          </Text>
+        </GroupRow>
+      </Group>
 
-        <Group title={t('settings.repositories')}>
+      <Group title={t('settings.repositories')}>
         {repositories.length === 0 ? (
           <GroupRow>
             <View className="items-center gap-1.5 py-2">
@@ -1111,7 +1095,6 @@ export function SettingsContent(props: SettingsContentProps) {
         >
           <Text style={[styles.settingLabel, { color: colors.text }]}>{t('settings.manageTemplates')}</Text>
         </GroupRow>
-        </Group>
       </Group>
 
       <Group title={t('settings.noteRendering')}>

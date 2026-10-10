@@ -73,12 +73,9 @@ export default function OnboardingScreen({
 }: OnboardingScreenProps) {
   const { t } = useTranslation();
 
+  // Standard flow: step 0=Welcome, step 1=Connect Git Host, steps 2-5=Info pages, step 6=AI
+  // INFO_STEPS excludes Welcome since it's shown at step 0
   const INFO_STEPS = [
-    {
-      title: t('onboarding.steps.welcomeTitle'),
-      description: t('onboarding.steps.welcomeDescription'),
-      icon: INFO_STEP_ICONS[0],
-    },
     {
       title: t('onboarding.steps.linkTitle'),
       description: t('onboarding.steps.linkDescription'),
@@ -101,9 +98,11 @@ export default function OnboardingScreen({
     },
   ];
 
-  const TOKEN_STEP = INFO_STEPS.length;
-  const AI_STEP = TOKEN_STEP + 1;
-  const TOTAL_STEPS = INFO_STEPS.length + 2;
+  const HOST_STEP = 0;
+  const TOKEN_STEP = HOST_STEP + 1; // Connect a Git Host at index 1
+  const INFO_STEP_START = TOKEN_STEP + 1; // Info pages start at index 2
+  const AI_STEP = INFO_STEP_START + INFO_STEPS.length; // = 6
+  const TOTAL_STEPS = AI_STEP + 1; // = 7, matches 7 progress dots
   const { colors } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Onboarding'>>();
@@ -131,6 +130,13 @@ export default function OnboardingScreen({
   const [simpleRepoName, setSimpleRepoName] = useState('');
   const [simpleError, setSimpleError] = useState<string | null>(null);
   const [simpleCreatedRepo, setSimpleCreatedRepo] = useState<{ full_name: string; name: string; default_branch: string; hostId: string | undefined } | null>(null);
+
+  useEffect(() => {
+    if (quickSetup) {
+      setOnboardingMode('quick');
+      setSimpleStep('select');
+    }
+  }, [quickSetup]);
 
   // Track OAuth result consumption per state key to allow retries with a fresh flow.
   const oauthConsumedByState = useRef(new Map<string, true>());
@@ -180,8 +186,10 @@ export default function OnboardingScreen({
 
   const handleNext = useCallback(async () => {
     if (currentStep < TOKEN_STEP) {
+      // Step 0 (Welcome) -> advance to step 1 (Connect a Git Host)
       setCurrentStep(currentStep + 1);
     } else if (currentStep === TOKEN_STEP) {
+      // Step 1: Connect a Git Host
       if (githubAuthMethod === 'quick') {
         handleSelectSimple();
         return;
@@ -237,16 +245,19 @@ export default function OnboardingScreen({
         if (result.ok) {
           await refreshAccounts();
           setIsVerifying(false);
-          setCurrentStep(AI_STEP);
+           setCurrentStep(INFO_STEP_START);
         } else {
           setIsVerifying(false);
           setTokenError(result.error ?? 'Invalid token. Please check and try again.');
         }
       } else {
-      setCurrentStep(AI_STEP);
+        setCurrentStep(INFO_STEP_START);
       }
     } else if (currentStep === AI_STEP) {
       await finish();
+    } else {
+      // Info steps (step 2+): advance to next info step or AI
+      setCurrentStep(currentStep + 1);
     }
   }, [
     currentStep,
@@ -260,6 +271,7 @@ export default function OnboardingScreen({
     handleSelectSimple,
     AI_STEP,
     TOKEN_STEP,
+    INFO_STEP_START,
     t,
   ]);
 
@@ -319,7 +331,7 @@ export default function OnboardingScreen({
             callback.searchParams.get('error_description') ?? undefined,
         });
       }
-        setCurrentStep(AI_STEP);
+        setCurrentStep(INFO_STEP_START);
     } catch (err) {
       setGithubAuthError(
         err instanceof Error ? err.message : t('onboarding.simple.signInFailed'),
@@ -327,7 +339,7 @@ export default function OnboardingScreen({
     } finally {
       setIsGithubAuthLoading(false);
     }
-  }, [AI_STEP, navigation, t]);
+  }, [INFO_STEP_START, navigation, t]);
 
   /**
    * Initiate GitHub App installation flow.
@@ -590,6 +602,9 @@ export default function OnboardingScreen({
   const isTokenStep = currentStep === TOKEN_STEP;
   const isAIStep = currentStep === AI_STEP;
 
+  // Derive effective mode directly from quickSetup prop to avoid stale state on first render
+  const effectiveMode = quickSetup ? 'quick' : onboardingMode;
+
   const showInstanceUrl = selectedProvider !== 'github';
   const isGitHub = selectedProvider === 'github';
 
@@ -606,7 +621,7 @@ export default function OnboardingScreen({
   const tokenSettingsUrl = getTokenSettingsUrl();
 
   const renderGitHubAuthMethodSelector = () => (
-    <View className="w-full gap-3" style={{ paddingBottom: 16 }}>
+    <View className="w-full gap-4" style={{ paddingBottom: 20, paddingTop: 8 }}>
       <View className="flex-row gap-2" style={{ alignSelf: 'center' }}>
         <TouchableOpacity
           testID="onboarding.github-auth.pat"
@@ -919,16 +934,18 @@ export default function OnboardingScreen({
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="flex-row justify-end px-5 pt-2.5">
-            <Button
-              variant="ghost"
-              label="Skip"
-              testID="onboarding.button.skip"
-              onPress={handleSkip}
-            />
-          </View>
+          {!quickSetup && (
+            <View className="flex-row justify-end px-5 pt-2.5">
+              <Button
+                variant="ghost"
+                label="Skip"
+                testID="onboarding.button.skip"
+                onPress={handleSkip}
+              />
+            </View>
+          )}
 
-          {onboardingMode === 'quick' ? (
+          {effectiveMode === 'quick' ? (
             <View className="flex-1 px-10" style={{ justifyContent: 'center' }}>
               {simpleStep === 'select' && (
                 <>
@@ -966,13 +983,15 @@ export default function OnboardingScreen({
                         <Ionicons name="logo-github" size={20} color={colors.accent} />
                       }
                     />
-                    <Button
-                      variant="ghost"
-                      fullWidth
-                      testID="onboarding.simple.button.standard"
-                      onPress={() => setOnboardingMode('standard')}
-                      label={t('onboarding.simple.select.backButton')}
-                    />
+                    {!quickSetup && (
+                      <Button
+                        variant="ghost"
+                        fullWidth
+                        testID="onboarding.simple.button.standard"
+                        onPress={() => setOnboardingMode('standard')}
+                        label={t('onboarding.simple.select.backButton')}
+                      />
+                    )}
                   </View>
                   {simpleError ? (
                     <Text className="text-[13px] text-center mt-4" style={{ color: '#FF3B30' }}>
@@ -1200,6 +1219,52 @@ export default function OnboardingScreen({
                 </>
               )}
             </View>
+          ) : currentStep === HOST_STEP ? (
+            <View className="flex-1 px-10 items-center">
+              <Surface
+                elevation="raised"
+                radius="pill"
+                className="w-[140px] h-[140px] items-center justify-center mb-6"
+              >
+                <Ionicons
+                  name={INFO_STEP_ICONS[0]}
+                  size={72}
+                  color={colors.accent}
+                />
+              </Surface>
+              <Text
+                className="text-[28px] font-bold text-center"
+                style={{ color: colors.text }}
+              >
+                {t('onboarding.steps.welcomeTitle')}
+              </Text>
+              <Text
+                className="text-base text-center leading-6"
+                style={{ color: colors.textSecondary }}
+              >
+                {t('onboarding.steps.welcomeDescription')}
+              </Text>
+
+              <TouchableOpacity
+                testID="onboarding.button.quick-setup"
+                className="mt-6 px-6 py-3 rounded-lg"
+                style={{ backgroundColor: `${colors.accent}15`, borderWidth: 1, borderColor: colors.accent }}
+                onPress={() => { setOnboardingMode('quick'); }}
+              >
+                <Text
+                  className="text-base font-semibold text-center"
+                  style={{ color: colors.accent }}
+                >
+                  ⚡ {t('onboarding.simple.quickSetupBanner')}
+                </Text>
+                <Text
+                  className="text-sm text-center mt-1"
+                  style={{ color: colors.textSecondary }}
+                >
+                  {t('onboarding.simple.quickSetupBannerSub')}
+                </Text>
+              </TouchableOpacity>
+            </View>
           ) : isTokenStep ? (
             <View
               className="flex-1 px-10"
@@ -1235,7 +1300,7 @@ export default function OnboardingScreen({
                 })}
               </Text>
 
-              <View className="w-full gap-2" style={{ paddingBottom: 16 }}>
+              <View className="w-full gap-2 mt-6" style={{ paddingBottom: 20 }}>
                 <Text
                   className="text-sm font-medium mb-1"
                   style={{ color: colors.textSecondary }}
@@ -1416,7 +1481,7 @@ export default function OnboardingScreen({
                 className="w-[140px] h-[140px] items-center justify-center mb-6"
               >
                 <Ionicons
-                  name={INFO_STEPS[currentStep].icon}
+                  name={INFO_STEPS[currentStep - INFO_STEP_START].icon}
                   size={72}
                   color={colors.accent}
                 />
@@ -1425,40 +1490,18 @@ export default function OnboardingScreen({
                 className="text-[28px] font-bold text-center"
                 style={{ color: colors.text }}
               >
-                {INFO_STEPS[currentStep].title}
+                {INFO_STEPS[currentStep - INFO_STEP_START].title}
               </Text>
               <Text
                 className="text-base text-center leading-6"
                 style={{ color: colors.textSecondary }}
               >
-                {INFO_STEPS[currentStep].description}
+                {INFO_STEPS[currentStep - INFO_STEP_START].description}
               </Text>
-
-              {currentStep === 0 && (
-                <TouchableOpacity
-                  testID="onboarding.button.quick-setup"
-                  className="mt-6 px-6 py-3 rounded-lg"
-                  style={{ backgroundColor: `${colors.accent}15`, borderWidth: 1, borderColor: colors.accent }}
-                  onPress={() => { setOnboardingMode('quick'); }}
-                >
-                  <Text
-                    className="text-base font-semibold text-center"
-                    style={{ color: colors.accent }}
-                  >
-                    ⚡ {t('onboarding.simple.quickSetupBanner')}
-                  </Text>
-                  <Text
-                    className="text-sm text-center mt-1"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    {t('onboarding.simple.quickSetupBannerSub')}
-                  </Text>
-                </TouchableOpacity>
-              )}
             </View>
           )}
 
-          {onboardingMode !== 'quick' && (
+          {effectiveMode !== 'quick' && (
             <View className="px-5 pb-10">
               <View className="flex-row justify-center mb-6">
                 {Array.from({ length: TOTAL_STEPS }).map((_, index) => (
@@ -1538,7 +1581,11 @@ export default function OnboardingScreen({
                           : t('onboarding.skipForNow', {
                               defaultValue: 'Skip for Now',
                             })
-                        : t('common.next', { defaultValue: 'Next' })
+                        : currentStep === HOST_STEP
+                          ? t('onboarding.nextCustomSetup', {
+                              defaultValue: 'Next: Custom Setup',
+                            })
+                          : t('common.next', { defaultValue: 'Next' })
                   }
                   trailingIcon={
                     isVerifying ? (

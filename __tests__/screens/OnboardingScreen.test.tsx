@@ -244,25 +244,41 @@ describe('OnboardingScreen', () => {
     mockCreateNote.mockReset();
   });
 
+  it('enters Quick Setup when an existing onboarding route receives quickSetup', async () => {
+    const { rerender, getByText, queryByTestId } = render(
+      <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+    );
+
+    rerender(
+      <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} quickSetup />
+    );
+
+    await waitFor(() => {
+      expect(getByText('Quick Setup')).toBeTruthy();
+    });
+    expect(queryByTestId('onboarding.provider.dropdown')).toBeNull();
+  });
+
   describe('info steps', () => {
-    it('renders five info steps and advances on Next', async () => {
+    it('renders Welcome step first with correct CTA, then advances to token step', async () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
 
-      // Step 0 - welcome
+      // Step 0 - Welcome
       await waitFor(() => {
         expect(getByTestId('onboarding.button.next')).toBeTruthy();
       });
 
-      // Advance through steps 0-4
-      for (let step = 0; step < 5; step++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-        // waitFor needs a predicate - this is a tick to let the step advance
-        await waitFor(() => true);
-      }
+      // Welcome CTA should be "Next: Custom Setup"
+      const nextButton = getByTestId('onboarding.button.next');
+      expect(nextButton).toBeTruthy();
+
+      // Advance to step 1 (Connect a Git Host)
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
+      await waitFor(() => true);
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -272,7 +288,7 @@ describe('OnboardingScreen', () => {
       expect(queryByTestId('onboarding.button.pro-continue')).toBeNull();
     });
 
-    it('skips directly to token step via skip button on info screens', async () => {
+    it('skips from Welcome step via skip button', async () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
@@ -296,12 +312,10 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      // Advance to token step
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      // Advance to token step (step 1)
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
       });
@@ -311,12 +325,10 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      // Advance to token step
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      // Advance to token step (step 1)
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -339,11 +351,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -362,11 +372,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -394,11 +402,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -429,11 +435,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -466,11 +470,10 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      // Advance to token step (step 1)
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
       });
@@ -480,11 +483,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.input.token')).toBeTruthy();
@@ -514,11 +515,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -573,11 +572,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByText } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.input.token')).toBeTruthy();
@@ -603,11 +600,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByText } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await act(async () => {
         fireEvent.press(getByTestId('onboarding.provider.dropdown'));
@@ -632,11 +627,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await act(async () => {
         fireEvent.press(getByTestId('onboarding.provider.dropdown'));
@@ -661,14 +654,12 @@ describe('OnboardingScreen', () => {
     });
 
     it('skips token step when token is empty', async () => {
-      const { getByTestId } = render(
+      const { getByTestId, getByText } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.input.token')).toBeTruthy();
@@ -680,8 +671,7 @@ describe('OnboardingScreen', () => {
       });
 
       await waitFor(() => {
-        // Should be on AI step
-        expect(getByTestId('onboarding.button.pro-continue')).toBeTruthy();
+        expect(getByText('onboarding.steps.linkTitle')).toBeTruthy();
       });
 
       expect(mockConnectHost).not.toHaveBeenCalled();
@@ -693,11 +683,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.button.paste-token')).toBeTruthy();
       });
@@ -707,11 +695,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.button.paste-token')).toBeTruthy();
@@ -734,11 +720,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.input.token')).toBeTruthy();
       });
@@ -748,11 +732,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.input.token')).toBeTruthy();
@@ -786,11 +768,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.button.skip')).toBeTruthy();
       });
@@ -800,11 +780,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.button.skip')).toBeTruthy();
@@ -822,23 +800,19 @@ describe('OnboardingScreen', () => {
   });
 
   describe('full flow', () => {
-    it('advances through five info steps, then connects and goes to AI step', async () => {
-      const { getByTestId } = render(
+    it('advances through Welcome, Connect, then four info steps to AI', async () => {
+      const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
 
-      // Advance through 5 info steps
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
-
+      // Step 0 (Welcome) -> step 1 (Connect a Git Host)
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
       });
 
-      // Enter token and connect
       const tokenInput = getByTestId('onboarding.input.token');
       await act(async () => {
         fireEvent.changeText(tokenInput, 'valid_token');
@@ -849,6 +823,18 @@ describe('OnboardingScreen', () => {
       await act(async () => {
         fireEvent.press(getByTestId('onboarding.button.next'));
       });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.button.next')).toBeTruthy();
+      });
+
+      expect(queryByTestId('onboarding.button.pro-continue')).toBeNull();
+
+      for (let step = 0; step < 4; step += 1) {
+        await act(async () => {
+          fireEvent.press(getByTestId('onboarding.button.next'));
+        });
+      }
 
       await waitFor(() => {
         expect(getByTestId('onboarding.button.pro-continue')).toBeTruthy();
@@ -877,11 +863,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
       });
@@ -891,11 +875,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.pat')).toBeTruthy();
@@ -908,11 +890,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.quick')).toBeTruthy();
@@ -923,11 +903,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.pat')).toBeTruthy();
@@ -944,11 +922,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.oauth')).toBeTruthy();
@@ -967,11 +943,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.app')).toBeTruthy();
@@ -990,11 +964,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -1024,11 +996,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.pat')).toBeTruthy();
@@ -1080,11 +1050,9 @@ describe('OnboardingScreen', () => {
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />,
       );
       const { getByTestId } = result;
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.oauth')).toBeTruthy();
       });
@@ -1183,11 +1151,9 @@ describe('OnboardingScreen', () => {
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />,
       );
       const { getByTestId } = result;
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.app')).toBeTruthy();
       });
@@ -1947,6 +1913,18 @@ describe('OnboardingScreen', () => {
   });
 
   describe('Quick mode footer visibility', () => {
+    it('hides Skip and Back for Settings-launched Quick Setup', async () => {
+      const { queryByTestId } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} quickSetup />
+      );
+
+      await waitFor(() => {
+        expect(queryByTestId('onboarding.simple.button.sign-in')).toBeTruthy();
+      });
+      expect(queryByTestId('onboarding.button.skip')).toBeNull();
+      expect(queryByTestId('onboarding.simple.button.standard')).toBeNull();
+    });
+
     it('hides progress dots and Next button in Quick mode at select step', async () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />

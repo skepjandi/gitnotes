@@ -1362,6 +1362,10 @@ export default function SettingsScreen() {
     ]);
   }, [t]);
 
+  const handleStartQuickSetup = useCallback(() => {
+    navigation.navigate('Onboarding', { quickSetup: true });
+  }, [navigation]);
+
   const clearData = useCallback(() => {
     HapticService.warning();
     Alert.alert(t('settings.clearAllNotes'), t('settings.clearAllConfirm'), [
@@ -1475,6 +1479,7 @@ export default function SettingsScreen() {
         onOpenRenderStyleSettings={() => navigation.navigate('RenderStyleSettings')}
         onClearData={clearData}
         onResetOnboarding={handleResetOnboarding}
+        onStartQuickSetup={handleStartQuickSetup}
         isPro={isPro}
         isProLoading={isProLoading}
         proStatusLabel={proStatusLabel}

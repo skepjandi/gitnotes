@@ -122,6 +122,7 @@ onRemoveAccount: (id: string, login: string) => void;
   onOpenRenderStyleSettings: () => void;
   onClearData: () => void;
   onResetOnboarding: () => void;
+  onStartQuickSetup: () => void;
   isPro: boolean;
   isProLoading: boolean;
   proStatusLabel: string;
@@ -237,6 +238,7 @@ export function SettingsContent(props: SettingsContentProps) {
     onOpenRenderStyleSettings,
     onClearData,
     onResetOnboarding,
+    onStartQuickSetup,
     isPro,
     isProLoading,
     proStatusLabel,
@@ -618,8 +620,20 @@ export function SettingsContent(props: SettingsContentProps) {
         ) : null}
       </Group>
 
-      <Group title={t('settings.complex')} testID="settings.group.complex">
-        <Group title={t('accounts.title')}>
+      <Group title={t('settings.quickSetup')} testID="settings.group.quick-setup">
+        <GroupRow
+          testID="settings.button.quick-setup"
+          onPress={onStartQuickSetup}
+          leading={<Ionicons name="flash-outline" size={20} color={colors.primary} />}
+          trailing={<Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />}
+        >
+          <Text style={[styles.settingLabel, { color: colors.primary }]}>
+            {t('settings.quickSetup')}
+          </Text>
+        </GroupRow>
+      </Group>
+
+      <Group title={t('accounts.title')}>
           {accountSummaries.length === 0 ? (
             <>
               {/* PAT-based Connect Host */}
@@ -882,7 +896,6 @@ export function SettingsContent(props: SettingsContentProps) {
               })}
             </>
           )}
-            </Group>
 
             <Group>
               {accountSummaries.length > 0 ? (

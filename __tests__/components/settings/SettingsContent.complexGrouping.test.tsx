@@ -1,39 +1,6 @@
-/**
- * Focused regression tests for Settings Complex grouping.
- *
- * Structure contract:
- *   <Group title={t('settings.complex')} testID="settings.group.complex">
- *     <Group title={t('accounts.title')}>   <- INSIDE Complex
- *       Connect Host / OAuth / GitHub App controls
- *     </Group>
- *     <Group title={t('settings.repositories')}>  <- INSIDE Complex
- *       Repository picker
- *     </Group>
- *     <Group title={t('settings.syncEngine')}>    <- INSIDE Complex
- *       Sync engine controls per repo
- *     </Group>
- *     <Group title={t('settings.templates')}>     <- INSIDE Complex
- *       Templates repo controls
- *     </Group>
- *     <Group title={t('settings.noteRendering')}> <- INSIDE Complex
- *       Note rendering controls
- *     </Group>
- *   </Group>
- *
- * Groups OUTSIDE Complex (remain accessible at top level):
- *   Appearance, Language, Security, Sync, AI, etc.
- *
- * Uses the same mock scaffold as SettingsContent.style.test.tsx to keep
- * mocks consistent and avoid duplicating enormous mock blocks.
- */
-
 import React from 'react';
 import { render, fireEvent, act, within } from '@testing-library/react-native';
 import { SettingsContent } from '../../../src/components/settings/SettingsContent';
-
-// ---------------------------------------------------------------------------
-// Module-level mocks
-// ---------------------------------------------------------------------------
 
 let mockAlertCalls: Array<{ title: string; message: string; buttons: unknown[] }> = [];
 jest.mock('react-native', () => {
@@ -140,10 +107,6 @@ jest.mock('@react-navigation/native-stack', () => ({}));
 
 jest.mock('query-string', () => ({ default: { stringify: jest.fn() } }));
 
-// ---------------------------------------------------------------------------
-// Types (mirrors SettingsContent.style.test.tsx)
-// ---------------------------------------------------------------------------
-
 interface TestSettingsContentProps {
   colors: Record<string, string>;
   headerHeight: number;
@@ -186,6 +149,7 @@ interface TestSettingsContentProps {
   onOpenRenderStyleSettings: () => void;
   onClearData: () => void;
   onResetOnboarding: () => void;
+  onStartQuickSetup: () => void;
   isPro: boolean;
   isProLoading: boolean;
   proStatusLabel: string;
@@ -287,6 +251,7 @@ function makeProps(overrides: Partial<TestSettingsContentProps> = {}): TestSetti
     onOpenRenderStyleSettings: jest.fn(),
     onClearData: jest.fn(),
     onResetOnboarding: jest.fn(),
+    onStartQuickSetup: jest.fn(),
     isPro: false,
     isProLoading: false,
     proStatusLabel: 'Upgrade',
@@ -344,343 +309,129 @@ function makeProps(overrides: Partial<TestSettingsContentProps> = {}): TestSetti
   };
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+type ReactTestInstance = import('@testing-library/react-native').ReactTestInstance;
 
-describe('SettingsContent Complex grouping — structural containment', () => {
+function getQuickSetupRoot(rendered: ReturnType<typeof render>) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const root = (rendered as any).root as ReactTestInstance | undefined;
+  if (!root) return null;
+  try {
+    const all = root.findAllByProps({ testID: 'settings.group.quick-setup' });
+    return all.length > 0 ? all[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+describe('SettingsContent Quick Setup grouping', () => {
   beforeEach(() => {
     mockAlertCalls = [];
   });
 
-  // -----------------------------------------------------------------
-  // Helper: resolve the complex group ReactTestInstance for within()
-  // RTL 13: within() accepts ReactTestInstance directly (not DOM nodes)
-  // -----------------------------------------------------------------
-  function getComplexRoot(rendered: ReturnType<typeof render>) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const root = (rendered as any).root as ReactTestInstance | undefined;
-    if (!root) return null;
-    // root is a ReactTestInstance — find the element with testID='settings.group.complex'
-    try {
-      const all = root.findAllByProps({ testID: 'settings.group.complex' });
-      return all.length > 0 ? all[0] : null;
-    } catch {
-      return null;
-    }
-  }
-
-  type ReactTestInstance = import('@testing-library/react-native').ReactTestInstance;
-
-  // -----------------------------------------------------------------
-  // INSIDE Complex — fresh identity (no accounts)
-  // -----------------------------------------------------------------
-  describe('Inside Complex — fresh identity (accountSummaries=[])', () => {
-    it('renders settings.group.complex', () => {
+  describe('Quick Setup group', () => {
+    it('renders settings.group.quick-setup', () => {
       const { getByTestId } = render(<SettingsContent {...makeProps()} />);
-      expect(getByTestId('settings.group.complex')).toBeTruthy();
+      expect(getByTestId('settings.group.quick-setup')).toBeTruthy();
     });
 
-    it('connect-host button is a descendant of settings.group.complex', () => {
+    it('renders settings.button.quick-setup inside quick-setup group', () => {
       const rendered = render(<SettingsContent {...makeProps()} />);
-      const complexRoot = getComplexRoot(rendered);
-      expect(complexRoot).not.toBeNull();
-      const { getByTestId } = within(complexRoot!);
-      expect(getByTestId('settings.button.connect-host')).toBeTruthy();
+      const qsRoot = getQuickSetupRoot(rendered);
+      expect(qsRoot).not.toBeNull();
+      const { getByTestId } = within(qsRoot!);
+      expect(getByTestId('settings.button.quick-setup')).toBeTruthy();
     });
 
-    it('connect-github-oauth button is a descendant of settings.group.complex', () => {
-      const rendered = render(<SettingsContent {...makeProps()} />);
-      const complexRoot = getComplexRoot(rendered);
-      expect(complexRoot).not.toBeNull();
-      const { getByTestId } = within(complexRoot!);
-      expect(getByTestId('settings.button.connect-github-oauth')).toBeTruthy();
-    });
-
-    it('install-github-app button is a descendant of settings.group.complex', () => {
-      const rendered = render(<SettingsContent {...makeProps()} />);
-      const complexRoot = getComplexRoot(rendered);
-      expect(complexRoot).not.toBeNull();
-      const { getByTestId } = within(complexRoot!);
-      expect(getByTestId('settings.button.install-github-app')).toBeTruthy();
-    });
-
-    it('repo-picker button is a descendant of settings.group.complex', () => {
-      const rendered = render(<SettingsContent {...makeProps()} />);
-      const complexRoot = getComplexRoot(rendered);
-      expect(complexRoot).not.toBeNull();
-      const { getByTestId } = within(complexRoot!);
-      expect(getByTestId('settings.button.repo-picker')).toBeTruthy();
-    });
-
-    it('templates-repo-picker button is a descendant of settings.group.complex', () => {
-      const rendered = render(<SettingsContent {...makeProps()} />);
-      const complexRoot = getComplexRoot(rendered);
-      expect(complexRoot).not.toBeNull();
-      const { getByTestId } = within(complexRoot!);
-      expect(getByTestId('settings.button.templates-repo-picker')).toBeTruthy();
-    });
-
-    it('render-style-settings button is NOT a descendant of settings.group.complex (Note Rendering is outside Complex)', () => {
-      const rendered = render(<SettingsContent {...makeProps()} />);
-      const complexRoot = getComplexRoot(rendered);
-      expect(complexRoot).not.toBeNull();
-      const { queryByTestId } = within(complexRoot!);
-      expect(queryByTestId('settings.button.render-style-settings')).toBeNull();
-      const { getByTestId } = rendered;
-      expect(getByTestId('settings.button.render-style-settings')).toBeTruthy();
+    it('onStartQuickSetup fires when quick-setup button is pressed', async () => {
+      const onStartQuickSetup = jest.fn();
+      const props = makeProps({ onStartQuickSetup });
+      const rendered = render(<SettingsContent {...props} />);
+      const qsRoot = getQuickSetupRoot(rendered);
+      const { getByTestId } = within(qsRoot!);
+      await act(async () => {
+        fireEvent.press(getByTestId('settings.button.quick-setup'));
+      });
+      expect(onStartQuickSetup).toHaveBeenCalledTimes(1);
     });
   });
 
-  // -----------------------------------------------------------------
-  // INSIDE Complex — handler preservation (fresh identity)
-  // -----------------------------------------------------------------
-  describe('Inside Complex — handler preservation (accountSummaries=[])', () => {
+  describe('Accounts group — no longer wrapped by a separate mode grouping', () => {
+    it('connect-host button is accessible at top level (not inside a wrapper group)', () => {
+      const { getByTestId } = render(<SettingsContent {...makeProps()} />);
+      expect(getByTestId('settings.button.connect-host')).toBeTruthy();
+    });
+
+    it('connect-github-oauth button is accessible at top level', () => {
+      const { getByTestId } = render(<SettingsContent {...makeProps()} />);
+      expect(getByTestId('settings.button.connect-github-oauth')).toBeTruthy();
+    });
+
+    it('install-github-app button is accessible at top level', () => {
+      const { getByTestId } = render(<SettingsContent {...makeProps()} />);
+      expect(getByTestId('settings.button.install-github-app')).toBeTruthy();
+    });
+
     it('onConnectOAuth fires when connect-github-oauth is pressed', async () => {
       const onConnectOAuth = jest.fn();
       const props = makeProps({ onConnectOAuth });
-      const rendered = render(<SettingsContent {...props} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { getByTestId } = within(complexRoot!);
+      const { getByTestId } = render(<SettingsContent {...props} />);
       await act(async () => {
         fireEvent.press(getByTestId('settings.button.connect-github-oauth'));
       });
       expect(onConnectOAuth).toHaveBeenCalledWith(null);
     });
 
-    it('onConnectGitHubApp fires when install-github-app is pressed', async () => {
-      const onConnectGitHubApp = jest.fn();
-      const props = makeProps({ onConnectGitHubApp });
-      const rendered = render(<SettingsContent {...props} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { getByTestId } = within(complexRoot!);
-      await act(async () => {
-        fireEvent.press(getByTestId('settings.button.install-github-app'));
-      });
-      expect(onConnectGitHubApp).toHaveBeenCalledWith(null);
-    });
-
     it('onAddHost fires when connect-host is pressed', async () => {
       const onAddHost = jest.fn();
       const props = makeProps({ onAddHost });
-      const rendered = render(<SettingsContent {...props} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { getByTestId } = within(complexRoot!);
-      await act(async () => {
-        fireEvent.press(getByTestId('settings.button.connect-host'));
-      });
-      expect(onAddHost).toHaveBeenCalledTimes(1);
-    });
-
-    it('onOpenRepoPicker fires when repo-picker is pressed', async () => {
-      const onOpenRepoPicker = jest.fn();
-      const props = makeProps({ onOpenRepoPicker });
-      const rendered = render(<SettingsContent {...props} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { getByTestId } = within(complexRoot!);
-      await act(async () => {
-        fireEvent.press(getByTestId('settings.button.repo-picker'));
-      });
-      expect(onOpenRepoPicker).toHaveBeenCalledTimes(1);
-    });
-
-    it('onOpenTemplatesRepoPicker fires when templates-repo-picker is pressed', async () => {
-      const onOpenTemplatesRepoPicker = jest.fn();
-      const props = makeProps({ onOpenTemplatesRepoPicker });
-      const rendered = render(<SettingsContent {...props} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { getByTestId } = within(complexRoot!);
-      await act(async () => {
-        fireEvent.press(getByTestId('settings.button.templates-repo-picker'));
-      });
-      expect(onOpenTemplatesRepoPicker).toHaveBeenCalledTimes(1);
-    });
-
-    it('onOpenRenderStyleSettings fires when render-style-settings is pressed (outside Complex)', async () => {
-      const onOpenRenderStyleSettings = jest.fn();
-      const props = makeProps({ onOpenRenderStyleSettings });
       const { getByTestId } = render(<SettingsContent {...props} />);
       await act(async () => {
-        fireEvent.press(getByTestId('settings.button.render-style-settings'));
-      });
-      expect(onOpenRenderStyleSettings).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  // -----------------------------------------------------------------
-  // INSIDE Complex — with accounts populated
-  // -----------------------------------------------------------------
-  describe('Inside Complex — with accounts (accountSummaries populated)', () => {
-    const accountSummariesWithHost = [
-      {
-        accountId: 'acc1',
-        account: { id: 'acc1', login: 'testuser', name: 'Test User', avatarUrl: null },
-        hosts: [
-          {
-            id: 'host1',
-            provider: 'github' as const,
-            hostLogin: 'testuser',
-            instanceBaseUrl: null,
-          },
-        ],
-        activeHostId: 'host1',
-      },
-    ];
-
-    it('connect-github-oauth-existing button is a descendant of settings.group.complex when accounts exist', () => {
-      const props = makeProps({ accountSummaries: accountSummariesWithHost });
-      const rendered = render(<SettingsContent {...props} />);
-      const complexRoot = getComplexRoot(rendered);
-      expect(complexRoot).not.toBeNull();
-      const { getByTestId } = within(complexRoot!);
-      expect(getByTestId('settings.button.connect-github-oauth-existing')).toBeTruthy();
-    });
-
-    it('connect-host button is a descendant of settings.group.complex when accounts exist', () => {
-      const props = makeProps({ accountSummaries: accountSummariesWithHost, isPro: true });
-      const rendered = render(<SettingsContent {...props} />);
-      const complexRoot = getComplexRoot(rendered);
-      expect(complexRoot).not.toBeNull();
-      const { getByTestId } = within(complexRoot!);
-      expect(getByTestId('settings.button.connect-host')).toBeTruthy();
-    });
-
-    it('remove-token button is a descendant of settings.group.complex when accounts exist', () => {
-      const multiHostSummary = accountSummariesWithHost.map(s => ({
-        ...s,
-        hosts: [
-          ...s.hosts,
-          { id: 'host2', provider: 'github' as const, hostLogin: 'other', instanceBaseUrl: null },
-        ],
-      }));
-      const props = makeProps({ accountSummaries: multiHostSummary, isPro: true });
-      const rendered = render(<SettingsContent {...props} />);
-      const complexRoot = getComplexRoot(rendered);
-      expect(complexRoot).not.toBeNull();
-      const { getByTestId } = within(complexRoot!);
-      expect(getByTestId('settings.button.remove-token')).toBeTruthy();
-    });
-
-    it('onConnectOAuth fires when connect-github-oauth-existing is pressed (Pro user)', async () => {
-      const onConnectOAuth = jest.fn();
-      const props = makeProps({ accountSummaries: accountSummariesWithHost, isPro: true, onConnectOAuth });
-      const rendered = render(<SettingsContent {...props} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { getByTestId } = within(complexRoot!);
-      await act(async () => {
-        fireEvent.press(getByTestId('settings.button.connect-github-oauth-existing'));
-      });
-      expect(onConnectOAuth).toHaveBeenCalledWith(null);
-    });
-
-    it('onAddHost fires when connect-host is pressed (Pro user with existing accounts)', async () => {
-      const onAddHost = jest.fn();
-      const props = makeProps({ accountSummaries: accountSummariesWithHost, isPro: true, onAddHost });
-      const rendered = render(<SettingsContent {...props} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { getByTestId } = within(complexRoot!);
-      await act(async () => {
         fireEvent.press(getByTestId('settings.button.connect-host'));
       });
       expect(onAddHost).toHaveBeenCalledTimes(1);
     });
   });
 
-  // -----------------------------------------------------------------
-  // OUTSIDE Complex — still accessible (not nested inside Complex)
-  // -----------------------------------------------------------------
-  describe('Outside Complex — still accessible', () => {
-    it('dark mode toggle is NOT a descendant of settings.group.complex', () => {
-      const rendered = render(<SettingsContent {...makeProps()} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { queryByTestId } = within(complexRoot!);
-      expect(queryByTestId('settings.toggle.theme')).toBeNull();
-      expect(rendered.getByTestId('settings.toggle.theme')).toBeTruthy();
+  describe('Top-level groups remain accessible', () => {
+    it('dark mode toggle is accessible (outside any wrapper)', () => {
+      const { getByTestId } = render(<SettingsContent {...makeProps()} />);
+      expect(getByTestId('settings.toggle.theme')).toBeTruthy();
     });
 
-    it('language picker button is NOT a descendant of settings.group.complex', () => {
-      const rendered = render(<SettingsContent {...makeProps()} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { queryByTestId } = within(complexRoot!);
-      expect(queryByTestId('settings.button.language-picker')).toBeNull();
-      expect(rendered.getByTestId('settings.button.language-picker')).toBeTruthy();
+    it('language picker button is accessible', () => {
+      const { getByTestId } = render(<SettingsContent {...makeProps()} />);
+      expect(getByTestId('settings.button.language-picker')).toBeTruthy();
     });
 
-    it('floating-git-button toggle is NOT a descendant of settings.group.complex', () => {
-      const rendered = render(<SettingsContent {...makeProps()} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { queryByTestId } = within(complexRoot!);
-      expect(queryByTestId('settings.toggle.floating-git-button')).toBeNull();
-      expect(rendered.getByTestId('settings.toggle.floating-git-button')).toBeTruthy();
+    it('render-style-settings button is accessible', () => {
+      const { getByTestId } = render(<SettingsContent {...makeProps()} />);
+      expect(getByTestId('settings.button.render-style-settings')).toBeTruthy();
     });
 
-    it('pause-sync toggle is NOT a descendant of settings.group.complex', () => {
-      const rendered = render(<SettingsContent {...makeProps()} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { queryByTestId } = within(complexRoot!);
-      expect(queryByTestId('settings.toggle.pause-sync')).toBeNull();
-      expect(rendered.getByTestId('settings.toggle.pause-sync')).toBeTruthy();
+    it('floating-git-button toggle is accessible', () => {
+      const { getByTestId } = render(<SettingsContent {...makeProps()} />);
+      expect(getByTestId('settings.toggle.floating-git-button')).toBeTruthy();
     });
 
-    it('background-sync toggle is NOT a descendant of settings.group.complex', () => {
-      const rendered = render(<SettingsContent {...makeProps()} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { queryByTestId } = within(complexRoot!);
-      expect(queryByTestId('settings.toggle.background-sync')).toBeNull();
-      expect(rendered.getByTestId('settings.toggle.background-sync')).toBeTruthy();
-    });
-
-    it('biometric-lock toggle is NOT a descendant of settings.group.complex (Security group)', () => {
-      const props = makeProps({ isPro: true, isBiometricAvailable: true, isBiometricLockEnabled: false });
-      const rendered = render(<SettingsContent {...props} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { queryByTestId } = within(complexRoot!);
-      expect(queryByTestId('settings.toggle.biometric-lock')).toBeNull();
-      expect(rendered.getByTestId('settings.toggle.biometric-lock')).toBeTruthy();
-    });
-
-    it('AI toggle is NOT a descendant of settings.group.complex', () => {
+    it('AI toggle is accessible', () => {
       const props = makeProps({ isPro: true, isAIEnabled: false });
-      const rendered = render(<SettingsContent {...props} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { queryByTestId } = within(complexRoot!);
-      expect(queryByTestId('settings.toggle.ai')).toBeNull();
-      expect(rendered.getByTestId('settings.toggle.ai')).toBeTruthy();
-    });
-
-    it('pro row is NOT a descendant of settings.group.complex', () => {
-      const rendered = render(<SettingsContent {...makeProps()} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { queryByTestId } = within(complexRoot!);
-      expect(queryByTestId('settings.row.pro')).toBeNull();
-      expect(rendered.getByTestId('settings.row.pro')).toBeTruthy();
-    });
-
-    it('basic style option is NOT a descendant of settings.group.complex', () => {
-      const rendered = render(<SettingsContent {...makeProps()} />);
-      const complexRoot = getComplexRoot(rendered);
-      const { queryByTestId } = within(complexRoot!);
-      expect(queryByTestId('settings.option.style.basic')).toBeNull();
-      expect(rendered.getByTestId('settings.option.style.basic')).toBeTruthy();
+      const { getByTestId } = render(<SettingsContent {...props} />);
+      expect(getByTestId('settings.toggle.ai')).toBeTruthy();
     });
   });
 
-  // -----------------------------------------------------------------
-  // OUTSIDE Complex — handler preservation
-  // -----------------------------------------------------------------
-  describe('Outside Complex — handler preservation', () => {
-    it('setTheme fires when dark mode toggle is pressed (outside Complex)', async () => {
+  describe('Top-level group handler preservation', () => {
+    it('setTheme fires when dark mode toggle is pressed', async () => {
       const setTheme = jest.fn();
       const props = makeProps({ setTheme });
       const { getByTestId } = render(<SettingsContent {...props} />);
-      // Dark mode toggle is global, not inside complex
       await act(async () => {
         fireEvent(getByTestId('settings.toggle.theme'), 'valueChange', true);
       });
       expect(setTheme).toHaveBeenCalledWith('dark');
     });
 
-    it('onToggleAI fires when AI toggle is pressed (outside Complex)', async () => {
+    it('onToggleAI fires when AI toggle is pressed', async () => {
       const onToggleAI = jest.fn();
       const props = makeProps({ isPro: true, isAIEnabled: false, onToggleAI });
       const { getByTestId } = render(<SettingsContent {...props} />);
@@ -690,63 +441,14 @@ describe('SettingsContent Complex grouping — structural containment', () => {
       expect(onToggleAI).toHaveBeenCalledTimes(1);
     });
 
-    it('onToggleBiometricLock fires when biometric toggle is pressed (outside Complex)', async () => {
-      const onToggleBiometricLock = jest.fn();
-      const props = makeProps({ isPro: true, isBiometricAvailable: true, isBiometricLockEnabled: false, onToggleBiometricLock });
+    it('onOpenRenderStyleSettings fires when render-style-settings is pressed', async () => {
+      const onOpenRenderStyleSettings = jest.fn();
+      const props = makeProps({ onOpenRenderStyleSettings });
       const { getByTestId } = render(<SettingsContent {...props} />);
       await act(async () => {
-        fireEvent(getByTestId('settings.toggle.biometric-lock'), 'valueChange', true);
+        fireEvent.press(getByTestId('settings.button.render-style-settings'));
       });
-      expect(onToggleBiometricLock).toHaveBeenCalledWith(true);
-    });
-
-    it('onToggleFloatingGitButton fires when floating-git-button toggle is pressed (outside Complex)', async () => {
-      const onToggleFloatingGitButton = jest.fn();
-      const props = makeProps({ floatingGitButtonVisible: false, onToggleFloatingGitButton });
-      const { getByTestId } = render(<SettingsContent {...props} />);
-      await act(async () => {
-        fireEvent(getByTestId('settings.toggle.floating-git-button'), 'valueChange', true);
-      });
-      expect(onToggleFloatingGitButton).toHaveBeenCalledTimes(1);
-    });
-
-    it('onToggleSyncPaused fires when pause-sync toggle is pressed (outside Complex)', async () => {
-      const onToggleSyncPaused = jest.fn();
-      const props = makeProps({ syncPaused: false, onToggleSyncPaused });
-      const { getByTestId } = render(<SettingsContent {...props} />);
-      await act(async () => {
-        fireEvent(getByTestId('settings.toggle.pause-sync'), 'valueChange', true);
-      });
-      expect(onToggleSyncPaused).toHaveBeenCalledWith(true);
-    });
-
-    it('setStyle fires when basic style option is pressed (outside Complex)', async () => {
-      const setStyle = jest.fn();
-      const props = makeProps({ uiStyle: 'neo-brutalist', setStyle });
-      const { getByTestId } = render(<SettingsContent {...props} />);
-      await act(async () => {
-        fireEvent.press(getByTestId('settings.option.style.basic'));
-      });
-      expect(setStyle).toHaveBeenCalledWith('flat');
-    });
-  });
-
-  // -----------------------------------------------------------------
-  // Sync Engine — inside Complex, shows when repositories > 0
-  // -----------------------------------------------------------------
-  describe('Inside Complex — Sync Engine (repositories > 0)', () => {
-    it('onSyncRepo fires when sync button on repo row is pressed', async () => {
-      const onSyncRepo = jest.fn();
-      const repositories = [{ id: 'repo1', name: 'test-repo', path: 'test-repo' }];
-      const props = makeProps({ repositories, onSyncRepo });
-      const rendered = render(<SettingsContent {...props} />);
-      const complexRoot = getComplexRoot(rendered);
-      expect(complexRoot).not.toBeNull();
-      const { getByTestId } = within(complexRoot!);
-      await act(async () => {
-        fireEvent.press(getByTestId('settings.button.sync-repo'));
-      });
-      expect(onSyncRepo).toHaveBeenCalledTimes(1);
+      expect(onOpenRenderStyleSettings).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -677,6 +677,7 @@
       "bodyReminder": "You can turn this on or off anytime in Settings → AI → GitHub Tools."
     },
     "skipForNow": "Skip for Now",
+    "nextCustomSetup": "Next: Custom Setup",
     "simple": {
       "signInCancelled": "Sign-in was cancelled. Please try again.",
       "signInFailed": "Sign-in failed. Please try again.",

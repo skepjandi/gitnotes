@@ -46,6 +46,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(props, ref
     surfaceTestID,
     children,
     className,
+    testID,
     ...textInputProps
   } = props;
   const { colors, spacing, type } = useTokens();
@@ -73,6 +74,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(props, ref
       {children ? children : (
         <TextInput
           ref={ref}
+          testID={testID}
           multiline={multiline}
           placeholderTextColor={placeholderTextColor ?? colors.textSecondary}
           onFocus={(e) => {

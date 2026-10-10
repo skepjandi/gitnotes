@@ -564,7 +564,6 @@
       "lfsFiles": "Les fichiers volumineux suivis par Git LFS sont téléchargés à la demande. Téléchargez les fichiers en attente pour les voir hors ligne.",
       "templatesRepo": "Connectez un dépôt GitHub pour stocker et synchroniser vos modèles de notes personnalisés.",
       "clearData": "Supprime définitivement toutes les notes, tâches et toiles de cet appareil. Vos fichiers sur GitHub ne sont pas affectés.",
-      "quickSetup": "Configuration Rapide",
       "resetOnboarding": "Affichez à nouveau les écrans de bienvenue lors du prochain lancement de l'application. Ne supprime aucune donnée.",
       "enableAI": "Activez l'assistant de chat IA pour vous aider à organiser les notes, générer du contenu et plus encore.",
       "model": "Choisissez le modèle d'IA utilisé pour le chat et l'aide à l'écriture. Les modèles peuvent varier en vitesse, capacités et coût.",

@@ -525,8 +525,7 @@
     "sshKeyDescription": "Copy this key and add it to your GitHub account. Go to Settings → SSH keys → New key.",
     "openSshSettings": "Add to GitHub",
     "sshGenerating": "Generating SSH key…",
-    "sshKeyError": "Failed to generate SSH key.",
-    "quickSetup": "Quick Setup"
+    "sshKeyError": "Failed to generate SSH key."
   },
   "accounts": {
     "title": "Accounts",

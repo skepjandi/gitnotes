@@ -754,7 +754,7 @@ export default function OnboardingScreen({
                   : colors.textSecondary,
             }}
           >
-            Quick Setup
+            {t('settings.quickSetup')}
           </Text>
         </TouchableOpacity>
       </View>

@@ -9,10 +9,11 @@ export interface GroupProps {
   footer?: string;
   style?: StyleProp<ViewStyle>;
   children?: ReactNode;
+  testID?: string;
 }
 
 export function Group(props: GroupProps) {
-  const { title, badge, footer, style, children } = props;
+  const { title, badge, footer, style, children, testID } = props;
   const { style: themeStyle } = useTheme();
   const { colors, spacing } = useTokens();
   const items = React.Children.toArray(children).filter(Boolean);
@@ -23,7 +24,7 @@ export function Group(props: GroupProps) {
       : undefined;
 
   return (
-    <View style={[{ gap: spacing[2] }, style]}>
+    <View testID={testID} style={[{ gap: spacing[2] }, style]}>
       {title && (
         <View className="flex-row items-center gap-2 ml-3">
           <Text

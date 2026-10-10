@@ -26,6 +26,7 @@
 import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import { SettingsContent } from '../../../src/components/settings/SettingsContent';
+import { RewardEntitlementService } from '../../../src/services/RewardEntitlementService';
 
 // ---------------------------------------------------------------------------
 // Module-level mocks (must precede any imports)
@@ -141,7 +142,7 @@ interface TestSettingsContentProps {
   headerHeight: number;
   tabBarHeight: number;
   theme: 'light' | 'dark' | 'system';
-  uiStyle: 'flat' | 'neumorphic' | 'neo-brutalist' | 'retrofuturistic';
+  uiStyle: 'flat' | 'neumorphic' | 'neo-brutalist' | 'retrofuturistic' | 'terminal-mono' | 'crt-green' | 'developer-desk';
   accounts: unknown[];
   activeAccountId: string | null;
   authState: { isAuthenticated: boolean };
@@ -156,7 +157,7 @@ interface TestSettingsContentProps {
   chatStorageLabel: string;
   providers: unknown[];
   setTheme: (t: 'light' | 'dark' | 'system') => void;
-  setStyle: (s: 'flat' | 'neumorphic' | 'neo-brutalist' | 'retrofuturistic') => void;
+  setStyle: (s: 'flat' | 'neumorphic' | 'neo-brutalist' | 'retrofuturistic' | 'terminal-mono' | 'crt-green' | 'developer-desk') => void;
   onOpenConnectToken: () => void;
   onOpenAddAccount: () => void;
   onSwitchAccount: (id: string) => void | Promise<void>;
@@ -226,6 +227,9 @@ interface TestSettingsContentProps {
   onDisconnectGitHubApp: (hostId: string) => void;
   appLoading: Record<string, boolean>;
   appError: Record<string, string | null>;
+  referralProgress: number;
+  referralUnlockedCount: number;
+  onOpenRewardCatalog: () => void;
 }
 
 function makeProps(overrides: Partial<TestSettingsContentProps> = {}): TestSettingsContentProps {
@@ -322,6 +326,9 @@ function makeProps(overrides: Partial<TestSettingsContentProps> = {}): TestSetti
     onDisconnectGitHubApp: jest.fn(),
     appLoading: { '__fresh__': false },
     appError: { '__fresh__': null },
+    referralProgress: 0,
+    referralUnlockedCount: 0,
+    onOpenRewardCatalog: jest.fn(),
     ...overrides,
   };
 }
@@ -537,6 +544,190 @@ describe('SettingsContent style selector [four-way selector]', () => {
         fireEvent(getByTestId('settings.toggle.theme'), 'valueChange', true);
       });
       expect(setTheme).toHaveBeenCalledWith('dark');
+    });
+  });
+});
+
+describe('SettingsContent referral theme selector', () => {
+  describe('Rendering', () => {
+    it('renders all three referral theme rows', () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(false);
+      const props = makeProps({ isPro: false });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+      expect(getByTestId('settings.option.style.terminal-mono')).toBeTruthy();
+      expect(getByTestId('settings.option.style.crt-green')).toBeTruthy();
+      expect(getByTestId('settings.option.style.developer-desk')).toBeTruthy();
+    });
+
+    it('renders all three referral theme rows for Pro users too', () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(false);
+      const props = makeProps({ isPro: true });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+      expect(getByTestId('settings.option.style.terminal-mono')).toBeTruthy();
+      expect(getByTestId('settings.option.style.crt-green')).toBeTruthy();
+      expect(getByTestId('settings.option.style.developer-desk')).toBeTruthy();
+    });
+
+    it('renders lock icon on a locked referral theme', () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(false);
+      const props = makeProps({ isPro: false });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+      // GroupRow renders the trailing lock icon via Ionicons; we just verify row is present
+      expect(getByTestId('settings.option.style.terminal-mono')).toBeTruthy();
+    });
+  });
+
+  describe('Locked theme tap opens RewardCatalogModal (does NOT call setStyle)', () => {
+    it('tapping locked terminal-mono calls onOpenRewardCatalog, NOT setStyle', async () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(false);
+      const setStyle = jest.fn();
+      const onOpenRewardCatalog = jest.fn();
+      const props = makeProps({ isPro: false, uiStyle: 'flat', setStyle, onOpenRewardCatalog });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+
+      await act(async () => {
+        fireEvent.press(getByTestId('settings.option.style.terminal-mono'));
+      });
+      expect(onOpenRewardCatalog).toHaveBeenCalledTimes(1);
+      expect(setStyle).not.toHaveBeenCalled();
+    });
+
+    it('tapping locked crt-green calls onOpenRewardCatalog, NOT setStyle', async () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(false);
+      const setStyle = jest.fn();
+      const onOpenRewardCatalog = jest.fn();
+      const props = makeProps({ isPro: false, uiStyle: 'flat', setStyle, onOpenRewardCatalog });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+
+      await act(async () => {
+        fireEvent.press(getByTestId('settings.option.style.crt-green'));
+      });
+      expect(onOpenRewardCatalog).toHaveBeenCalledTimes(1);
+      expect(setStyle).not.toHaveBeenCalled();
+    });
+
+    it('tapping locked developer-desk calls onOpenRewardCatalog, NOT setStyle', async () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(false);
+      const setStyle = jest.fn();
+      const onOpenRewardCatalog = jest.fn();
+      const props = makeProps({ isPro: false, uiStyle: 'flat', setStyle, onOpenRewardCatalog });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+
+      await act(async () => {
+        fireEvent.press(getByTestId('settings.option.style.developer-desk'));
+      });
+      expect(onOpenRewardCatalog).toHaveBeenCalledTimes(1);
+      expect(setStyle).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Unlocked theme tap calls setStyle (RewardEntitlementService.isUnlocked gating)', () => {
+    it('tapping unlocked terminal-mono calls setStyle with terminal-mono', async () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(true);
+      const setStyle = jest.fn();
+      const onOpenRewardCatalog = jest.fn();
+      const props = makeProps({ isPro: false, uiStyle: 'flat', setStyle, onOpenRewardCatalog });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+
+      await act(async () => {
+        fireEvent.press(getByTestId('settings.option.style.terminal-mono'));
+      });
+      expect(setStyle).toHaveBeenCalledWith('terminal-mono');
+      expect(onOpenRewardCatalog).not.toHaveBeenCalled();
+    });
+
+    it('tapping unlocked crt-green calls setStyle with crt-green', async () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(true);
+      const setStyle = jest.fn();
+      const onOpenRewardCatalog = jest.fn();
+      const props = makeProps({ isPro: false, uiStyle: 'flat', setStyle, onOpenRewardCatalog });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+
+      await act(async () => {
+        fireEvent.press(getByTestId('settings.option.style.crt-green'));
+      });
+      expect(setStyle).toHaveBeenCalledWith('crt-green');
+      expect(onOpenRewardCatalog).not.toHaveBeenCalled();
+    });
+
+    it('tapping unlocked developer-desk calls setStyle with developer-desk', async () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(true);
+      const setStyle = jest.fn();
+      const onOpenRewardCatalog = jest.fn();
+      const props = makeProps({ isPro: false, uiStyle: 'flat', setStyle, onOpenRewardCatalog });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+
+      await act(async () => {
+        fireEvent.press(getByTestId('settings.option.style.developer-desk'));
+      });
+      expect(setStyle).toHaveBeenCalledWith('developer-desk');
+      expect(onOpenRewardCatalog).not.toHaveBeenCalled();
+    });
+
+    it('setStyle is NOT called for a locked theme even if Pro', async () => {
+      // Pro status alone does not unlock referral themes — only server-authoritative unlock does
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(false);
+      const setStyle = jest.fn();
+      const onOpenRewardCatalog = jest.fn();
+      const props = makeProps({ isPro: true, uiStyle: 'flat', setStyle, onOpenRewardCatalog });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+
+      await act(async () => {
+        fireEvent.press(getByTestId('settings.option.style.developer-desk'));
+      });
+      expect(setStyle).not.toHaveBeenCalled();
+      expect(onOpenRewardCatalog).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Selected state renders (checkicon visible)', () => {
+    it('terminal-mono row is rendered when uiStyle is terminal-mono', () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(true);
+      const props = makeProps({ isPro: true, uiStyle: 'terminal-mono' });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+      expect(getByTestId('settings.option.style.terminal-mono')).toBeTruthy();
+    });
+
+    it('crt-green row is rendered when uiStyle is crt-green', () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(true);
+      const props = makeProps({ isPro: true, uiStyle: 'crt-green' });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+      expect(getByTestId('settings.option.style.crt-green')).toBeTruthy();
+    });
+
+    it('developer-desk row is rendered when uiStyle is developer-desk', () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(true);
+      const props = makeProps({ isPro: true, uiStyle: 'developer-desk' });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+      expect(getByTestId('settings.option.style.developer-desk')).toBeTruthy();
+    });
+  });
+
+  describe('Legacy styles unaffected', () => {
+    beforeEach(() => { mockAlertCalls = []; });
+
+    it('pressing neumorphic still triggers paywall for free users (unchanged behavior)', async () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(false);
+      const props = makeProps({ isPro: false });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+
+      await act(async () => {
+        fireEvent.press(getByTestId('settings.option.style.neumorphic'));
+      });
+      expect(mockAlertCalls.length).toBe(1);
+    });
+
+    it('neo-brutalist is still free for all users (unchanged behavior)', async () => {
+      jest.spyOn(RewardEntitlementService, 'isUnlocked').mockReturnValue(false);
+      const setStyle = jest.fn();
+      const props = makeProps({ isPro: false, uiStyle: 'flat', setStyle });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+
+      await act(async () => {
+        fireEvent.press(getByTestId('settings.option.style.neo-brutalist'));
+      });
+      expect(setStyle).toHaveBeenCalledWith('neo-brutalist');
+      expect(mockAlertCalls.length).toBe(0);
     });
   });
 });

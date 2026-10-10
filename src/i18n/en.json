@@ -351,6 +351,7 @@
     "clearAllNotes": "Clear All Notes",
     "clearAllConfirm": "Are you sure you want to clear all notes? This action cannot be undone.",
     "resetOnboarding": "Reset Onboarding",
+    "quickSetup": "Quick Setup",
     "about": "About",
     "version": "Version",
     "build": "Build",

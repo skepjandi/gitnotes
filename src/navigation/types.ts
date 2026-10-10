@@ -20,7 +20,7 @@ type ProductionStackParamList = {
   AddReminder: undefined;
   ThoughtDump: { openVoiceOnMount?: boolean } | undefined;
   Paywall: undefined;
-  Onboarding: { fromOAuth?: boolean; oauthState?: string | null } | undefined;
+  Onboarding: { fromOAuth?: boolean; oauthState?: string | null; quickSetup?: boolean } | undefined;
   Explore: { repoId?: string } | undefined;
   ExploreDiff: { repoId: string; path: string };
   ExploreCommit: { repoId: string; commitId: string };

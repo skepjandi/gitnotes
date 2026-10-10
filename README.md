@@ -18,7 +18,7 @@
 <p align="center">
   <a href="https://github.com/skepjandi/gitnotes/actions/workflows/ci.yml"><img src="https://github.com/skepjandi/gitnotes/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MPL--2.0-blue.svg" alt="MPL-2.0"></a>
-  <a href="https://docs.expo.dev/versions/latest/"><img src="https://img.shields.io/badge/Expo-SDK%2056-000.svg" alt="Expo SDK 56"></a>
+  <a href="https://docs.expo.dev/versions/latest/"><img src="https://img.shields.io/badge/Expo-SDK%2057-000.svg" alt="Expo SDK 57"></a>
   <img src="https://img.shields.io/badge/platform-iOS%20%7C%20Android-lightgrey.svg" alt="iOS | Android">
 </p>
 
@@ -50,10 +50,12 @@
 - Optional Pro tier with Neumorphic UI, Neo-Brutalist UI (free), advanced AI, multi-host paywall, and trial/lifetime via StoreKit 2 (RevenueCat) — see the [wiki: Paywall & Pro Tier](https://github.com/skepjandi/gitnotes/wiki/paywall)
 - Optional AI chat layer (Anthropic, OpenAI-compatible providers, Apple Intelligence, on-device Llama)
 - Biometric lock, multilingual UI (EN, ES, FR, DE, JA, KO), light / dark / system themes
+- Referral battle pass with server-authoritative cosmetic milestones (themes, alternate app icons); distinct from Pro/RevenueCat identity — see the [wiki: Referral Battle Pass](https://github.com/skepjandi/gitnotes/wiki/services#referral-battle-pass)
+- Native App Store / Play Store review prompt after meaningful usage (>=3 successful syncs OR >=5 notes created, >=14 days since first launch); Settings opens store listing as fallback
 
 ## Stack
 
-Expo SDK 56 · React Native 0.85 · TypeScript 6 · React Navigation v7 · TanStack Query · Zustand · Vercel AI SDK v6 · Reanimated · FlashList · NativeWind v5.
+Expo SDK 57 · React Native 0.86 · TypeScript 6 · React Navigation v7 · TanStack Query · Zustand · Vercel AI SDK v6 · Reanimated · FlashList · NativeWind v5.
 
 ## Contributing
 

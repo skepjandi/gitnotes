@@ -5,6 +5,7 @@ import { StorageService } from './StorageService';
 import { pullAllFromRepos } from './RepoPullService';
 import { reconcileThoughtDumps } from './ai/thoughtDumpIndexing';
 import { GitSyncGate } from './git/GitSyncGate';
+import { __recordAndMaybePrompt } from './ReviewPromptService';
 
 /**
  * Foreground auto-pull driver: pulls every tracked repo when the app becomes
@@ -204,6 +205,7 @@ async function runPull(reason: string): Promise<void> {
     if (success) {
       consecutiveFailures = 0;
       health = { ...health, status: 'ok', lastCompletedAt: Date.now(), consecutiveFailures: 0 };
+      void __recordAndMaybePrompt('sync');
     } else {
       consecutiveFailures++;
       lastFailedAt = Date.now();

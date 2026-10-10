@@ -39,9 +39,10 @@ import {
 interface OnboardingScreenProps {
   onComplete: () => void;
   onSkip: () => void;
+  quickSetup?: boolean;
 }
 
-type OnboardingMode = 'simple' | 'complex';
+type OnboardingMode = 'quick' | 'standard';
 type SimpleStep = 'select' | 'oauth' | 'repo-name' | 'creating' | 'cloning' | 'seeding' | 'done' | 'error';
 
 /**
@@ -68,6 +69,7 @@ const INFO_STEP_ICONS = [
 export default function OnboardingScreen({
   onComplete,
   onSkip,
+  quickSetup = false,
 }: OnboardingScreenProps) {
   const { t } = useTranslation();
 
@@ -124,7 +126,7 @@ export default function OnboardingScreen({
   const [githubAuthError, setGithubAuthError] = useState<string | null>(null);
 
   // Simple onboarding mode state
-  const [onboardingMode, setOnboardingMode] = useState<OnboardingMode>('complex');
+  const [onboardingMode, setOnboardingMode] = useState<OnboardingMode>(quickSetup ? 'quick' : 'standard');
   const [simpleStep, setSimpleStep] = useState<SimpleStep>('select');
   const [simpleRepoName, setSimpleRepoName] = useState('');
   const [simpleError, setSimpleError] = useState<string | null>(null);
@@ -433,7 +435,7 @@ export default function OnboardingScreen({
   }, [navigation, refreshAccounts, t]);
 
   const handleSelectSimple = useCallback(() => {
-    setOnboardingMode('simple');
+    setOnboardingMode('quick');
     setSimpleStep('oauth');
     setSimpleError(null);
     // Don't auto-initiate OAuth - let user click Sign In to start
@@ -884,7 +886,7 @@ export default function OnboardingScreen({
             />
           </View>
 
-          {onboardingMode === 'simple' ? (
+          {onboardingMode === 'quick' ? (
             <View className="flex-1 px-10" style={{ justifyContent: 'center' }}>
               {simpleStep === 'select' && (
                 <>
@@ -925,9 +927,9 @@ export default function OnboardingScreen({
                     <Button
                       variant="ghost"
                       fullWidth
-                      testID="onboarding.simple.button.complex"
-                      onPress={() => setOnboardingMode('complex')}
-                      label={t('onboarding.simple.select.complexButton')}
+                      testID="onboarding.simple.button.standard"
+                      onPress={() => setOnboardingMode('standard')}
+                      label={t('onboarding.simple.select.backButton')}
                     />
                   </View>
                   {simpleError ? (
@@ -1149,8 +1151,8 @@ export default function OnboardingScreen({
                       variant="ghost"
                       fullWidth
                       testID="onboarding.simple.button.back-select"
-                      onPress={() => { setSimpleStep('select'); setSimpleError(null); setOnboardingMode('complex'); }}
-                      label={t('onboarding.simple.error.useAdvancedButton')}
+                      onPress={() => { setSimpleStep('select'); setSimpleError(null); setOnboardingMode('standard'); }}
+                      label={t('onboarding.simple.error.backButton')}
                     />
                   </View>
                 </>
@@ -1395,7 +1397,7 @@ export default function OnboardingScreen({
                   testID="onboarding.button.quick-setup"
                   className="mt-6 px-6 py-3 rounded-lg"
                   style={{ backgroundColor: `${colors.accent}15`, borderWidth: 1, borderColor: colors.accent }}
-                  onPress={() => { setOnboardingMode('simple'); }}
+                  onPress={() => { setOnboardingMode('quick'); }}
                 >
                   <Text
                     className="text-base font-semibold text-center"
@@ -1414,7 +1416,7 @@ export default function OnboardingScreen({
             </View>
           )}
 
-          {onboardingMode !== 'simple' && (
+          {onboardingMode !== 'quick' && (
             <View className="px-5 pb-10">
               <View className="flex-row justify-center mb-6">
                 {Array.from({ length: TOTAL_STEPS }).map((_, index) => (

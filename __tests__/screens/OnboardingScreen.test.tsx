@@ -123,7 +123,7 @@ jest.mock('react-i18next', () => ({
         'onboarding.simple.select.title': 'Quick Setup',
         'onboarding.simple.select.description': 'Sign in with GitHub and we\'ll create a private repository for your notes.',
         'onboarding.simple.select.signInButton': 'Sign in with GitHub',
-        'onboarding.simple.select.complexButton': 'Complex Setup',
+        'onboarding.simple.select.backButton': 'Back',
         'onboarding.simple.quickSetupBanner': 'Quick Setup (Recommended)',
         'onboarding.simple.quickSetupBannerSub': 'Sign in with GitHub and create a repo in 30 seconds',
       };
@@ -1931,57 +1931,57 @@ describe('OnboardingScreen', () => {
     });
   });
 
-  describe('Simple mode footer visibility', () => {
-    it('hides progress dots and Next button in Simple mode at select step', async () => {
+  describe('Quick mode footer visibility', () => {
+    it('hides progress dots and Next button in Quick mode at select step', async () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
 
-      // Initially in Complex mode at step 0, Next button should be visible
+      // Initially in standard mode at step 0, Next button should be visible
       await waitFor(() => {
         expect(getByTestId('onboarding.button.next')).toBeTruthy();
       });
 
-      // Click Quick Setup to enter Simple mode
+      // Click Quick Setup to enter Quick mode
       await act(async () => {
         fireEvent.press(getByTestId('onboarding.button.quick-setup'));
       });
 
-      // In Simple mode, the progress dots and Next button should be hidden
+      // In Quick mode, the progress dots and Next button should be hidden
       await waitFor(() => {
         expect(queryByTestId('onboarding.button.next')).toBeNull();
       });
     });
 
-    it('shows progress dots and Next button in Complex mode', async () => {
+    it('shows progress dots and Next button in standard mode', async () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
 
-      // In Complex mode at step 0, Next button should be visible
+      // In standard mode at step 0, Next button should be visible
       await waitFor(() => {
         expect(getByTestId('onboarding.button.next')).toBeTruthy();
       });
     });
 
-    it('restores footer controls when switching from Simple to Complex mode', async () => {
+    it('restores footer controls when switching from Quick to standard mode', async () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
 
-      // Click Quick Setup to enter Simple mode
+      // Click Quick Setup to enter Quick mode
       await act(async () => {
         fireEvent.press(getByTestId('onboarding.button.quick-setup'));
       });
 
-      // Verify we're in Simple mode - no Next button
+      // Verify we're in Quick mode - no Next button
       await waitFor(() => {
         expect(queryByTestId('onboarding.button.next')).toBeNull();
       });
 
-      // Click Complex Setup button to go back to Complex mode
+      // Click the back button to return to standard mode
       await act(async () => {
-        fireEvent.press(getByTestId('onboarding.simple.button.complex'));
+        fireEvent.press(getByTestId('onboarding.simple.button.standard'));
       });
 
       // Next button should be restored
@@ -1990,19 +1990,19 @@ describe('OnboardingScreen', () => {
       });
     });
 
-    it('uses Complex Setup label for the mode switch button', async () => {
+    it('renders the neutral back label for the mode switch button', async () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
 
-      // Click Quick Setup to enter Simple mode
+      // Click Quick Setup to enter quick mode
       await act(async () => {
         fireEvent.press(getByTestId('onboarding.button.quick-setup'));
       });
 
-      // The button to switch back should use complexButton key
-      const complexButton = getByTestId('onboarding.simple.button.complex');
-      expect(complexButton).toBeTruthy();
+      // The button to switch back should use backButton key
+      const backButton = getByTestId('onboarding.simple.button.standard');
+      expect(backButton).toBeTruthy();
     });
   });
 });

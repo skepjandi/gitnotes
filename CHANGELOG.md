@@ -8,7 +8,15 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
-## 2026-10-07
+## 2026-10-10
+
+### feat(onboarding): add simple GitHub OAuth onboarding
+
+**What:** A simplified first-run path creates a private GitHub repository automatically. Sign in with GitHub OAuth, accept or edit the pre-filled repo name (`gitnotes-<login>`), and the app creates a private auto-initialized repo, clones it, and seeds one welcome note at `notes/welcome-to-gitnotes.md`. The welcome note is a local working-tree change that enters the normal stage/commit/push sync lifecycle. OAuth denial, name collision, permission errors, and network failures are handled with retry without losing progress. All existing provider, PAT, OAuth, and GitHub App choices are preserved under a labeled Complex section in both onboarding and Settings.
+
+**Scope:** `OnboardingScreen` (Simple/Complex modes, OAuth callback continuation, repo create/clone/seed), `OAuthCallbackScreen` (Simple-mode return navigation), `GitHubService` (new `createRepository` method), Settings `Complex` grouping. GitHub App is unchanged; non-GitHub providers unchanged.
+
+**PR:** [#1774](https://github.com/skepjandi/gitnotes/pull/1774)
 
 ### fix(chat): serialize initial message persistence
 

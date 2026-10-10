@@ -187,7 +187,13 @@ export default function AppNavigator({ showOnboarding, onOnboardingComplete, onO
               name="Onboarding"
               options={{ headerShown: false }}
             >
-              {() => <OnboardingScreen onComplete={onOnboardingComplete!} onSkip={onOnboardingSkip!} />}
+              {({ route }) => (
+                <OnboardingScreen
+                  onComplete={onOnboardingComplete!}
+                  onSkip={onOnboardingSkip!}
+                  quickSetup={(route.params as { quickSetup?: boolean } | undefined)?.quickSetup ?? false}
+                />
+              )}
             </Stack.Screen>
             <Stack.Screen 
               name="MainTabs" 

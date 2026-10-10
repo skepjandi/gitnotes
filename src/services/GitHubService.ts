@@ -181,6 +181,22 @@ export interface GitHubCreateIssueInput {
   assignees?: string[];
 }
 
+export interface GitHubCreateRepositoryInput {
+  name: string;
+}
+
+export interface GitHubCreatedRepository {
+  id: number;
+  node_id: string;
+  name: string;
+  full_name: string;
+  owner: { login: string; id: number };
+  private: boolean;
+  default_branch: string;
+  html_url: string;
+  description: string;
+}
+
 export interface GitHubPullRequestDiff {
   files: Array<{
     filename: string;
@@ -548,6 +564,30 @@ class GitHubServiceClass {
     } catch (error) {
       console.warn('[GitHubService] Failed to create issue:', error);
       return null;
+    }
+  }
+
+  /**
+   * Creates a private, auto-initialized repository for the authenticated user.
+   * Token resolution delegates to `request()`: singleton token first, then OAuth fallback.
+   * HTTP errors (401/403/422) and transport failures are re-thrown so callers can
+   * present appropriate UX.
+   */
+  async createRepository(input: GitHubCreateRepositoryInput): Promise<GitHubCreatedRepository> {
+    try {
+      return await this.request<GitHubCreatedRepository>(
+        'https://api.github.com/user/repos',
+        'POST',
+        { name: input.name, private: true, auto_init: true },
+      );
+    } catch (error) {
+      const details = extractHttpErrorDetails(error);
+      if (details.status !== undefined) {
+        throw Object.assign(new Error(details.message ?? 'Repository creation failed'), {
+          status: details.status,
+        });
+      }
+      throw error;
     }
   }
 

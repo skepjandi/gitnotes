@@ -256,6 +256,8 @@ The canonical route param types are in `src/navigation/types.ts`:
 - Biometric lock toggle (`BiometricLockContext`)
 - Language (i18n)
 
+**Quick Setup:** A dedicated Quick Setup row in Settings starts the GitHub repository setup flow without requiring users to restart onboarding.
+
 **Appearance (UI Style) selector:**
 
 `SettingsContent.tsx` exposes a four-way UI style picker under the Appearance section. Users choose one of:
@@ -281,14 +283,15 @@ When a non-Pro user taps a Pro-locked style (Neumorphic or Retrofuturistic), `pr
 
 ### OnboardingScreen
 
-**Purpose:** First-run setup — clone a repo or create a new one.
+**Purpose:** First-run setup for new users, with two distinct paths:
 
-**Flow:**
-1. Welcome + feature intro
-2. GitHub sign-in (optional)
-3. Clone existing repo or create new
-4. Initial sync
-5. Done → `HomeScreen`
+**Mode selection:** On the welcome step, a "Quick Setup" banner offers a simplified path. The "Back" button (visible after entering Quick mode) returns to the standard flow.
+
+**Quick mode:** GitHub OAuth sign-in → editable private repo name (pre-filled from GitHub login as `gitnotes-<login>`) → private auto-initialized repository created via `POST /user/repos` with `{private:true, auto_init:true}` → clone of the new repo → one welcome note (`notes/welcome-to-gitnotes.md`) written locally through `noteStore.createNote()` → done. The welcome note is a local working-tree change subject to the normal stage/commit/push lifecycle, not a separate API upload. Errors (OAuth denial, name collision, 403, network failure) are handled without losing onboarding progress and allow retry. Quick mode is also accessible from Settings via the Quick Setup row.
+
+**Standard mode:** Provider picker (GitHub, GitLab, Gitea, Forgejo), then for GitHub: PAT / OAuth / GitHub App auth method selector. Non-GitHub providers use token entry with optional instance URL. After authentication, clone or skip. Then optional GitNotēs Pro promotion screen. Finally `HomeScreen`.
+
+**Callback behavior:** OAuth callback (`gitnotes://oauth/callback`) is handled by `OAuthCallbackScreen`. In Quick mode the callback stores the result in `pendingOAuthFlows` and navigates back to `OnboardingScreen` with `fromOAuth=true` so the result is consumed and the appropriate Quick step is shown. In Standard mode the callback navigates to Settings.
 
 ---
 

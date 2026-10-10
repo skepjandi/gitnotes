@@ -1526,6 +1526,7 @@ export default function SettingsScreen() {
         appIconSupported={appIconSupported}
         appIconLoading={appIconLoading}
         onOpenAppIconPicker={() => setShowAppIconPicker(true)}
+        onQuickSetup={() => navigation.navigate('Onboarding', { quickSetup: true })}
       />
       <SettingsModals
         colors={colors}

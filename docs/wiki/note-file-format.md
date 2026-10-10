@@ -63,13 +63,20 @@ The same file format is used for multiple content types:
 
 ## File Path
 
-Files are stored under the Expo File System documents directory:
+Files live under the Expo File System documents directory. The clone root is:
 
 ```
-<documentDirectory>/GitNotes/<owner>/<repo>/<folder>/<slug>.<ext>
+<documentDirectory>/GitNotes/<owner>/<repo>/
 ```
 
-Example: `DocumentService` writes to `documents/note/my-first-note.md` relative to the repo root.
+Two distinct relative paths are used for different purposes:
+
+| Path | Purpose |
+|------|---------|
+| `documents/<type>/<slug>.<ext>` | Local-only storage used by `DocumentService` for notes not backed by a Git clone. Full path: `<documentDirectory>/documents/<type>/<slug>.<ext>` (e.g., `documents/note/my-note.md`). These files live outside the Git working tree and are not subject to stage/commit/push. |
+| `notes/<slug>.md` | Git working-tree path for clone-mode notes. Files here are inside the local Git working tree and subject to stage/commit/push. Created by `noteStore.createNote()` via `CloneSyncService.save()` with `folderPath: 'notes/'` (defined in `defaultsPolicy.ts`). Full path: `<documentDirectory>/GitNotes/<owner>/<repo>/notes/<slug>.md` |
+
+The welcome note created during Simple onboarding is a clone-mode note written to `notes/welcome-to-gitnotes.md` through `noteStore.createNote()`, making it a local working-tree change that enters the normal sync lifecycle (stage/commit/push) rather than an immediate API upload.
 
 ## DocumentIndex (SQLite)
 

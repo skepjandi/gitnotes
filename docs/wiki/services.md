@@ -144,6 +144,7 @@ GitNotēs uses a **centralized branch model** for clone-mode repositories:
 | File | Purpose |
 |------|---------|
 | `AuthService.ts` | Handles app authentication (biometric, PIN). Manages auth state and lock screen. |
+| `GitHubService.ts` | GitHub REST API client — read/write files, repos, issues, PRs, and more via the GitHub API. Implements `createRepository({ name })` which POSTs to `/user/repos` with `{ name, private: true, auto_init: true }` to create a private, auto-initialized repository for the authenticated user. Errors (401/403/422/transport) are re-thrown so callers can present appropriate recovery UX. |
 | `AccountStorage.ts` | Secure account credential storage — SSH keys, tokens, host connections via SecureStore; managed by AccountStorage class |
 | `AppIconService.ts` | Manages alternate app icon selection and persistence. Provides `hydrate()`, `current()`, `set()`, `reset()`, and `isSupported()` for switching between Default, Neon, Grayscale, and Gold launcher icons on iOS and Android. Persists selection via AsyncStorage under `@gitnotes:app_icon`; web/unsupported platforms return unavailable. All-user, no Pro gate. |
 | `OnboardingService.ts` | Manages first-run onboarding flow — repo selection, initial clone, preferences. |
@@ -166,12 +167,12 @@ GitNotēs uses a **centralized branch model** for clone-mode repositories:
 
 ## Worker API — OAuth/App Boundary (`src/services/`)
 
-> **Current mobile authentication is PAT-based (Personal Access Token).** The services below define the typed boundary for future GitHub OAuth PKCE and GitHub App installation flows. No OAuth UI is shipped in the current release.
+> The OAuth and GitHub App boundary handles GitHub credential acquisition. OAuth UI is shipped and used in Simple onboarding; GitHub App installation is also available.
 
 | File | Purpose |
 |------|---------|
 | `workerApi.ts` | Typed HTTP client for the Cloudflare Worker backend. Uses `EXPO_PUBLIC_GITNOTES_BACKEND_URL` with production fallback `https://worker.gitnotes.org/api/v1`. |
-| `GitHubOAuthService.ts` | GitHub OAuth PKCE flow — initiates, exchanges codes, revokes tokens. Uses `EXPO_PUBLIC_GITHUB_OAUTH_CLIENT_ID` for the public client ID. |
+| `GitHubOAuthService.ts` | GitHub OAuth PKCE flow — generates verifier/challenge, initiates via backend, opens authorization URL in system browser, exchanges codes, stores credentials. Default scope: `['read:user', 'user:email', 'repo']`. |
 | `GitHubAppService.ts` | GitHub App installation flow — generates signed JWS handoffs, exchanges installation tokens, renews via one-time grant tokens. |
 
 **Environment variables (from `.env.example`):**
@@ -185,7 +186,17 @@ GitNotēs uses a **centralized branch model** for clone-mode repositories:
 - OAuth: `gitnotes://oauth/callback`
 - App: `gitnotes://app/callback`
 
-**Existing auth (unchanged):** Host connections (`AccountsContext`, `HostAuthContext`) use PAT-based `GitHubService.setToken()` / `AuthService.connectHost()`. SSH key and credential management is unchanged.
+### Simple onboarding lifecycle
+
+Simple onboarding (visible on the welcome screen's "Quick Setup" banner) uses GitHub OAuth to create a private notes repository in one streamlined flow:
+
+1. **OAuth sign-in:** `OnboardingScreen` initiates OAuth via `GitHubOAuthService.initiate({ returnTo: 'onboarding' })`. The pending flow is stored in `pendingOAuthFlows` keyed by state. `OAuthCallbackScreen` receives the deep link, calls `GitHubOAuthService.exchangeCode()`, stores the result in the pending flow, and navigates back to `OnboardingScreen` with `fromOAuth=true`.
+2. **Repository creation:** `GitHubService.createRepository({ name })` sends `POST /user/repos` with `{ name, private: true, auto_init: true }`. Errors (401/403/422/transport) are re-thrown so the UI can show appropriate recovery options.
+3. **Clone:** `repoStore.addRepository()` registers and clones the canonical `owner/repo`.
+4. **Welcome note:** `noteStore.createNote()` writes `notes/welcome-to-gitnotes.md` locally through the working-tree path. The note is a local working-tree change subject to the normal stage/commit/push lifecycle.
+5. **Error recovery:** If repo creation fails with 422 (name collision), the user is returned to the name-entry step. If cloning fails, the created remote repo is retained so retry does not create a duplicate. If note seeding fails, the user is offered retry without re-creating the repo.
+
+**Existing auth (unchanged):** Host connections (`AccountsContext`, `HostAuthContext`) use PAT-based `GitHubService.setToken()` / `AuthService.connectHost()`. PAT, OAuth, and GitHub App credentials coexist on the same host. SSH key and credential management is unchanged.
 
 ## See Also
 

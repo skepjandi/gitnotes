@@ -12,7 +12,10 @@ jest.mock('@/services/StorageService', () => ({
 }));
 
 jest.mock('@/services/cloneSyncServiceImpl', () => ({
-  CloneSyncService: { save: jest.fn() },
+  CloneSyncService: {
+    save: jest.fn(),
+    listTree: jest.fn(),
+  },
   NoteSyncQueueService: {
     onMutationSucceeded: jest.fn(),
     onDroppedMutation: jest.fn(),
@@ -107,5 +110,150 @@ describe('noteStore delete flows', () => {
       intent: 'upsert',
     }));
     expect(CommitService.commit).not.toHaveBeenCalled();
+  });
+
+  describe('untitled note naming', () => {
+    it('blank title uses notes/untitled.md when no existing untitled files', async () => {
+      const createdNote: Note = {
+        id: 'note-3',
+        title: '',
+        content: 'content',
+        createdAt: 1,
+        updatedAt: 1,
+        tags: [],
+        repo: 'owner/repo',
+        branch: 'main',
+        filePath: 'notes/untitled.md',
+      };
+      (CloneSyncService.listTree as jest.Mock).mockResolvedValue([]);
+      (StorageService.createNote as jest.Mock).mockResolvedValue(createdNote);
+
+      const result = await useNoteStore.getState().createNote({
+        title: '',
+        content: 'content',
+        repo: 'owner/repo',
+        branch: 'main',
+        format: 'markdown',
+      });
+
+      expect(result?.filePath).toBe('notes/untitled.md');
+      expect(CloneSyncService.save).toHaveBeenCalledWith(expect.objectContaining({
+        repoPath: 'owner/repo',
+        branch: 'main',
+        filePath: 'notes/untitled.md',
+        intent: 'upsert',
+      }));
+      expect(StorageService.createNote).toHaveBeenCalledWith(
+        expect.objectContaining({ filePath: 'notes/untitled.md' }),
+      );
+    });
+
+    it('blank title uses notes/untitled1.md when notes/untitled.md already exists', async () => {
+      const createdNote: Note = {
+        id: 'note-4',
+        title: '',
+        content: 'content',
+        createdAt: 1,
+        updatedAt: 1,
+        tags: [],
+        repo: 'owner/repo',
+        branch: 'main',
+        filePath: 'notes/untitled1.md',
+      };
+      (CloneSyncService.listTree as jest.Mock).mockResolvedValue([
+        { path: 'notes/untitled.md', type: 'blob', sha: 'abc' },
+      ]);
+      (StorageService.createNote as jest.Mock).mockResolvedValue(createdNote);
+
+      const result = await useNoteStore.getState().createNote({
+        title: '',
+        content: 'content',
+        repo: 'owner/repo',
+        branch: 'main',
+        format: 'markdown',
+      });
+
+      expect(result?.filePath).toBe('notes/untitled1.md');
+      expect(CloneSyncService.save).toHaveBeenCalledWith(expect.objectContaining({
+        filePath: 'notes/untitled1.md',
+      }));
+    });
+
+    it('blank title uses notes/untitled2.md when notes/untitled.md and notes/untitled1.md exist', async () => {
+      const createdNote: Note = {
+        id: 'note-5',
+        title: '',
+        content: 'content',
+        createdAt: 1,
+        updatedAt: 1,
+        tags: [],
+        repo: 'owner/repo',
+        branch: 'main',
+        filePath: 'notes/untitled2.md',
+      };
+      (CloneSyncService.listTree as jest.Mock).mockResolvedValue([
+        { path: 'notes/untitled.md', type: 'blob', sha: 'abc' },
+        { path: 'notes/untitled1.md', type: 'blob', sha: 'def' },
+      ]);
+      (StorageService.createNote as jest.Mock).mockResolvedValue(createdNote);
+
+      const result = await useNoteStore.getState().createNote({
+        title: '',
+        content: 'content',
+        repo: 'owner/repo',
+        branch: 'main',
+        format: 'markdown',
+      });
+
+      expect(result?.filePath).toBe('notes/untitled2.md');
+      expect(CloneSyncService.save).toHaveBeenCalledWith(expect.objectContaining({
+        filePath: 'notes/untitled2.md',
+      }));
+    });
+
+    it('preserves .norg extension for neorg format', async () => {
+      const createdNote: Note = {
+        id: 'note-6',
+        title: '',
+        content: 'content',
+        createdAt: 1,
+        updatedAt: 1,
+        tags: [],
+        repo: 'owner/repo',
+        branch: 'main',
+        filePath: 'notes/untitled.norg',
+      };
+      (CloneSyncService.listTree as jest.Mock).mockResolvedValue([]);
+      (StorageService.createNote as jest.Mock).mockResolvedValue(createdNote);
+
+      const result = await useNoteStore.getState().createNote({
+        title: '',
+        content: 'content',
+        repo: 'owner/repo',
+        branch: 'main',
+        format: 'neorg',
+      });
+
+      expect(result?.filePath).toBe('notes/untitled.norg');
+      expect(CloneSyncService.save).toHaveBeenCalledWith(expect.objectContaining({
+        filePath: 'notes/untitled.norg',
+      }));
+    });
+
+    it('save failure does not call StorageService.createNote', async () => {
+      (CloneSyncService.listTree as jest.Mock).mockResolvedValue([]);
+      (CloneSyncService.save as jest.Mock).mockResolvedValue({ success: false, error: 'disk error' });
+
+      const result = await useNoteStore.getState().createNote({
+        title: '',
+        content: 'content',
+        repo: 'owner/repo',
+        branch: 'main',
+        format: 'markdown',
+      });
+
+      expect(result).toBeNull();
+      expect(StorageService.createNote).not.toHaveBeenCalled();
+    });
   });
 });

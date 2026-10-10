@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Note, NoteCreateInput, NoteUpdateInput, sortNotesWithPinnedFirst, filterNotesBySearch } from '../models/Note';
+import { Note, NoteCreateInput, NoteUpdateInput, NoteFormat, sortNotesWithPinnedFirst, filterNotesBySearch } from '../models/Note';
 import { StorageService } from '../services/StorageService';
 import { NoteSyncQueueService, CloneSyncService, type MutationSucceededEvent, type DroppedMutationEvent, type SaveResult } from '../services/cloneSyncServiceImpl';
 import { CommitService } from '../services/git/CommitService';
@@ -18,6 +18,39 @@ import { __recordAndMaybePrompt } from '../services/ReviewPromptService';
 function pathsEqual(a: { owner: string; repo: string } | null, b: { owner: string; repo: string }): boolean {
   return !!a && a.owner === b.owner && a.repo === b.repo;
 }
+
+/**
+ * Finds the first available collision-safe untitled filename in the repo clone.
+ * Scans the given folder for existing `untitled<N>.<ext>` files and returns
+ * the next available name, e.g. `untitled.md`, `untitled1.md`, `untitled2.md`.
+ */
+async function findUntitledFilePath(
+  repoPath: string,
+  branch: string,
+  folderPath: string,
+  format: NoteFormat,
+): Promise<string> {
+  const normalizedFolder = folderPath.replace(/\/+$/, '');
+  const ext = getExtensionForFormat(format);
+  const prefix = `${normalizedFolder}/untitled`;
+
+  const tree = await CloneSyncService.listTree(repoPath, branch);
+  const existing = new Set(
+    tree
+      .filter((e) => e.type === 'blob' && e.path.startsWith(prefix) && e.path.endsWith(ext))
+      .map((e) => e.path),
+  );
+
+  let counter = 0;
+  let candidate = `${prefix}${ext}`;
+  while (existing.has(candidate)) {
+    counter += 1;
+    candidate = `${prefix}${counter}${ext}`;
+  }
+  return candidate;
+}
+
+
 
 interface NoteState {
   notes: Note[];
@@ -104,11 +137,18 @@ export const useNoteStore = create<NoteState & NoteActions>()((set, get) => ({
       set({ error: null });
 
       const title = (input.title ?? '').trim();
-      const slug = title ? slugifyLocal(title) : `note-${Date.now()}`;
-      const ext = getExtensionForFormat(input.format ?? 'markdown');
       const folderPath = input.folderPath ?? resolveDefaultFolder('note');
       const normalizedFolderPath = folderPath.replace(/\/+$/, '');
-      const filePath = `${normalizedFolderPath}/${slug}${ext}`;
+      const format = input.format ?? 'markdown';
+
+      let filePath: string;
+      if (title) {
+        const slug = slugifyLocal(title);
+        const ext = getExtensionForFormat(format);
+        filePath = `${normalizedFolderPath}/${slug}${ext}`;
+      } else {
+        filePath = await findUntitledFilePath(repo, input.branch ?? 'main', normalizedFolderPath, format);
+      }
 
       const saveResult = await CloneSyncService.save({
         repoPath: repo,
@@ -123,7 +163,7 @@ export const useNoteStore = create<NoteState & NoteActions>()((set, get) => ({
         return null;
       }
 
-      const newNote = await StorageService.createNote({ ...input, repo });
+      const newNote = await StorageService.createNote({ ...input, repo, filePath });
       // Fire-and-forget: must never block or fail the note creation flow.
       void __recordAndMaybePrompt('note');
       set((state) => ({ notes: sortNotesWithPinnedFirst([...state.notes, newNote]) }));

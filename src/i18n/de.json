@@ -716,6 +716,81 @@
       "bodyReminder": "Du kannst dies jederzeit unter Einstellungen → KI → GitHub-Tools ein- oder ausschalten."
     },
     "skipForNow": "Skip for Now",
+    "simple": {
+      "signInCancelled": "Die Anmeldung wurde abgebrochen. Bitte versuche es erneut.",
+      "signInFailed": "Anmeldung fehlgeschlagen. Bitte versuche es erneut.",
+      "accountLimitReached": "Kontolimit erreicht. Upgrade, um weitere Konten hinzuzufügen.",
+      "permissionDenied": "Zugriff verweigert. Prüfe deinen GitHub-Zugang.",
+      "couldNotCreateRepo": "Repository konnte nicht erstellt werden. Bitte versuche es erneut.",
+      "couldNotCloneRepo": "Repository konnte nicht geklont werden. Bitte versuche es erneut.",
+      "couldNotSeedNote": "Willkommensnotiz konnte nicht erstellt werden. Bitte versuche es erneut.",
+      "notAuthenticated": "Nicht authentifiziert. Bitte melde dich erneut an.",
+      "oauthNotConfigured": "OAuth ist auf diesem Gerät nicht konfiguriert.",
+      "serverUnavailable": "Server nicht verfügbar. Prüfe deine Verbindung.",
+      "couldNotStartSignIn": "Anmeldung konnte nicht gestartet werden.",
+      "couldNotOpenBrowser": "Browser konnte nicht geöffnet werden.",
+      "signInCancelledSimple": "GitHub-Anmeldung wurde abgebrochen.",
+      "enterRepoName": "Bitte gib einen Repository-Namen ein.",
+      "repoAlreadyExists": "Repository \"{{name}}\" existiert bereits. Bitte wähle einen anderen Namen.",
+      "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten.",
+      "select": {
+        "title": "Schnellsetup",
+        "description": "Melde dich bei GitHub an und wir erstellen ein privates Repository für deine Notizen — keine Konfiguration nötig.",
+        "signInButton": "Mit GitHub anmelden",
+        "complexButton": "Komplexe Einrichtung"
+      },
+      "oauth": {
+        "title": "Mit GitHub verbinden",
+        "openingGitHub": "GitHub-Anmeldung wird geöffnet...",
+        "pleaseSignIn": "Melde dich bitte mit deinem GitHub-Konto an.",
+        "tryAgainButton": "Erneut versuchen",
+        "backButton": "Zurück"
+      },
+      "repoName": {
+        "title": "Benenne dein Repository",
+        "description": "Wir erstellen ein privates Repository auf GitHub, um deine Notizen zu speichern.",
+        "placeholder": "gitnotes",
+        "createButton": "Repository erstellen"
+      },
+      "progress": {
+        "creatingTitle": "Repository wird erstellt",
+        "creatingBody": "Dein privates GitHub-Repository wird eingerichtet...",
+        "cloningTitle": "Repository wird geklont",
+        "cloningBody": "Dein neues Repository wird heruntergeladen...",
+        "seedingTitle": "Gleich fertig",
+        "seedingBody": "Deine Willkommensnotiz wird erstellt..."
+      },
+      "done": {
+        "title": "Alles erledigt!",
+        "description": "Dein Notizen-Repository ist bereit. Fang an zu schreiben!",
+        "getStartedButton": "Loslegen"
+      },
+      "error": {
+        "title": "Etwas ist schiefgelaufen",
+        "tryAgainButton": "Erneut versuchen",
+        "useAdvancedButton": "Erweiterte Einrichtung verwenden"
+      },
+      "quickSetupBanner": "Schnellsetup (Empfohlen)",
+      "quickSetupBannerSub": "Melde dich bei GitHub an und erstelle ein Repository in 30 Sekunden"
+    },
+    "oauthCallback": {
+      "completingSignIn": "GitHub-Anmeldung wird abgeschlossen…",
+      "title": {
+        "success": "GitHub verbunden",
+        "denied": "Anmeldung abgebrochen",
+        "freeTierLimit": "Kontolimit erreicht",
+        "failed": "Anmeldung fehlgeschlagen"
+      },
+      "message": {
+        "successSimple": "Dein GitHub-Konto ist verbunden. Deine Notizen werden eingerichtet…",
+        "success": "Dein GitHub-Konto ist jetzt verbunden.",
+        "denied": "GitHub-Anmeldung wurde abgebrochen oder verweigert.",
+        "freeTierLimit": "Du hast die maximale Anzahl an Konten im kostenlosen Plan erreicht. Upgrade auf Pro, um weitere Konten hinzuzufügen.",
+        "failed": "Der GitHub-Anmeldeprozess konnte nicht abgeschlossen werden. Bitte versuche es erneut."
+      },
+      "continueButton": "Fortfahren",
+      "backToSettingsButton": "Zurück zu den Einstellungen"
+    },
     "pro": {
       "title": "GitNotēs Pro",
       "body": "Der kostenlose Plan umfasst 1 Konto und 1 Repository. GitNotēs Pro schaltet KI-Chat, Gedanken- und Sprach-Dump, personalisierte Zitate, Canvas, Vorlagen, weitere Repos und Konten frei.",

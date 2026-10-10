@@ -718,6 +718,81 @@
       "bodyReminder": "Puedes activar o desactivar esto en cualquier momento en Configuración → IA → Herramientas de GitHub."
     },
     "skipForNow": "Skip for Now",
+    "simple": {
+      "signInCancelled": "El inicio de sesión se canceló. Inténtalo de nuevo.",
+      "signInFailed": "Error al iniciar sesión. Inténtalo de nuevo.",
+      "accountLimitReached": "Límite de cuentas alcanzado. Mejora tu plan para añadir más cuentas.",
+      "permissionDenied": "Permiso denegado. Comprueba tu acceso a GitHub.",
+      "couldNotCreateRepo": "No se pudo crear el repositorio. Inténtalo de nuevo.",
+      "couldNotCloneRepo": "No se pudo clonar el repositorio. Inténtalo de nuevo.",
+      "couldNotSeedNote": "No se pudo crear la nota de bienvenida. Inténtalo de nuevo.",
+      "notAuthenticated": "No autenticado. Inicia sesión de nuevo.",
+      "oauthNotConfigured": "OAuth no está configurado en este dispositivo.",
+      "serverUnavailable": "Servidor no disponible. Comprueba tu conexión.",
+      "couldNotStartSignIn": "No se pudo iniciar el inicio de sesión.",
+      "couldNotOpenBrowser": "No se pudo abrir el navegador.",
+      "signInCancelledSimple": "El inicio de sesión en GitHub se canceló.",
+      "enterRepoName": "Introduce un nombre para el repositorio.",
+      "repoAlreadyExists": "El repositorio «{{name}}» ya existe. Elige otro nombre.",
+      "unexpectedError": "Se produjo un error inesperado.",
+      "select": {
+        "title": "Configuración Rápida",
+        "description": "Inicia sesión con GitHub y crearemos un repositorio privado para tus notas — sin configuración.",
+        "signInButton": "Iniciar sesión con GitHub",
+        "complexButton": "Configuración Compleja"
+      },
+      "oauth": {
+        "title": "Conectando con GitHub",
+        "openingGitHub": "Abriendo el inicio de sesión de GitHub...",
+        "pleaseSignIn": "Inicia sesión con tu cuenta de GitHub.",
+        "tryAgainButton": "Intentar de Nuevo",
+        "backButton": "Atrás"
+      },
+      "repoName": {
+        "title": "Nombra tu Repositorio",
+        "description": "Crearemos un repositorio privado en GitHub para almacenar tus notas.",
+        "placeholder": "gitnotes",
+        "createButton": "Crear Repositorio"
+      },
+      "progress": {
+        "creatingTitle": "Creando Repositorio",
+        "creatingBody": "Configurando tu repositorio privado de GitHub...",
+        "cloningTitle": "Clonando Repositorio",
+        "cloningBody": "Descargando tu nuevo repositorio...",
+        "seedingTitle": "Casi Listo",
+        "seedingBody": "Creando tu nota de bienvenida..."
+      },
+      "done": {
+        "title": "¡Todo Listo!",
+        "description": "Tu repositorio de notas está listo. ¡Empieza a escribir!",
+        "getStartedButton": "Comenzar"
+      },
+      "error": {
+        "title": "Algo Salió Mal",
+        "tryAgainButton": "Intentar de Nuevo",
+        "useAdvancedButton": "Usar Configuración Avanzada"
+      },
+      "quickSetupBanner": "Configuración Rápida (Recomendado)",
+      "quickSetupBannerSub": "Inicia sesión con GitHub y crea un repositorio en 30 segundos"
+    },
+    "oauthCallback": {
+      "completingSignIn": "Completando el inicio de sesión en GitHub…",
+      "title": {
+        "success": "GitHub Conectado",
+        "denied": "Inicio de Sesión Cancelado",
+        "freeTierLimit": "Límite de Cuentas Alcanzado",
+        "failed": "Error de Inicio de Sesión"
+      },
+      "message": {
+        "successSimple": "Tu cuenta de GitHub está conectada. Configurando tus notas…",
+        "success": "Tu cuenta de GitHub ahora está conectada.",
+        "denied": "El inicio de sesión en GitHub se canceló o denegó.",
+        "freeTierLimit": "Has alcanzado el número máximo de cuentas en el plan gratuito. Mejora a Pro para añadir más cuentas.",
+        "failed": "No se pudo completar el proceso de inicio de sesión en GitHub. Inténtalo de nuevo."
+      },
+      "continueButton": "Continuar",
+      "backToSettingsButton": "Volver a Ajustes"
+    },
     "pro": {
       "title": "GitNotēs Pro",
       "body": "El plan gratuito incluye 1 cuenta y 1 repositorio. GitNotēs Pro desbloquea chat de IA, volcado de pensamientos y voz, citas personalizadas, lienzos, plantillas, más repositorios y cuentas.",

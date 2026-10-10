@@ -904,6 +904,21 @@ describe('OnboardingScreen', () => {
       expect(getByTestId('onboarding.github-auth.app')).toBeTruthy();
     });
 
+    it('shows Quick Setup button in auth method selector for GitHub', async () => {
+      const { getByTestId } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+      for (let i = 0; i < 5; i++) {
+        await act(async () => {
+          fireEvent.press(getByTestId('onboarding.button.next'));
+        });
+      }
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.github-auth.quick')).toBeTruthy();
+      });
+    });
+
     it('defaults to PAT for GitHub', async () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />

@@ -56,7 +56,7 @@ function resolveBackendUrl(): string {
 }
 
 /** Auth method options for GitHub. */
-export type GitHubAuthMethod = 'pat' | 'oauth' | 'app';
+export type GitHubAuthMethod = 'pat' | 'oauth' | 'app' | 'quick';
 
 const INFO_STEP_ICONS = [
   'journal-outline',
@@ -172,10 +172,20 @@ export default function OnboardingScreen({
     onComplete();
   }, [onComplete]);
 
+  const handleSelectSimple = useCallback(() => {
+    setOnboardingMode('quick');
+    setSimpleStep('oauth');
+    setSimpleError(null);
+  }, []);
+
   const handleNext = useCallback(async () => {
     if (currentStep < TOKEN_STEP) {
       setCurrentStep(currentStep + 1);
     } else if (currentStep === TOKEN_STEP) {
+      if (githubAuthMethod === 'quick') {
+        handleSelectSimple();
+        return;
+      }
       if (token.trim()) {
         const normalizedInstanceUrl = instanceUrl.trim();
         if (
@@ -240,12 +250,14 @@ export default function OnboardingScreen({
     }
   }, [
     currentStep,
+    githubAuthMethod,
     token,
     selectedProvider,
     instanceUrl,
     connectHost,
     refreshAccounts,
     finish,
+    handleSelectSimple,
     AI_STEP,
     TOKEN_STEP,
     t,
@@ -433,13 +445,6 @@ export default function OnboardingScreen({
       setIsGithubAuthLoading(false);
     }
   }, [navigation, refreshAccounts, t]);
-
-  const handleSelectSimple = useCallback(() => {
-    setOnboardingMode('quick');
-    setSimpleStep('oauth');
-    setSimpleError(null);
-    // Don't auto-initiate OAuth - let user click Sign In to start
-  }, []);
 
   const handleCreateRepoAndClone = useCallback(async () => {
     const name = simpleRepoName.trim();
@@ -713,6 +718,43 @@ export default function OnboardingScreen({
             }}
           >
             GitHub App
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          testID="onboarding.github-auth.quick"
+          className="flex-1 items-center px-3 py-2.5 rounded-lg border"
+          style={{
+            borderColor:
+              githubAuthMethod === 'quick' ? colors.accent : colors.border,
+            backgroundColor:
+              githubAuthMethod === 'quick'
+                ? `${colors.accent}15`
+                : 'transparent',
+          }}
+          onPress={() => {
+            setGithubAuthMethod('quick');
+            setGithubAuthError(null);
+          }}
+          disabled={isGithubAuthLoading}
+        >
+          <Ionicons
+            name="rocket-outline"
+            size={18}
+            color={
+              githubAuthMethod === 'quick' ? colors.accent : colors.textSecondary
+            }
+          />
+          <Text
+            className="text-xs font-medium mt-1.5"
+            style={{
+              color:
+                githubAuthMethod === 'quick'
+                  ? colors.accent
+                  : colors.textSecondary,
+            }}
+          >
+            Quick Setup
           </Text>
         </TouchableOpacity>
       </View>

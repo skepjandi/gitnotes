@@ -515,3 +515,20 @@ describe('Existing-host credential controls remain enabled for Free users', () =
     expect(getByTestId('settings.row.host.gh-host-1.ssh')).toBeTruthy();
   });
 });
+
+describe('Quick Setup row', () => {
+  it('renders Quick Setup row and calls onQuickSetup when pressed', async () => {
+    const onQuickSetup = jest.fn();
+    const props = makeProps({
+      onQuickSetup,
+    });
+    const { getByTestId } = render(<SettingsContent {...props} />);
+
+    const button = getByTestId('settings.button.quick-setup');
+    expect(button).toBeTruthy();
+    await act(async () => {
+      fireEvent.press(button);
+    });
+    expect(onQuickSetup).toHaveBeenCalledTimes(1);
+  });
+});

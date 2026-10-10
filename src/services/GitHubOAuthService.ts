@@ -78,8 +78,13 @@ export interface PendingOAuthFlow {
   backendUrl: string;
   redirectUri: string;
   clientId: string;
-  /** null means first-time OAuth: no existing host connection yet. */
   hostId: string | null;
+  /** 'onboarding' = return to OnboardingScreen instead of Settings after success */
+  returnTo?: 'settings' | 'onboarding';
+  /** GitHub login from successful OAuth, used to pre-fill repo name */
+  githubLogin?: string;
+  /** Set by exchangeCode after callback; read by OnboardingScreen on return */
+  oauthResult?: OAuthCallbackResult;
 }
 
 /**
@@ -181,8 +186,9 @@ export class GitHubOAuthService {
     clientId: string;
     hostId: string | null;
     scopes?: string[];
+    returnTo?: 'settings' | 'onboarding';
   }): Promise<OAuthInitiationResult> {
-    const { backendUrl, redirectUri, clientId, hostId, scopes = ['read:user', 'user:email', 'repo'] } = params;
+    const { backendUrl, redirectUri, clientId, hostId, scopes = ['read:user', 'user:email', 'repo'], returnTo = 'settings' } = params;
 
     const verifier = await generatePkceVerifier();
     const challenge = await generateS256Challenge(verifier);
@@ -211,7 +217,7 @@ export class GitHubOAuthService {
         return { ok: false, reason: 'backend_unreachable' };
       }
 
-      pendingOAuthFlows.set(state, { verifier, backendUrl, redirectUri, clientId, hostId });
+      pendingOAuthFlows.set(state, { verifier, backendUrl, redirectUri, clientId, hostId, returnTo });
 
       setTimeout(() => {
         pendingOAuthFlows.delete(state);
@@ -353,7 +359,13 @@ export class GitHubOAuthService {
       }
 
       await AccountStorage.setOAuthCredential(resolvedHostId, credential);
-      return { outcome: 'success', credential };
+      const successResult: OAuthCallbackResult = { outcome: 'success', credential };
+      const pending = pendingOAuthFlows.get(state);
+      if (pending) {
+        pending.githubLogin = data.login;
+        pending.oauthResult = successResult;
+      }
+      return successResult;
     } catch (err) {
       pendingOAuthFlows.delete(state);
       const error = err as {

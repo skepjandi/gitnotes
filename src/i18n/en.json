@@ -351,6 +351,7 @@
     "clearAllNotes": "Clear All Notes",
     "clearAllConfirm": "Are you sure you want to clear all notes? This action cannot be undone.",
     "resetOnboarding": "Reset Onboarding",
+    "quickSetup": "Quick Setup",
     "about": "About",
     "version": "Version",
     "build": "Build",
@@ -676,6 +677,82 @@
       "bodyReminder": "You can turn this on or off anytime in Settings → AI → GitHub Tools."
     },
     "skipForNow": "Skip for Now",
+    "nextCustomSetup": "Next: Custom Setup",
+    "simple": {
+      "signInCancelled": "Sign-in was cancelled. Please try again.",
+      "signInFailed": "Sign-in failed. Please try again.",
+      "accountLimitReached": "Account limit reached. Please upgrade to add more accounts.",
+      "permissionDenied": "Permission denied. Please check your GitHub access.",
+      "couldNotCreateRepo": "Could not create repository. Please try again.",
+      "couldNotCloneRepo": "Could not clone repository. Please try again.",
+      "couldNotSeedNote": "Could not create welcome note. Please try again.",
+      "notAuthenticated": "Not authenticated. Please sign in again.",
+      "oauthNotConfigured": "OAuth not configured on this device.",
+      "serverUnavailable": "Server unavailable. Check your connection.",
+      "couldNotStartSignIn": "Could not start sign-in.",
+      "couldNotOpenBrowser": "Could not open browser.",
+      "signInCancelledSimple": "GitHub sign-in was cancelled.",
+      "enterRepoName": "Please enter a repository name.",
+      "repoAlreadyExists": "Repository \"{{name}}\" already exists. Please choose a different name.",
+      "unexpectedError": "An unexpected error occurred.",
+      "select": {
+        "title": "Quick Setup",
+        "description": "Sign in with GitHub and we'll create a private repository for your notes — no configuration needed.",
+        "signInButton": "Sign in with GitHub",
+        "backButton": "Back"
+      },
+      "oauth": {
+        "title": "Connecting to GitHub",
+        "openingGitHub": "Opening GitHub sign-in...",
+        "pleaseSignIn": "Please sign in with your GitHub account.",
+        "tryAgainButton": "Try Again",
+        "backButton": "Back"
+      },
+      "repoName": {
+        "title": "Name Your Repository",
+        "description": "We'll create a private repository on GitHub to store your notes.",
+        "placeholder": "gitnotes",
+        "createButton": "Create Repository"
+      },
+      "progress": {
+        "creatingTitle": "Creating Repository",
+        "creatingBody": "Setting up your private GitHub repository...",
+        "cloningTitle": "Cloning Repository",
+        "cloningBody": "Downloading your new repository...",
+        "seedingTitle": "Almost Ready",
+        "seedingBody": "Creating your welcome note..."
+      },
+      "done": {
+        "title": "You're All Set!",
+        "description": "Your notes repository is ready. Start writing!",
+        "getStartedButton": "Get Started"
+      },
+      "error": {
+        "title": "Something Went Wrong",
+        "tryAgainButton": "Try Again",
+        "backButton": "Back to Setup"
+      },
+      "quickSetupBanner": "Quick Setup (Recommended)",
+      "quickSetupBannerSub": "Sign in with GitHub and create a repo in 30 seconds"
+    },
+    "oauthCallback": {
+      "completingSignIn": "Completing GitHub sign-in…",
+      "title": {
+        "success": "GitHub Connected",
+        "denied": "Sign-in Cancelled",
+        "freeTierLimit": "Account Limit Reached",
+        "failed": "Sign-in Failed"
+      },
+      "message": {
+        "successSimple": "Your GitHub account is connected. Setting up your notes…",
+        "success": "Your GitHub account is now connected.",
+        "denied": "GitHub sign-in was cancelled or denied.",
+        "freeTierLimit": "You have reached the maximum number of accounts on the Free plan. Upgrade to Pro to add more accounts.",
+        "failed": "The GitHub sign-in flow could not be completed. Please try again."
+      },
+      "continueButton": "Continue",
+      "backToSettingsButton": "Back to Settings"
+    },
     "pro": {
       "title": "GitNotēs Pro",
       "body": "The free plan includes 1 account and 1 repo. GitNotēs Pro unlocks AI chat, thought & voice dump, personalized quotes, canvases, templates, more repos and accounts.",

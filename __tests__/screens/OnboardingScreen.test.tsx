@@ -26,8 +26,6 @@ const mockRefreshAccounts = jest.fn();
 const mockCompleteOnboarding = jest.fn();
 const mockOnComplete = jest.fn();
 const mockOnSkip = jest.fn();
-const mockOAuthInitiate = jest.fn();
-const mockOpenAuthorizationUrl = jest.fn();
 const mockAppBuildInstallUrl = jest.fn();
 const mockAppOpenInstallationUrl = jest.fn();
 
@@ -62,9 +60,19 @@ jest.mock('@/contexts/AccountsContext', () => ({
   }),
 }));
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: jest.fn() }),
-}));
+jest.mock('@react-navigation/native', () => {
+  const mockNavigate = jest.fn();
+  const mockRouteParams: Record<string, unknown> = {};
+  return {
+    useNavigation: () => ({ navigate: mockNavigate }),
+    useRoute: () => ({ params: mockRouteParams }),
+    __mockNavigate: mockNavigate,
+    __mockRouteParams: mockRouteParams,
+  };
+});
+
+const mockNavigate = (jest.requireMock('@react-navigation/native') as { __mockNavigate: jest.Mock }).__mockNavigate;
+const mockRouteParams = (jest.requireMock('@react-navigation/native') as { __mockRouteParams: Record<string, unknown> }).__mockRouteParams;
 
 jest.mock('@/contexts/ThemeContext', () => {
   const mockColors = {
@@ -103,7 +111,23 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
       if (options?.defaultValue) return options.defaultValue as string;
-      return key;
+      const translations: Record<string, string> = {
+        'onboarding.simple.signInCancelled': 'Sign-in was cancelled. Please try again.',
+        'onboarding.simple.accountLimitReached': 'You have reached the maximum number of free accounts.',
+        'onboarding.simple.signInFailed': 'Sign-in failed. Please try again.',
+        'onboarding.simple.notAuthenticated': 'Please sign in to continue.',
+        'onboarding.simple.permissionDenied': 'Permission denied. Check your GitHub token permissions.',
+        'onboarding.simple.couldNotCreateRepo': 'Could not create repository. Please try again.',
+        'onboarding.simple.couldNotCloneRepo': 'Could not clone repository. Please try again.',
+        'onboarding.simple.couldNotSeedNote': 'Could not create welcome note. Please try again.',
+        'onboarding.simple.select.title': 'Quick Setup',
+        'onboarding.simple.select.description': 'Sign in with GitHub and we\'ll create a private repository for your notes.',
+        'onboarding.simple.select.signInButton': 'Sign in with GitHub',
+        'onboarding.simple.select.backButton': 'Back',
+        'onboarding.simple.quickSetupBanner': 'Quick Setup (Recommended)',
+        'onboarding.simple.quickSetupBannerSub': 'Sign in with GitHub and create a repo in 30 seconds',
+      };
+      return translations[key] ?? key;
     },
     i18n: { changeLanguage: jest.fn() },
   }),
@@ -115,14 +139,28 @@ jest.mock('expo-clipboard', () => ({
 }));
 
 jest.mock('../../src/services/GitHubOAuthService', () => {
+  const _mockInitiate = jest.fn();
+  const _mockOpenAuth = jest.fn();
+  const _pendingOAuthFlows = new Map<string, object>();
   return {
+    __mockInitiate: _mockInitiate,
+    __mockOpenAuth: _mockOpenAuth,
     GitHubOAuthService: {
-      initiate: mockOAuthInitiate,
-      openAuthorizationUrl: mockOpenAuthorizationUrl,
+      initiate: (...args: unknown[]) => _mockInitiate(...args),
+      openAuthorizationUrl: (...args: unknown[]) => _mockOpenAuth(...args),
+    },
+    pendingOAuthFlows: _pendingOAuthFlows,
+    default: {
+      initiate: (...args: unknown[]) => _mockInitiate(...args),
+      openAuthorizationUrl: (...args: unknown[]) => _mockOpenAuth(...args),
     },
     setHttpClient: jest.fn(),
   };
 });
+
+const mockOAuthInitiate = (jest.requireMock('../../src/services/GitHubOAuthService') as { __mockInitiate: jest.Mock }).__mockInitiate;
+const mockOpenAuthorizationUrl = (jest.requireMock('../../src/services/GitHubOAuthService') as { __mockOpenAuth: jest.Mock }).__mockOpenAuth;
+const mockPendingOAuthFlows = (jest.requireMock('../../src/services/GitHubOAuthService') as { pendingOAuthFlows: Map<string, object> }).pendingOAuthFlows;
 
 jest.mock('../../src/services/GitHubAppService', () => ({
   GitHubAppService: {
@@ -130,6 +168,61 @@ jest.mock('../../src/services/GitHubAppService', () => ({
     openInstallationUrl: mockAppOpenInstallationUrl,
   },
 }));
+
+jest.mock('../../src/services/GitHubService', () => {
+  const mockFn = jest.fn();
+  return {
+    __mockCreateRepository: mockFn,
+    GitHubService: {
+      createRepository: mockFn,
+    },
+    GitHubServiceClass: jest.fn().mockImplementation(() => ({
+      createRepository: mockFn,
+    })),
+  };
+});
+
+const mockCreateRepository = (jest.requireMock('../../src/services/GitHubService') as { __mockCreateRepository: jest.Mock }).__mockCreateRepository;
+
+jest.mock('../../src/stores/repoStore', () => {
+  const mockAddRepositoryFn = jest.fn();
+  const mockState = {
+    addRepository: mockAddRepositoryFn,
+    repositories: [] as Array<{ id: string; path: string; name: string; provider: string; branch: string }>,
+  };
+  const mockUseRepoStore = Object.assign(
+    () => mockState,
+    { getState: () => mockState }
+  );
+  return {
+    useRepoStore: mockUseRepoStore,
+    __mockAddRepository: mockAddRepositoryFn,
+    __mockState: mockState,
+  };
+});
+
+const mockAddRepository = (jest.requireMock('../../src/stores/repoStore') as { __mockAddRepository: jest.Mock; __mockState: { repositories: Array<{ id: string; path: string; name: string; provider: string; branch: string }> } }).__mockAddRepository;
+const mockRepoState = (jest.requireMock('../../src/stores/repoStore') as { __mockState: { repositories: Array<{ id: string; path: string; name: string; provider: string; branch: string }> } }).__mockState;
+
+jest.mock('../../src/stores/noteStore', () => {
+  const mockCreateNoteFn = jest.fn();
+  const mockState = {
+    createNote: mockCreateNoteFn,
+    notes: [] as Array<{ id: string; title: string; repo: string }>,
+  };
+  const mockUseNoteStore = Object.assign(
+    () => mockState,
+    { getState: () => mockState }
+  );
+  return {
+    useNoteStore: mockUseNoteStore,
+    __mockCreateNote: mockCreateNoteFn,
+    __mockNoteState: mockState,
+  };
+});
+
+const mockCreateNote = (jest.requireMock('../../src/stores/noteStore') as { __mockCreateNote: jest.Mock; __mockNoteState: { notes: Array<{ id: string; title: string; repo: string }> } }).__mockCreateNote;
+const mockNoteState = (jest.requireMock('../../src/stores/noteStore') as { __mockNoteState: { notes: Array<{ id: string; title: string; repo: string }> } }).__mockNoteState;
 
 import OnboardingScreen from '@/screens/OnboardingScreen';
 
@@ -146,27 +239,46 @@ describe('OnboardingScreen', () => {
     mockOnComplete.mockReset();
     mockOnSkip.mockReset();
     (Clipboard.getStringAsync as jest.Mock).mockReset();
+    mockCreateRepository.mockReset();
+    mockAddRepository.mockReset();
+    mockCreateNote.mockReset();
+  });
+
+  it('enters Quick Setup when an existing onboarding route receives quickSetup', async () => {
+    const { rerender, getByText, queryByTestId } = render(
+      <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+    );
+
+    rerender(
+      <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} quickSetup />
+    );
+
+    await waitFor(() => {
+      expect(getByText('Quick Setup')).toBeTruthy();
+    });
+    expect(queryByTestId('onboarding.provider.dropdown')).toBeNull();
   });
 
   describe('info steps', () => {
-    it('renders five info steps and advances on Next', async () => {
+    it('renders Welcome step first with correct CTA, then advances to token step', async () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
 
-      // Step 0 - welcome
+      // Step 0 - Welcome
       await waitFor(() => {
         expect(getByTestId('onboarding.button.next')).toBeTruthy();
       });
 
-      // Advance through steps 0-4
-      for (let step = 0; step < 5; step++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-        // waitFor needs a predicate - this is a tick to let the step advance
-        await waitFor(() => true);
-      }
+      // Welcome CTA should be "Next: Custom Setup"
+      const nextButton = getByTestId('onboarding.button.next');
+      expect(nextButton).toBeTruthy();
+
+      // Advance to step 1 (Connect a Git Host)
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
+      await waitFor(() => true);
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -176,7 +288,7 @@ describe('OnboardingScreen', () => {
       expect(queryByTestId('onboarding.button.pro-continue')).toBeNull();
     });
 
-    it('skips directly to token step via skip button on info screens', async () => {
+    it('skips from Welcome step via skip button', async () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
@@ -200,12 +312,10 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      // Advance to token step
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      // Advance to token step (step 1)
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
       });
@@ -215,12 +325,10 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      // Advance to token step
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      // Advance to token step (step 1)
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -243,11 +351,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -266,11 +372,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -298,11 +402,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -333,11 +435,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -370,11 +470,10 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      // Advance to token step (step 1)
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
       });
@@ -384,11 +483,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.input.token')).toBeTruthy();
@@ -418,11 +515,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -477,11 +572,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByText } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.input.token')).toBeTruthy();
@@ -507,11 +600,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByText } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await act(async () => {
         fireEvent.press(getByTestId('onboarding.provider.dropdown'));
@@ -536,11 +627,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await act(async () => {
         fireEvent.press(getByTestId('onboarding.provider.dropdown'));
@@ -565,14 +654,12 @@ describe('OnboardingScreen', () => {
     });
 
     it('skips token step when token is empty', async () => {
-      const { getByTestId } = render(
+      const { getByTestId, getByText } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.input.token')).toBeTruthy();
@@ -584,8 +671,7 @@ describe('OnboardingScreen', () => {
       });
 
       await waitFor(() => {
-        // Should be on AI step
-        expect(getByTestId('onboarding.button.pro-continue')).toBeTruthy();
+        expect(getByText('onboarding.steps.linkTitle')).toBeTruthy();
       });
 
       expect(mockConnectHost).not.toHaveBeenCalled();
@@ -597,11 +683,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.button.paste-token')).toBeTruthy();
       });
@@ -611,11 +695,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.button.paste-token')).toBeTruthy();
@@ -638,11 +720,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.input.token')).toBeTruthy();
       });
@@ -652,11 +732,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.input.token')).toBeTruthy();
@@ -690,11 +768,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.button.skip')).toBeTruthy();
       });
@@ -704,11 +780,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.button.skip')).toBeTruthy();
@@ -726,23 +800,19 @@ describe('OnboardingScreen', () => {
   });
 
   describe('full flow', () => {
-    it('advances through five info steps, then connects and goes to AI step', async () => {
-      const { getByTestId } = render(
+    it('advances through Welcome, Connect, then four info steps to AI', async () => {
+      const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
 
-      // Advance through 5 info steps
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
-
+      // Step 0 (Welcome) -> step 1 (Connect a Git Host)
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
       });
 
-      // Enter token and connect
       const tokenInput = getByTestId('onboarding.input.token');
       await act(async () => {
         fireEvent.changeText(tokenInput, 'valid_token');
@@ -753,6 +823,18 @@ describe('OnboardingScreen', () => {
       await act(async () => {
         fireEvent.press(getByTestId('onboarding.button.next'));
       });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.button.next')).toBeTruthy();
+      });
+
+      expect(queryByTestId('onboarding.button.pro-continue')).toBeNull();
+
+      for (let step = 0; step < 4; step += 1) {
+        await act(async () => {
+          fireEvent.press(getByTestId('onboarding.button.next'));
+        });
+      }
 
       await waitFor(() => {
         expect(getByTestId('onboarding.button.pro-continue')).toBeTruthy();
@@ -781,11 +863,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
       });
@@ -795,11 +875,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.pat')).toBeTruthy();
@@ -808,15 +886,26 @@ describe('OnboardingScreen', () => {
       expect(getByTestId('onboarding.github-auth.app')).toBeTruthy();
     });
 
+    it('shows Quick Setup button in auth method selector for GitHub', async () => {
+      const { getByTestId } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.github-auth.quick')).toBeTruthy();
+      });
+    });
+
     it('defaults to PAT for GitHub', async () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.pat')).toBeTruthy();
@@ -833,11 +922,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.oauth')).toBeTruthy();
@@ -856,11 +943,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.app')).toBeTruthy();
@@ -879,11 +964,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
@@ -913,11 +996,9 @@ describe('OnboardingScreen', () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
 
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.pat')).toBeTruthy();
@@ -969,11 +1050,9 @@ describe('OnboardingScreen', () => {
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />,
       );
       const { getByTestId } = result;
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.oauth')).toBeTruthy();
       });
@@ -1072,11 +1151,9 @@ describe('OnboardingScreen', () => {
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />,
       );
       const { getByTestId } = result;
-      for (let i = 0; i < 5; i++) {
-        await act(async () => {
-          fireEvent.press(getByTestId('onboarding.button.next'));
-        });
-      }
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
       await waitFor(() => {
         expect(getByTestId('onboarding.github-auth.app')).toBeTruthy();
       });
@@ -1158,6 +1235,767 @@ describe('OnboardingScreen', () => {
       await waitFor(() => {
         expect(getByTestId('onboarding.button.app')).toBeTruthy();
       });
+    });
+  });
+
+  describe('Simple mode', () => {
+    beforeEach(() => {
+      mockCreateRepository.mockReset();
+      mockAddRepository.mockReset();
+      mockCreateNote.mockReset();
+      mockRefreshAccounts.mockReset().mockResolvedValue(undefined);
+      mockOAuthInitiate.mockReset();
+      mockOpenAuthorizationUrl.mockReset();
+      mockPendingOAuthFlows.clear();
+      mockNavigate.mockReset();
+      Object.keys(mockRouteParams).forEach(k => delete mockRouteParams[k]);
+      process.env.EXPO_PUBLIC_GITHUB_OAUTH_CLIENT_ID = 'test-client-id';
+    });
+
+    afterEach(() => {
+      delete process.env.EXPO_PUBLIC_GITHUB_OAUTH_CLIENT_ID;
+    });
+
+    it('creates repository and clones on valid repo name', async () => {
+      mockCreateRepository.mockResolvedValueOnce({
+        owner: { login: 'testuser' },
+        name: 'gitnotes-testuser',
+        full_name: 'testuser/gitnotes-testuser',
+        default_branch: 'main',
+      });
+      mockAddRepository.mockResolvedValueOnce({
+        id: 'repo-1',
+        path: 'testuser/gitnotes-testuser',
+        name: 'gitnotes-testuser',
+        provider: 'github',
+        branch: 'main',
+      });
+      mockCreateNote.mockResolvedValueOnce({
+        id: 'note-1',
+        title: 'Welcome to GitNotēs',
+        repo: 'testuser/gitnotes-testuser',
+      });
+
+      const { getByTestId } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.button.quick-setup')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.quick-setup'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.sign-in')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.sign-in'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.retry-oauth')).toBeTruthy();
+      });
+
+      mockPendingOAuthFlows.set('test-state', {
+        verifier: 'test-verifier',
+        backendUrl: 'https://test.backend.com',
+        redirectUri: 'gitnotes://oauth/callback',
+        clientId: 'test-client-id',
+        hostId: 'host-github-1',
+        returnTo: 'onboarding' as const,
+        oauthResult: {
+          outcome: 'success' as const,
+          credential: {
+            hostId: 'host-github-1',
+            accessToken: 'test-access-token',
+            refreshToken: 'test-refresh-token',
+            expiresAt: Date.now() + 3600000,
+            refreshExpiresAt: Date.now() + 86400000,
+          },
+        },
+        githubLogin: 'testuser',
+      });
+
+      mockOAuthInitiate.mockResolvedValueOnce({
+        ok: true,
+        authorizationUrl: 'https://github.com/login/oauth/authorize?...',
+        state: 'test-state',
+      });
+      mockOpenAuthorizationUrl.mockResolvedValueOnce({
+        outcome: 'callback',
+        url: 'gitnotes://oauth/callback?code=abc&state=test-state',
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.retry-oauth'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.input.repo-name')).toBeTruthy();
+      });
+
+      const createButton = getByTestId('onboarding.simple.button.create');
+
+      await waitFor(() => {
+        expect(createButton).not.toBeDisabled();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.create'));
+      });
+
+      await waitFor(() => {
+        expect(mockCreateRepository).toHaveBeenCalledTimes(1);
+      });
+
+      await waitFor(() => {
+        expect(mockAddRepository).toHaveBeenCalledTimes(1);
+      });
+
+      await waitFor(() => {
+        expect(mockCreateNote).toHaveBeenCalledTimes(1);
+      });
+
+      // Verify exact note creation arguments
+      expect(mockCreateNote).toHaveBeenCalledWith(
+        expect.objectContaining({
+          repo: 'testuser/gitnotes-testuser',
+          branch: 'main',
+          folderPath: 'notes',
+        }),
+      );
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.done')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.done'));
+      });
+
+      // Verify onboarding completes
+      await waitFor(() => {
+        expect(mockOnComplete).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('creates welcome note at exactly notes/welcome-to-gitnotes.md', async () => {
+      mockCreateRepository.mockResolvedValueOnce({
+        owner: { login: 'testuser' },
+        name: 'gitnotes-testuser',
+        full_name: 'testuser/gitnotes-testuser',
+        default_branch: 'main',
+      });
+      mockAddRepository.mockResolvedValueOnce({
+        id: 'repo-1',
+        path: 'testuser/gitnotes-testuser',
+        name: 'gitnotes-testuser',
+        provider: 'github',
+        branch: 'main',
+      });
+      mockCreateNote.mockResolvedValueOnce({
+        id: 'note-1',
+        title: 'Welcome to GitNotēs',
+        repo: 'testuser/gitnotes-testuser',
+      });
+
+      const { getByTestId } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.button.quick-setup')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.quick-setup'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.sign-in')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.sign-in'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.retry-oauth')).toBeTruthy();
+      });
+
+      mockPendingOAuthFlows.set('test-state', {
+        verifier: 'test-verifier',
+        backendUrl: 'https://test.backend.com',
+        redirectUri: 'gitnotes://oauth/callback',
+        clientId: 'test-client-id',
+        hostId: 'host-github-1',
+        returnTo: 'onboarding' as const,
+        oauthResult: {
+          outcome: 'success' as const,
+          credential: {
+            hostId: 'host-github-1',
+            accessToken: 'test-access-token',
+            refreshToken: 'test-refresh-token',
+            expiresAt: Date.now() + 3600000,
+            refreshExpiresAt: Date.now() + 86400000,
+          },
+        },
+        githubLogin: 'testuser',
+      });
+
+      mockOAuthInitiate.mockResolvedValueOnce({
+        ok: true,
+        authorizationUrl: 'https://github.com/login/oauth/authorize?...',
+        state: 'test-state',
+      });
+      mockOpenAuthorizationUrl.mockResolvedValueOnce({
+        outcome: 'callback',
+        url: 'gitnotes://oauth/callback?code=abc&state=test-state',
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.retry-oauth'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.input.repo-name')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.create'));
+      });
+
+      await waitFor(() => {
+        expect(mockCreateNote).toHaveBeenCalledTimes(1);
+      });
+
+      expect(mockCreateNote).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filePath: 'notes/welcome-to-gitnotes.md',
+        }),
+      );
+    });
+
+    it('does not re-create repository on retry after clone failure', async () => {
+      mockCreateRepository.mockResolvedValueOnce({
+        owner: { login: 'testuser' },
+        name: 'gitnotes-testuser',
+        full_name: 'testuser/gitnotes-testuser',
+        default_branch: 'main',
+      });
+      mockAddRepository.mockRejectedValueOnce(new Error('Clone failed: unknown error'));
+      mockAddRepository.mockResolvedValueOnce({
+        id: 'repo-1',
+        path: 'testuser/gitnotes-testuser',
+        name: 'gitnotes-testuser',
+        provider: 'github',
+        branch: 'main',
+      });
+      mockCreateNote.mockResolvedValueOnce({
+        id: 'note-1',
+        title: 'Welcome to GitNotēs',
+        repo: 'testuser/gitnotes-testuser',
+      });
+
+      const { getByTestId } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.button.quick-setup')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.quick-setup'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.sign-in')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.sign-in'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.retry-oauth')).toBeTruthy();
+      });
+
+      mockPendingOAuthFlows.set('test-state', {
+        verifier: 'test-verifier',
+        backendUrl: 'https://test.backend.com',
+        redirectUri: 'gitnotes://oauth/callback',
+        clientId: 'test-client-id',
+        hostId: 'host-github-1',
+        returnTo: 'onboarding' as const,
+        oauthResult: {
+          outcome: 'success' as const,
+          credential: {
+            hostId: 'host-github-1',
+            accessToken: 'test-access-token',
+            refreshToken: 'test-refresh-token',
+            expiresAt: Date.now() + 3600000,
+            refreshExpiresAt: Date.now() + 86400000,
+          },
+        },
+        githubLogin: 'testuser',
+      });
+
+      mockOAuthInitiate.mockResolvedValueOnce({
+        ok: true,
+        authorizationUrl: 'https://github.com/login/oauth/authorize?...',
+        state: 'test-state',
+      });
+      mockOpenAuthorizationUrl.mockResolvedValueOnce({
+        outcome: 'callback',
+        url: 'gitnotes://oauth/callback?code=abc&state=test-state',
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.retry-oauth'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.input.repo-name')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.changeText(getByTestId('onboarding.simple.input.repo-name'), 'my-test-repo');
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.create'));
+      });
+
+      await waitFor(() => {
+        expect(mockCreateRepository).toHaveBeenCalledTimes(1);
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.retry')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.retry'));
+      });
+
+      await waitFor(() => {
+        expect(mockCreateRepository).toHaveBeenCalledTimes(1);
+      });
+
+      await waitFor(() => {
+        expect(mockAddRepository).toHaveBeenCalledTimes(2);
+      });
+
+      await waitFor(() => {
+        expect(mockCreateNote).toHaveBeenCalledTimes(1);
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.done')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.done'));
+      });
+
+      await waitFor(() => {
+        expect(mockOnComplete).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('shows error when note creation fails', async () => {
+      mockCreateRepository.mockResolvedValueOnce({
+        owner: { login: 'testuser' },
+        name: 'gitnotes-testuser',
+        full_name: 'testuser/gitnotes-testuser',
+        default_branch: 'main',
+      });
+      mockAddRepository.mockImplementation(async (path: string) => {
+        if (mockRepoState.repositories.some(r => r.path === path)) {
+          throw new Error('Repository already exists');
+        }
+        const repo = { id: 'repo-1', path, name: path.split('/')[1] ?? path, provider: 'github', branch: 'main' };
+        mockRepoState.repositories.push(repo);
+        return repo;
+      });
+      let noteCallCount = 0;
+      mockCreateNote.mockImplementation(async (props: { title: string; repo: string }) => {
+        noteCallCount++;
+        const existing = mockNoteState.notes.find(n => n.title === props.title && n.repo === props.repo);
+        if (existing) return existing;
+        if (noteCallCount === 1) return null;
+        const note = { id: 'note-1', title: props.title, repo: props.repo };
+        mockNoteState.notes.push(note);
+        return note;
+      });
+
+      const { getByTestId, queryByText } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.button.quick-setup')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.quick-setup'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.sign-in')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.sign-in'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.retry-oauth')).toBeTruthy();
+      });
+
+      mockPendingOAuthFlows.set('test-state', {
+        verifier: 'test-verifier',
+        backendUrl: 'https://test.backend.com',
+        redirectUri: 'gitnotes://oauth/callback',
+        clientId: 'test-client-id',
+        hostId: 'host-github-1',
+        returnTo: 'onboarding' as const,
+        oauthResult: {
+          outcome: 'success' as const,
+          credential: {
+            hostId: 'host-github-1',
+            accessToken: 'test-access-token',
+            refreshToken: 'test-refresh-token',
+            expiresAt: Date.now() + 3600000,
+            refreshExpiresAt: Date.now() + 86400000,
+          },
+        },
+        githubLogin: 'testuser',
+      });
+
+      mockOAuthInitiate.mockResolvedValueOnce({
+        ok: true,
+        authorizationUrl: 'https://github.com/login/oauth/authorize?...',
+        state: 'test-state',
+      });
+      mockOpenAuthorizationUrl.mockResolvedValueOnce({
+        outcome: 'callback',
+        url: 'gitnotes://oauth/callback?code=abc&state=test-state',
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.retry-oauth'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.input.repo-name')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.changeText(getByTestId('onboarding.simple.input.repo-name'), 'my-test-repo');
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.create'));
+      });
+
+      await waitFor(() => {
+        expect(mockCreateRepository).toHaveBeenCalledTimes(1);
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.retry')).toBeTruthy();
+      });
+
+      const errorText = queryByText(/Could not create welcome note/);
+      expect(errorText).toBeTruthy();
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.retry'));
+      });
+
+      await waitFor(() => {
+        expect(mockCreateRepository).toHaveBeenCalledTimes(1);
+      });
+
+      await waitFor(() => {
+        expect(mockAddRepository).toHaveBeenCalledTimes(2);
+      });
+
+      await waitFor(() => {
+        expect(mockCreateNote).toHaveBeenCalledTimes(2);
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.done')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.done'));
+      });
+
+      await waitFor(() => {
+        expect(mockOnComplete).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('uses state-specific oauthState to find pending flow on fromOAuth return', async () => {
+      mockCreateRepository.mockResolvedValueOnce({
+        owner: { login: 'user2' },
+        name: 'gitnotes-user2',
+        full_name: 'user2/gitnotes-user2',
+        default_branch: 'main',
+      });
+      mockAddRepository.mockResolvedValueOnce({
+        id: 'repo-2',
+        path: 'user2/gitnotes-user2',
+        name: 'gitnotes-user2',
+        provider: 'github',
+        branch: 'main',
+      });
+      mockCreateNote.mockResolvedValueOnce({
+        id: 'note-2',
+        title: 'Welcome to GitNotēs',
+        repo: 'user2/gitnotes-user2',
+      });
+
+      mockPendingOAuthFlows.set('denied-state', {
+        verifier: 'verifier-1',
+        backendUrl: 'https://backend.example.com',
+        redirectUri: 'gitnotes://oauth/callback',
+        clientId: 'test-client-id',
+        hostId: 'host-1',
+        returnTo: 'onboarding' as const,
+        oauthResult: { outcome: 'denied' as const, code: 'access_denied', message: 'denied' },
+        githubLogin: 'denied-user',
+      });
+      mockPendingOAuthFlows.set('success-state', {
+        verifier: 'verifier-2',
+        backendUrl: 'https://backend.example.com',
+        redirectUri: 'gitnotes://oauth/callback',
+        clientId: 'test-client-id',
+        hostId: 'host-2',
+        returnTo: 'onboarding' as const,
+        oauthResult: {
+          outcome: 'success' as const,
+          credential: {
+            hostId: 'host-2',
+            accessToken: 'access-token-2',
+            refreshToken: 'refresh-token-2',
+            expiresAt: Date.now() + 3600000,
+            refreshExpiresAt: Date.now() + 86400000,
+          },
+        },
+        githubLogin: 'user2',
+      });
+
+      const { getByTestId, queryByText, rerender } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.button.quick-setup')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.quick-setup'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.sign-in')).toBeTruthy();
+      });
+
+      // Simulate return from OAuth callback with the SUCCESS state key
+      mockRouteParams.fromOAuth = true;
+      mockRouteParams.oauthState = 'success-state';
+
+      rerender(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+
+      // Should advance to repo-name using the success state's login
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.input.repo-name')).toBeTruthy();
+      });
+
+      // Should use the correct login from the success state, not denied state
+      const repoNameInput = getByTestId('onboarding.simple.input.repo-name');
+      expect(repoNameInput.props.value).toBe('gitnotes-user2');
+
+      // Should NOT show the denied error
+      expect(queryByText(/denied/i)).toBeNull();
+    });
+
+    it('deletes specific pending entry on successful setup completion', async () => {
+      mockCreateRepository.mockResolvedValueOnce({
+        owner: { login: 'testuser' },
+        name: 'gitnotes-testuser',
+        full_name: 'testuser/gitnotes-testuser',
+        default_branch: 'main',
+      });
+      mockAddRepository.mockResolvedValueOnce({
+        id: 'repo-1',
+        path: 'testuser/gitnotes-testuser',
+        name: 'gitnotes-testuser',
+        provider: 'github',
+        branch: 'main',
+      });
+      mockCreateNote.mockResolvedValueOnce({
+        id: 'note-1',
+        title: 'Welcome to GitNotēs',
+        repo: 'testuser/gitnotes-testuser',
+      });
+
+      mockPendingOAuthFlows.set('success-state', {
+        verifier: 'verifier-1',
+        backendUrl: 'https://backend.example.com',
+        redirectUri: 'gitnotes://oauth/callback',
+        clientId: 'test-client-id',
+        hostId: 'host-1',
+        returnTo: 'onboarding' as const,
+        oauthResult: {
+          outcome: 'success' as const,
+          credential: {
+            hostId: 'host-1',
+            accessToken: 'access-token-1',
+            refreshToken: 'refresh-token-1',
+            expiresAt: Date.now() + 3600000,
+            refreshExpiresAt: Date.now() + 86400000,
+          },
+        },
+        githubLogin: 'testuser',
+      });
+
+      const { getByTestId, rerender } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.button.quick-setup')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.quick-setup'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.sign-in')).toBeTruthy();
+      });
+
+      // Set route params to simulate fromOAuth return with success state
+      mockRouteParams.fromOAuth = true;
+      mockRouteParams.oauthState = 'success-state';
+
+      rerender(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.input.repo-name')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.create'));
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('onboarding.simple.button.done')).toBeTruthy();
+      });
+
+      // Pending entry should be deleted after successful setup
+      expect(mockPendingOAuthFlows.has('success-state')).toBe(false);
+    });
+  });
+
+  describe('Quick mode footer visibility', () => {
+    it('hides Skip and Back for Settings-launched Quick Setup', async () => {
+      const { queryByTestId } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} quickSetup />
+      );
+
+      await waitFor(() => {
+        expect(queryByTestId('onboarding.simple.button.sign-in')).toBeTruthy();
+      });
+      expect(queryByTestId('onboarding.button.skip')).toBeNull();
+      expect(queryByTestId('onboarding.simple.button.standard')).toBeNull();
+    });
+
+    it('hides progress dots and Next button in Quick mode at select step', async () => {
+      const { getByTestId, queryByTestId } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+
+      // Initially in standard mode at step 0, Next button should be visible
+      await waitFor(() => {
+        expect(getByTestId('onboarding.button.next')).toBeTruthy();
+      });
+
+      // Click Quick Setup to enter Quick mode
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.quick-setup'));
+      });
+
+      // In Quick mode, the progress dots and Next button should be hidden
+      await waitFor(() => {
+        expect(queryByTestId('onboarding.button.next')).toBeNull();
+      });
+    });
+
+    it('shows progress dots and Next button in standard mode', async () => {
+      const { getByTestId } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+
+      // In standard mode at step 0, Next button should be visible
+      await waitFor(() => {
+        expect(getByTestId('onboarding.button.next')).toBeTruthy();
+      });
+    });
+
+    it('restores footer controls when switching from Quick to standard mode', async () => {
+      const { getByTestId, queryByTestId } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+
+      // Click Quick Setup to enter Quick mode
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.quick-setup'));
+      });
+
+      // Verify we're in Quick mode - no Next button
+      await waitFor(() => {
+        expect(queryByTestId('onboarding.button.next')).toBeNull();
+      });
+
+      // Click the back button to return to standard mode
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.simple.button.standard'));
+      });
+
+      // Next button should be restored
+      await waitFor(() => {
+        expect(getByTestId('onboarding.button.next')).toBeTruthy();
+      });
+    });
+
+    it('renders the neutral back label for the mode switch button', async () => {
+      const { getByTestId } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+
+      // Click Quick Setup to enter quick mode
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.quick-setup'));
+      });
+
+      // The button to switch back should use backButton key
+      const backButton = getByTestId('onboarding.simple.button.standard');
+      expect(backButton).toBeTruthy();
     });
   });
 });

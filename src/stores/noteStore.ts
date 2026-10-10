@@ -141,7 +141,9 @@ export const useNoteStore = create<NoteState & NoteActions>()((set, get) => ({
       const format = input.format ?? 'markdown';
 
       let filePath: string;
-      if (title) {
+      if (input.filePath) {
+        filePath = input.filePath;
+      } else if (title) {
         const slug = slugifyLocal(title);
         const ext = getExtensionForFormat(format);
         filePath = `${normalizedFolderPath}/${slug}${ext}`;

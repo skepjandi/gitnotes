@@ -716,6 +716,81 @@
       "bodyReminder": "설정 → AI → GitHub 도구에서 언제든지 켜거나 끌 수 있습니다."
     },
     "skipForNow": "Skip for Now",
+    "simple": {
+      "signInCancelled": "로그인이 취소되었습니다. 다시 시도해 주세요.",
+      "signInFailed": "로그인에 실패했습니다. 다시 시도해 주세요.",
+      "accountLimitReached": "계정 한도에 도달했습니다. 더 많은 계정을 추가하려면 Pro로 업그레이드하세요.",
+      "permissionDenied": "권한이 거부되었습니다. GitHub 접근 권한을 확인해 주세요.",
+      "couldNotCreateRepo": "저장소를 생성할 수 없습니다. 다시 시도해 주세요.",
+      "couldNotCloneRepo": "저장소를 복제할 수 없습니다. 다시 시도해 주세요.",
+      "couldNotSeedNote": "환영 노트를 생성할 수 없습니다. 다시 시도해 주세요.",
+      "notAuthenticated": "인증되지 않았습니다. 다시 로그인해 주세요.",
+      "oauthNotConfigured": "이 기기에서 OAuth가 구성되지 않았습니다.",
+      "serverUnavailable": "서버를 사용할 수 없습니다. 연결을 확인해 주세요.",
+      "couldNotStartSignIn": "로그인을 시작할 수 없습니다.",
+      "couldNotOpenBrowser": "브라우저를 열 수 없습니다.",
+      "signInCancelledSimple": "GitHub 로그인이 취소되었습니다.",
+      "enterRepoName": "저장소 이름을 입력해 주세요.",
+      "repoAlreadyExists": "저장소 « {{name}} »이(가) 이미 존재합니다. 다른 이름을 선택해 주세요.",
+      "unexpectedError": "예기치 않은 오류가 발생했습니다.",
+      "select": {
+        "title": "빠른 설정",
+        "description": "GitHub으로 로그인하면 노트를 위한 비공개 저장소를 만들어 드립니다 — 설정이 필요 없습니다.",
+        "signInButton": "GitHub으로 로그인",
+        "complexButton": "복잡한 설정"
+      },
+      "oauth": {
+        "title": "GitHub에 연결 중",
+        "openingGitHub": "GitHub 로그인을 여는 중...",
+        "pleaseSignIn": "GitHub 계정으로 로그인해 주세요.",
+        "tryAgainButton": "다시 시도",
+        "backButton": "뒤로"
+      },
+      "repoName": {
+        "title": "저장소 이름 지정",
+        "description": "노트를 저장할 비공개 저장소를 GitHub에 생성합니다.",
+        "placeholder": "gitnotes",
+        "createButton": "저장소 생성"
+      },
+      "progress": {
+        "creatingTitle": "저장소 생성 중",
+        "creatingBody": "비공개 GitHub 저장소를 설정하는 중...",
+        "cloningTitle": "저장소 복제 중",
+        "cloningBody": "새 저장소를 다운로드하는 중...",
+        "seedingTitle": "거의 완료",
+        "seedingBody": "환영 노트를 생성하는 중..."
+      },
+      "done": {
+        "title": "준비 완료!",
+        "description": "노트 저장소가 준비되었습니다. 작성을 시작하세요!",
+        "getStartedButton": "시작하기"
+      },
+      "error": {
+        "title": "문제가 발생했습니다",
+        "tryAgainButton": "다시 시도",
+        "useAdvancedButton": "고급 설정 사용"
+      },
+      "quickSetupBanner": "빠른 설정 (권장)",
+      "quickSetupBannerSub": "GitHub으로 로그인하고 30초 만에 저장소 생성"
+    },
+    "oauthCallback": {
+      "completingSignIn": "GitHub 로그인을 완료하는 중…",
+      "title": {
+        "success": "GitHub 연결됨",
+        "denied": "로그인 취소됨",
+        "freeTierLimit": "계정 한도 도달",
+        "failed": "로그인 실패"
+      },
+      "message": {
+        "successSimple": "GitHub 계정이 연결되었습니다. 노트를 설정하는 중…",
+        "success": "GitHub 계정이 연결되었습니다.",
+        "denied": "GitHub 로그인이 취소되거나 거부되었습니다.",
+        "freeTierLimit": "무료 플랜에서 허용된 최대 계정 수에 도달했습니다. 더 많은 계정을 추가하려면 Pro로 업그레이드하세요.",
+        "failed": "GitHub 로그인 프로세스를 완료할 수 없습니다. 다시 시도해 주세요."
+      },
+      "continueButton": "계속",
+      "backToSettingsButton": "설정으로 돌아가기"
+    },
     "pro": {
       "title": "GitNotēs Pro",
       "body": "무료 플랜에는 계정 1개와 저장소 1개가 포함됩니다. GitNotēs Pro는 AI 채팅, 생각·음성 덤프, 맞춤 명언, 캔버스, 템플릿, 추가 저장소 및 계정을 제공합니다.",

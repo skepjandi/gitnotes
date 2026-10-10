@@ -714,6 +714,81 @@
       "bodyReminder": "設定 → AI → GitHubツールから、いつでもオン・オフを切り替えられます。"
     },
     "skipForNow": "Skip for Now",
+    "simple": {
+      "signInCancelled": "サインインがキャンセルされました。もう一度お試しください。",
+      "signInFailed": "サインインに失敗しました。もう一度お試しください。",
+      "accountLimitReached": "アカウント数の上限に達しました。Proにアップグレードしてアカウントを追加してください。",
+      "permissionDenied": "アクセスが拒否されました。GitHubのアクセスを確認してください。",
+      "couldNotCreateRepo": "リポジトリを作成できませんでした。もう一度お試しください。",
+      "couldNotCloneRepo": "リポジトリをクローンできませんでした。もう一度お試しください。",
+      "couldNotSeedNote": "ウェルカムノートを作成できませんでした。もう一度お試しください。",
+      "notAuthenticated": "認証されていません。もう一度サインインしてください。",
+      "oauthNotConfigured": "このデバイスでOAuthが設定されていません。",
+      "serverUnavailable": "サーバーが利用できません。接続を確認してください。",
+      "couldNotStartSignIn": "サインインを開始できませんでした。",
+      "couldNotOpenBrowser": "ブラウザを開けませんでした。",
+      "signInCancelledSimple": "GitHubのサインインがキャンセルされました。",
+      "enterRepoName": "リポジトリ名を入力してください。",
+      "repoAlreadyExists": "リポジトリ「{{name}}」は既に存在します。別の名前を選んでください。",
+      "unexpectedError": "予期しないエラーが発生しました。",
+      "select": {
+        "title": "クイックセットアップ",
+        "description": "GitHubでサインインすると、ノートのプライベートリポジトリを自動的に作成します — 設定不要です。",
+        "signInButton": "GitHubでサインイン",
+        "complexButton": "複雑な設定"
+      },
+      "oauth": {
+        "title": "GitHubに接続中",
+        "openingGitHub": "GitHubのサインインを開いています...",
+        "pleaseSignIn": "GitHubアカウントでサインインしてください。",
+        "tryAgainButton": "再試行",
+        "backButton": "戻る"
+      },
+      "repoName": {
+        "title": "リポジトリに名前を付ける",
+        "description": "ノートを保存するためのプライベートリポジトリをGitHubに作成します。",
+        "placeholder": "gitnotes",
+        "createButton": "リポジトリを作成"
+      },
+      "progress": {
+        "creatingTitle": "リポジトリを作成中",
+        "creatingBody": "プライベートGitHubリポジトリを設定しています...",
+        "cloningTitle": "リポジトリをクローン中",
+        "cloningBody": "新しいリポジトリをダウンロードしています...",
+        "seedingTitle": "もう少しです",
+        "seedingBody": "ウェルカムノートを作成しています..."
+      },
+      "done": {
+        "title": "準備完了！",
+        "description": "ノートのリポジトリの準備ができました。書き始めましょう！",
+        "getStartedButton": "始める"
+      },
+      "error": {
+        "title": "問題が発生しました",
+        "tryAgainButton": "再試行",
+        "useAdvancedButton": "高度な設定を使用"
+      },
+      "quickSetupBanner": "クイックセットアップ（推奨）",
+      "quickSetupBannerSub": "GitHubでサインインして30秒でリポジトリを作成"
+    },
+    "oauthCallback": {
+      "completingSignIn": "GitHubのサインインを完了しています…",
+      "title": {
+        "success": "GitHubに接続しました",
+        "denied": "サインインがキャンセルされました",
+        "freeTierLimit": "アカウント数の上限に達しました",
+        "failed": "サインインに失敗しました"
+      },
+      "message": {
+        "successSimple": "GitHubアカウントに接続しました。ノートを設定しています…",
+        "success": "GitHubアカウントに接続しました。",
+        "denied": "GitHubのサインインがキャンセルまたは拒否されました。",
+        "freeTierLimit": "無料プランで許可されているアカウント数の上限に達しました。Proにアップグレードしてアカウントを追加してください。",
+        "failed": "GitHubのサインインプロセスを完了できませんでした。もう一度お試しください。"
+      },
+      "continueButton": "続ける",
+      "backToSettingsButton": "設定に戻る"
+    },
     "pro": {
       "title": "GitNotēs Pro",
       "body": "無料プランにはアカウント1つとリポジトリ1つが含まれます。GitNotēs Proでは、AIチャット、思考・音声ダンプ、パーソナライズされた名言、キャンバス、テンプレート、追加のリポジトリとアカウントを利用できます。",

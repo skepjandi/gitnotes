@@ -716,6 +716,81 @@
       "bodyReminder": "Vous pouvez activer ou désactiver ceci à tout moment dans Paramètres → IA → Outils GitHub."
     },
     "skipForNow": "Skip for Now",
+    "simple": {
+      "signInCancelled": "La connexion a été annulée. Veuillez réessayer.",
+      "signInFailed": "Échec de la connexion. Veuillez réessayer.",
+      "accountLimitReached": "Limite de comptes atteinte. Passez à Pro pour ajouter d'autres comptes.",
+      "permissionDenied": "Accès refusé. Vérifiez votre accès à GitHub.",
+      "couldNotCreateRepo": "Impossible de créer le dépôt. Veuillez réessayer.",
+      "couldNotCloneRepo": "Impossible de cloner le dépôt. Veuillez réessayer.",
+      "couldNotSeedNote": "Impossible de créer la note de bienvenue. Veuillez réessayer.",
+      "notAuthenticated": "Non authentifié. Veuillez vous reconnecter.",
+      "oauthNotConfigured": "OAuth n'est pas configuré sur cet appareil.",
+      "serverUnavailable": "Serveur indisponible. Vérifiez votre connexion.",
+      "couldNotStartSignIn": "Impossible de démarrer la connexion.",
+      "couldNotOpenBrowser": "Impossible d'ouvrir le navigateur.",
+      "signInCancelledSimple": "La connexion à GitHub a été annulée.",
+      "enterRepoName": "Veuillez entrer un nom de dépôt.",
+      "repoAlreadyExists": "Le dépôt « {{name}} » existe déjà. Veuillez choisir un autre nom.",
+      "unexpectedError": "Une erreur inattendue s'est produite.",
+      "select": {
+        "title": "Configuration Rapide",
+        "description": "Connectez-vous avec GitHub et nous créerons un dépôt privé pour vos notes — aucune configuration nécessaire.",
+        "signInButton": "Se connecter avec GitHub",
+        "complexButton": "Configuration Complexe"
+      },
+      "oauth": {
+        "title": "Connexion à GitHub",
+        "openingGitHub": "Ouverture de la connexion GitHub...",
+        "pleaseSignIn": "Veuillez vous connecter avec votre compte GitHub.",
+        "tryAgainButton": "Réessayer",
+        "backButton": "Retour"
+      },
+      "repoName": {
+        "title": "Nommez votre Dépôt",
+        "description": "Nous créerons un dépôt privé sur GitHub pour stocker vos notes.",
+        "placeholder": "gitnotes",
+        "createButton": "Créer le Dépôt"
+      },
+      "progress": {
+        "creatingTitle": "Création du Dépôt",
+        "creatingBody": "Configuration de votre dépôt GitHub privé...",
+        "cloningTitle": "Clonage du Dépôt",
+        "cloningBody": "Téléchargement de votre nouveau dépôt...",
+        "seedingTitle": "Presque Prêt",
+        "seedingBody": "Création de votre note de bienvenue..."
+      },
+      "done": {
+        "title": "Vous êtes Prêt !",
+        "description": "Votre dépôt de notes est prêt. Commencez à écrire !",
+        "getStartedButton": "Commencer"
+      },
+      "error": {
+        "title": "Quelque Chose s'est Mal Passé",
+        "tryAgainButton": "Réessayer",
+        "useAdvancedButton": "Utiliser la Configuration Avancée"
+      },
+      "quickSetupBanner": "Configuration Rapide (Recommandé)",
+      "quickSetupBannerSub": "Connectez-vous à GitHub et créez un dépôt en 30 secondes"
+    },
+    "oauthCallback": {
+      "completingSignIn": "Finalisation de la connexion à GitHub…",
+      "title": {
+        "success": "GitHub Connecté",
+        "denied": "Connexion Annulée",
+        "freeTierLimit": "Limite de Comptes Atteinte",
+        "failed": "Échec de la Connexion"
+      },
+      "message": {
+        "successSimple": "Votre compte GitHub est connecté. Configuration de vos notes…",
+        "success": "Votre compte GitHub est maintenant connecté.",
+        "denied": "La connexion à GitHub a été annulée ou refusée.",
+        "freeTierLimit": "Vous avez atteint le nombre maximum de comptes sur le plan gratuit. Passez à Pro pour ajouter d'autres comptes.",
+        "failed": "Le processus de connexion à GitHub n'a pas pu être terminé. Veuillez réessayer."
+      },
+      "continueButton": "Continuer",
+      "backToSettingsButton": "Retour aux Réglages"
+    },
     "pro": {
       "title": "GitNotēs Pro",
       "body": "Le plan gratuit inclut 1 compte et 1 dépôt. GitNotēs Pro débloque le chat IA, la décharge de pensées et vocale, les citations personnalisées, les toiles, les modèles, plus de dépôts et de comptes.",

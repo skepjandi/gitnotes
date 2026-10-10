@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import { Button } from '../components/ui';
 import { SafeAreaView } from '../components/ui/SafeAreaView';
@@ -18,26 +19,40 @@ type OAuthCallbackRoute = RouteProp<RootStackParamList, 'OAuthCallback'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function OAuthCallbackScreen() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<OAuthCallbackRoute>();
   const { refreshAccounts } = useAccounts();
   const [result, setResult] = useState<OAuthCallbackResult | null>(null);
+  const pendingStateRef = useRef<string | null>(null);
 
   useEffect(() => {
     const { code, state, error, error_description } = route.params ?? {};
 
-    if (error) {
-      setResult({ outcome: 'denied', code, message: error_description });
-      return;
-    }
-    if (!code || !state) {
+    if (!state) {
       setResult({ outcome: 'malformed' });
       return;
     }
 
     const pending = pendingOAuthFlows.get(state);
     if (!pending) {
+      setResult({ outcome: 'malformed' });
+      return;
+    }
+
+    pendingStateRef.current = state;
+
+    if (error) {
+      const deniedResult = { outcome: 'denied' as const, code: error, message: error_description };
+      const pending = pendingOAuthFlows.get(state);
+      if (pending) {
+        pending.oauthResult = deniedResult;
+      }
+      setResult(deniedResult);
+      return;
+    }
+    if (!code) {
       setResult({ outcome: 'malformed' });
       return;
     }
@@ -59,6 +74,10 @@ export default function OAuthCallbackScreen() {
     navigation.navigate('MainTabs', { screen: 'SettingsTab' });
   };
 
+  const handleDoneSimple = () => {
+    navigation.navigate('Onboarding', { fromOAuth: true, oauthState: pendingStateRef.current ?? null });
+  };
+
   useEffect(() => {
     if (result?.outcome === 'success') {
       refreshAccounts().catch(() => undefined);
@@ -71,7 +90,7 @@ export default function OAuthCallbackScreen() {
         <View className="flex-1 items-center justify-center gap-4 px-8">
           <ActivityIndicator size="large" color={colors.accent} />
           <Text className="text-base" style={{ color: colors.text }}>
-            Completing GitHub sign-in…
+            {t('onboarding.oauthCallback.completingSignIn')}
           </Text>
         </View>
       </SafeAreaView>
@@ -81,22 +100,29 @@ export default function OAuthCallbackScreen() {
   const success = result.outcome === 'success';
   const denied = result.outcome === 'denied' || result.outcome === 'cancelled';
   const freeTierLimit = result.outcome === 'free_tier_limit_reached';
+  const simpleMode = (() => {
+    if (!pendingStateRef.current) return false;
+    const pending = pendingOAuthFlows.get(pendingStateRef.current);
+    return pending?.returnTo === 'onboarding';
+  })();
   const title = success
-    ? 'GitHub Connected'
+    ? t('onboarding.oauthCallback.title.success')
     : denied
-      ? 'Sign-in Cancelled'
+      ? t('onboarding.oauthCallback.title.denied')
       : freeTierLimit
-        ? 'Account Limit Reached'
-        : 'Sign-in Failed';
+        ? t('onboarding.oauthCallback.title.freeTierLimit')
+        : t('onboarding.oauthCallback.title.failed');
   const message = success
-    ? 'Your GitHub account is now connected.'
+    ? simpleMode
+      ? t('onboarding.oauthCallback.message.successSimple')
+      : t('onboarding.oauthCallback.message.success')
     : denied
-      ? 'GitHub sign-in was cancelled or denied.'
+      ? t('onboarding.oauthCallback.message.denied')
       : freeTierLimit
-        ? 'You have reached the maximum number of accounts on the Free plan. Upgrade to Pro to add more accounts.'
+        ? t('onboarding.oauthCallback.message.freeTierLimit')
         : result.outcome === 'backend_error' && result.message
           ? result.message
-          : 'The GitHub sign-in flow could not be completed. Please try again.';
+          : t('onboarding.oauthCallback.message.failed');
 
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -107,7 +133,11 @@ export default function OAuthCallbackScreen() {
         <Text className="text-base text-center" style={{ color: colors.textSecondary }}>
           {message}
         </Text>
-        <Button label="Back to Settings" onPress={handleDone} className="mt-4" />
+        {simpleMode ? (
+          <Button label={t('onboarding.oauthCallback.continueButton')} onPress={handleDoneSimple} className="mt-4" />
+        ) : (
+          <Button label={t('onboarding.oauthCallback.backToSettingsButton')} onPress={handleDone} className="mt-4" />
+        )}
       </View>
     </SafeAreaView>
   );

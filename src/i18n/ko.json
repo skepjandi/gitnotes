@@ -228,6 +228,7 @@
     "clearAllNotes": "모든 노트 지우기",
     "clearAllConfirm": "모든 노트를 지우시겠습니까? 이 작업은 취소할 수 없습니다.",
     "resetOnboarding": "온보딩 재설정",
+    "quickSetup": "빠른 설정",
     "about": "정보",
     "version": "버전",
     "build": "빌드",

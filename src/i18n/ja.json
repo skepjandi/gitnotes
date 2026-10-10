@@ -228,6 +228,7 @@
     "clearAllNotes": "すべてのノートを消去",
     "clearAllConfirm": "すべてのノートを消去してもよろしいですか？この操作は取り消せません。",
     "resetOnboarding": "オンボーディングをリセット",
+    "quickSetup": "クイックセットアップ",
     "about": "概要",
     "version": "バージョン",
     "build": "ビルド",

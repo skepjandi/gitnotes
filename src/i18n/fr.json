@@ -228,6 +228,7 @@
     "clearAllNotes": "Effacer toutes les notes",
     "clearAllConfirm": "Voulez-vous vraiment effacer toutes les notes ? Cette action est irréversible.",
     "resetOnboarding": "Réinitialiser l'intégration",
+    "quickSetup": "Configuration Rapide",
     "about": "À propos",
     "version": "Version",
     "build": "Build",

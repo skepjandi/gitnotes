@@ -16,7 +16,7 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **Scope:** `OnboardingScreen` (Simple/Complex modes, OAuth callback continuation, repo create/clone/seed), `OAuthCallbackScreen` (Simple-mode return navigation), `GitHubService` (new `createRepository` method), Settings `Complex` grouping. GitHub App is unchanged; non-GitHub providers unchanged.
 
-**PR:** pending
+**PR:** [#1774](https://github.com/skepjandi/gitnotes/pull/1774)
 
 ### fix(chat): serialize initial message persistence
 

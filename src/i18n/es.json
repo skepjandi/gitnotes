@@ -564,6 +564,7 @@
       "lfsFiles": "Los archivos grandes rastreados por Git LFS se descargan bajo demanda. Descarga los archivos pendientes para verlos sin conexión.",
       "templatesRepo": "Conecta un repositorio de GitHub para almacenar y sincronizar tus plantillas de notas personalizadas.",
       "clearData": "Elimina permanentemente todas las notas, tareas y lienzos de este dispositivo. Tus archivos en GitHub no se ven afectados.",
+      "quickSetup": "Configuración Rápida",
       "resetOnboarding": "Muestra las pantallas de bienvenida de nuevo en el próximo lanzamiento de la app. No elimina ningún dato.",
       "enableAI": "Activa el asistente de chat IA para ayudarte a organizar notas, generar contenido y más.",
       "model": "Elige el modelo de IA usado para el chat y la asistencia de escritura. Los modelos pueden variar en velocidad, capacidad y coste.",
@@ -739,7 +740,7 @@
         "title": "Configuración Rápida",
         "description": "Inicia sesión con GitHub y crearemos un repositorio privado para tus notas — sin configuración.",
         "signInButton": "Iniciar sesión con GitHub",
-        "complexButton": "Configuración Compleja"
+        "backButton": "Atrás"
       },
       "oauth": {
         "title": "Conectando con GitHub",
@@ -770,7 +771,7 @@
       "error": {
         "title": "Algo Salió Mal",
         "tryAgainButton": "Intentar de Nuevo",
-        "useAdvancedButton": "Usar Configuración Avanzada"
+        "backButton": "Volver a Configuración"
       },
       "quickSetupBanner": "Configuración Rápida (Recomendado)",
       "quickSetupBannerSub": "Inicia sesión con GitHub y crea un repositorio en 30 segundos"

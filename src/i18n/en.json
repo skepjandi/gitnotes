@@ -526,7 +526,7 @@
     "openSshSettings": "Add to GitHub",
     "sshGenerating": "Generating SSH key…",
     "sshKeyError": "Failed to generate SSH key.",
-    "complex": "Complex"
+    "quickSetup": "Quick Setup"
   },
   "accounts": {
     "title": "Accounts",
@@ -698,7 +698,7 @@
         "title": "Quick Setup",
         "description": "Sign in with GitHub and we'll create a private repository for your notes — no configuration needed.",
         "signInButton": "Sign in with GitHub",
-        "complexButton": "Complex Setup"
+        "backButton": "Back"
       },
       "oauth": {
         "title": "Connecting to GitHub",
@@ -729,7 +729,7 @@
       "error": {
         "title": "Something Went Wrong",
         "tryAgainButton": "Try Again",
-        "useAdvancedButton": "Use Advanced Setup"
+        "backButton": "Back to Setup"
       },
       "quickSetupBanner": "Quick Setup (Recommended)",
       "quickSetupBannerSub": "Sign in with GitHub and create a repo in 30 seconds"

@@ -564,6 +564,7 @@
       "lfsFiles": "Große Dateien, die von Git LFS verfolgt werden, werden bei Bedarf heruntergeladen. Lade ausstehende Dateien herunter, um sie offline anzuzeigen.",
       "templatesRepo": "Verbinde ein GitHub-Repository, um deine benutzerdefinierten Notizvorlagen zu speichern und zu synchronisieren.",
       "clearData": "Löscht dauerhaft alle Notizen, Aufgaben und Leinwände von diesem Gerät. Deine Dateien auf GitHub sind nicht betroffen.",
+      "quickSetup": "Quick Setup",
       "resetOnboarding": "Zeigt die Willkommensbildschirme erneut beim nächsten App-Start. Löscht keine Daten.",
       "enableAI": "Aktiviere den KI-Chat-Assistenten, um dir beim Organisieren von Notizen, Erstellen von Inhalten und mehr zu helfen.",
       "model": "Wähle das KI-Modell für Chat und Schreibhilfe. Modelle können sich in Geschwindigkeit, Fähigkeiten und Kosten unterscheiden.",
@@ -737,7 +738,7 @@
         "title": "Schnellsetup",
         "description": "Melde dich bei GitHub an und wir erstellen ein privates Repository für deine Notizen — keine Konfiguration nötig.",
         "signInButton": "Mit GitHub anmelden",
-        "complexButton": "Komplexe Einrichtung"
+        "backButton": "Zurück"
       },
       "oauth": {
         "title": "Mit GitHub verbinden",
@@ -768,7 +769,7 @@
       "error": {
         "title": "Etwas ist schiefgelaufen",
         "tryAgainButton": "Erneut versuchen",
-        "useAdvancedButton": "Erweiterte Einrichtung verwenden"
+        "backButton": "Zurück zum Setup"
       },
       "quickSetupBanner": "Schnellsetup (Empfohlen)",
       "quickSetupBannerSub": "Melde dich bei GitHub an und erstelle ein Repository in 30 Sekunden"

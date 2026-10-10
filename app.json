@@ -14,7 +14,9 @@
       "bundleIdentifier": "com.xaventra.gitnotes",
       "buildNumber": "10",
       "scheme": "gitnotes",
+      "associatedDomains": ["applinks:gitnotes.org"],
       "icon": "./assets/generated/icon.png",
+      "appStoreUrl": "https://apps.apple.com/app/gitnot%C4%93s-notes-todos-git/id6764829004",
       "infoPlist": {
         "CFBundleURLTypes": [
           {
@@ -53,6 +55,7 @@
       },
       "package": "org.gitnotes.app",
       "scheme": "gitnotes",
+      "playStoreUrl": "https://play.google.com/store/apps/details?id=org.gitnotes.app",
       "intentFilters": [
         {
           "action": "VIEW",
@@ -74,6 +77,21 @@
           "data": [
             {
               "scheme": "rc-0aadf77f9f"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "gitnotes.org",
+              "pathPrefix": "/r/"
             }
           ],
           "category": [
@@ -175,6 +193,33 @@
               "foregroundImage": "./assets/generated/alternate/gold/adaptive-icon.png",
               "backgroundColor": "#ffffff",
               "monochromeImage": "./assets/generated/alternate/gold/monochrome-icon.png"
+            }
+          },
+          {
+            "name": "TerminalMono",
+            "ios": "./assets/generated/alternate/terminal-mono/icon.png",
+            "android": {
+              "foregroundImage": "./assets/generated/alternate/terminal-mono/adaptive-icon.png",
+              "backgroundColor": "#0D0D0A",
+              "monochromeImage": "./assets/generated/alternate/terminal-mono/monochrome-icon.png"
+            }
+          },
+          {
+            "name": "AmberTerminal",
+            "ios": "./assets/generated/alternate/amber-terminal/icon.png",
+            "android": {
+              "foregroundImage": "./assets/generated/alternate/amber-terminal/adaptive-icon.png",
+              "backgroundColor": "#1A1A17",
+              "monochromeImage": "./assets/generated/alternate/amber-terminal/monochrome-icon.png"
+            }
+          },
+          {
+            "name": "MonochromeGrid",
+            "ios": "./assets/generated/alternate/monochrome-grid/icon.png",
+            "android": {
+              "foregroundImage": "./assets/generated/alternate/monochrome-grid/adaptive-icon.png",
+              "backgroundColor": "#1E1E1E",
+              "monochromeImage": "./assets/generated/alternate/monochrome-grid/monochrome-icon.png"
             }
           }
         ]

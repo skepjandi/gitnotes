@@ -145,7 +145,7 @@ GitNotēs uses a **centralized branch model** for clone-mode repositories:
 |------|---------|
 | `AuthService.ts` | Handles app authentication (biometric, PIN). Manages auth state and lock screen. |
 | `AccountStorage.ts` | Secure account credential storage — SSH keys, tokens, host connections via SecureStore; managed by AccountStorage class |
-| `AppIconService.ts` | Manages alternate app icon selection and persistence. Provides `hydrate()`, `current()`, `set()`, `reset()`, and `isSupported()` for switching between Default, Neon, Grayscale, and Gold launcher icons on iOS and Android. Persists selection via AsyncStorage under `@gitnotes:app_icon`; web/unsupported platforms return unavailable. All-user, no Pro gate. |
+| `AppIconService.ts` | Manages alternate app icon selection and persistence. Provides `hydrate()`, `current()`, `set()`, `reset()`, and `isSupported()` for switching between Default, Neon, Grayscale, Gold, Terminal Mono, Amber Terminal, and Monochrome Grid launcher icons on iOS and Android. Persists selection via AsyncStorage under `@gitnotes:app_icon`; web/unsupported platforms return unavailable. All-user, no Pro gate. Three icons (Terminal Mono, Amber Terminal, Monochrome Grid) are earned via the referral battle pass. |
 | `OnboardingService.ts` | Manages first-run onboarding flow — repo selection, initial clone, preferences. |
 | `StorageService.ts` | Wraps AsyncStorage for app preferences and local settings. |
 | `RevenueCatService.ts` | RevenueCat SDK wrapper — configures StoreKit 2, handles purchases, entitlements, customer info. |
@@ -186,6 +186,50 @@ GitNotēs uses a **centralized branch model** for clone-mode repositories:
 - App: `gitnotes://app/callback`
 
 **Existing auth (unchanged):** Host connections (`AccountsContext`, `HostAuthContext`) use PAT-based `GitHubService.setToken()` / `AuthService.connectHost()`. SSH key and credential management is unchanged.
+
+## Referral Battle Pass (`src/services/`)
+
+### Referral Identity & Proof
+
+| File | Purpose |
+|------|---------|
+| `ReferralIdentityService.ts` | Manages cryptographic installation ID (UUIDv4 via expo-crypto, stored in SecureStore) and builds `ReferralIdentityProof` for Worker API calls. Prefers GitHub OAuth token as primary identity; falls back to installation-only identity. Never sends tokens in request body. |
+| `ReferralService.ts` | Manages referral deep-link URL parsing (`gitnotes://r/<code>`, `https://gitnotes.org/r/<code>`), pending code persistence (30-day TTL), first-repo eligibility state machine, and idempotent referral completion after first successful repository clone. |
+
+### Reward Entitlements
+
+| File | Purpose |
+|------|---------|
+| `RewardEntitlementService.ts` | Manages referral reward status — fetches from Worker API, caches locally (identity-scoped AsyncStorage), provides `isUnlocked(rewardKey)`, `getUnlockedThemes()`, `getUnlockedIcons()`. Server-authoritative: never grants entitlements locally. Identity-scoped cache prevents cross-account leakage. |
+
+### Referral Rewards Catalog
+
+Six milestone rewards unlock at referral counts:
+
+| Milestone | Reward | Type |
+|----------|--------|------|
+| 1 | Terminal Mono | Alternate app icon |
+| 3 | Terminal Mono | App theme |
+| 5 | Amber Terminal | Alternate app icon |
+| 10 | CRT Green | App theme |
+| 15 | Monochrome Grid | Alternate app icon |
+| 20 | Developer Desk | App theme |
+
+Themes apply the GitNotes color scheme. Icons replace the launcher icon on iOS and Android.
+
+### Review Prompt Service (`src/services/ReviewPromptService.ts`)
+
+| File | Purpose |
+|------|---------|
+| `ReviewPromptService.ts` | Conservative native App Store / Play Store review prompting. Tracks `successfulSyncCount`, `notesCreatedCount`, first launch, and native prompt attempts. Enforces eligibility: >=3 syncs OR >=5 notes created, >=14 days since first launch, 90-day cooldown, max 3 native prompt attempts. Prompt is invoked automatically after meaningful usage events (sync complete, note created); a Settings action opens the store listing as fallback. The native `requestReview()` API returns void and never proves a review was submitted. |
+
+**Review prompt policy:**
+- Eligibility: `successfulSyncCount >= 3 OR notesCreatedCount >= 5` AND `>=14 days since first launch`
+- Cooldown: 90 days between native prompt attempts
+- Max native attempts: 3 (via `expo-store-review`); `requestReview()` returns void — submission is never confirmed
+- Suppress during: onboarding, active sync, recent sync failure
+- Fallback: `openStoreListing()` opens the platform store listing URL (also reachable from Settings at any time)
+- No button-triggered prompt: expo-store-review prohibits calling `requestReview()` from a Settings button press; the prompt fires only after usage events
 
 ## See Also
 

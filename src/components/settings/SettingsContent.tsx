@@ -10,6 +10,8 @@ import { HintIcon } from '../ui/HintIcon';
 import { aiMemoryIndex } from '../../services/ai/AIMemoryIndexService';
 import { HapticService } from '../../utils/haptics';
 import { promptProUpgrade } from '../../utils/proAlerts';
+import { openStoreListing } from '../../services/ReviewPromptService';
+import { RewardEntitlementService } from '../../services/RewardEntitlementService';
 import { FREE_TIER_MAX_REPOS } from '../../services/TierLimits';
 import {
   SUPPORTED_LANGUAGES,
@@ -183,6 +185,10 @@ onRemoveAccount: (id: string, login: string) => void;
   onDisconnectPat: (hostId: string) => void;
   patLoading: Record<string, boolean>;
   patError: Record<string, string | null>;
+  // Referral rewards
+  referralProgress: number;
+  referralUnlockedCount: number;
+  onOpenRewardCatalog: () => void;
 };
 
 function formatLfsBytes(bytes: number): string {
@@ -293,6 +299,9 @@ export function SettingsContent(props: SettingsContentProps) {
     onDisconnectPat,
     patLoading = {},
     patError = {},
+    referralProgress,
+    referralUnlockedCount,
+    onOpenRewardCatalog,
   } = props;
   const { spacing, type } = useTokens();
   const { t } = useTranslation();
@@ -481,6 +490,69 @@ export function SettingsContent(props: SettingsContentProps) {
           <Text style={[styles.settingLabel, { color: colors.text }]}>{t('settings.style.retrofuturistic')}</Text>
         </GroupRow>
         <GroupRow
+          testID="settings.option.style.terminal-mono"
+          onPress={
+            RewardEntitlementService.isUnlocked('terminal-mono-theme')
+              ? () => { HapticService.selection(); setStyle('terminal-mono'); }
+              : onOpenRewardCatalog
+          }
+          accessibilityRole="button"
+          accessibilityLabel="Terminal Mono"
+          trailing={
+            <View className="flex-row items-center gap-2">
+              {uiStyle === 'terminal-mono' ? (
+                <Ionicons name="checkmark" size={18} color={colors.accent} />
+              ) : !RewardEntitlementService.isUnlocked('terminal-mono-theme') ? (
+                <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
+              ) : null}
+            </View>
+          }
+        >
+          <Text style={[styles.settingLabel, { color: colors.text }]}>Terminal Mono</Text>
+        </GroupRow>
+        <GroupRow
+          testID="settings.option.style.crt-green"
+          onPress={
+            RewardEntitlementService.isUnlocked('crt-green-theme')
+              ? () => { HapticService.selection(); setStyle('crt-green'); }
+              : onOpenRewardCatalog
+          }
+          accessibilityRole="button"
+          accessibilityLabel="CRT Green"
+          trailing={
+            <View className="flex-row items-center gap-2">
+              {uiStyle === 'crt-green' ? (
+                <Ionicons name="checkmark" size={18} color={colors.accent} />
+              ) : !RewardEntitlementService.isUnlocked('crt-green-theme') ? (
+                <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
+              ) : null}
+            </View>
+          }
+        >
+          <Text style={[styles.settingLabel, { color: colors.text }]}>CRT Green</Text>
+        </GroupRow>
+        <GroupRow
+          testID="settings.option.style.developer-desk"
+          onPress={
+            RewardEntitlementService.isUnlocked('developer-desk-theme')
+              ? () => { HapticService.selection(); setStyle('developer-desk'); }
+              : onOpenRewardCatalog
+          }
+          accessibilityRole="button"
+          accessibilityLabel="Developer Desk"
+          trailing={
+            <View className="flex-row items-center gap-2">
+              {uiStyle === 'developer-desk' ? (
+                <Ionicons name="checkmark" size={18} color={colors.accent} />
+              ) : !RewardEntitlementService.isUnlocked('developer-desk-theme') ? (
+                <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
+              ) : null}
+            </View>
+          }
+        >
+          <Text style={[styles.settingLabel, { color: colors.text }]}>Developer Desk</Text>
+        </GroupRow>
+        <GroupRow
           trailing={
             <View className="flex-row items-center gap-2">
               <Toggle
@@ -548,6 +620,25 @@ export function SettingsContent(props: SettingsContentProps) {
           <View className="flex-row items-center gap-2">
             <Ionicons name="apps-outline" size={20} color={colors.text} />
             <Text style={[styles.settingLabel, { color: colors.text }]}>{t('settings.appIcon.title', { defaultValue: 'App Icon' })}</Text>
+          </View>
+        </GroupRow>
+        <GroupRow
+          testID="settings.row.referral-rewards"
+          onPress={onOpenRewardCatalog}
+          trailing={
+            <View className="flex-row items-center gap-1">
+              <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
+                {referralUnlockedCount > 0
+                  ? `${referralUnlockedCount} unlocked`
+                  : `${referralProgress} / 20`}
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </View>
+          }
+        >
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="gift-outline" size={20} color={colors.text} />
+            <Text style={[styles.settingLabel, { color: colors.text }]}>Referral Rewards</Text>
           </View>
         </GroupRow>
       </Group>
@@ -1503,6 +1594,15 @@ export function SettingsContent(props: SettingsContentProps) {
           trailing={<Text style={[styles.settingValue, { color: colors.textSecondary }]}>{Constants.expoConfig?.version ?? '—'}</Text>}
         >
           <Text style={[styles.settingLabel, { color: colors.text }]}>{t('settings.version')}</Text>
+        </GroupRow>
+        <GroupRow
+          testID="settings.row.store-listing"
+          onPress={() => { HapticService.selection(); void openStoreListing(); }}
+          accessibilityRole="link"
+          accessibilityLabel="Leave a review on the App Store"
+          trailing={<Ionicons name="star-outline" size={18} color={colors.accent} />}
+        >
+          <Text style={[styles.settingLabel, { color: colors.primary }]}>Leave a Review</Text>
         </GroupRow>
         <GroupRow
           testID="settings.row.report-issue"

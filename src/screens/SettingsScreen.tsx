@@ -74,6 +74,8 @@ import {
   showTransientAccessConfirmation,
 } from './addRepoConfirmation';
 import { AppIconService, type AppIconName } from '../services/AppIconService';
+import RewardCatalogModal from '../components/settings/RewardCatalogModal';
+import { RewardEntitlementService } from '../services/RewardEntitlementService';
 
 // Mirrors GitFsService's MAX_CLONE_RETRIES so a failing repo can't loop the outer flow.
 const MAX_OUTER_CLONE_RETRIES = 1;
@@ -198,6 +200,9 @@ export default function SettingsScreen() {
   const [appIconSupported, setAppIconSupported] = useState(false);
   const [showAppIconPicker, setShowAppIconPicker] = useState(false);
   const [appIconLoading, setAppIconLoading] = useState(false);
+  const [showRewardCatalog, setShowRewardCatalog] = useState(false);
+  const [referralProgress, setReferralProgress] = useState(0);
+  const [referralUnlockedCount, setReferralUnlockedCount] = useState(0);
   const [oauthLoading, setOauthLoading] = useState<Record<string, boolean>>({});
   const [oauthError, setOauthError] = useState<Record<string, string | null>>({});
   const [oauthPermissionHostId, setOauthPermissionHostId] = useState<string | null | undefined>(undefined);
@@ -290,6 +295,32 @@ export default function SettingsScreen() {
     };
     void init();
   }, []);
+
+  useEffect(() => {
+    let disposed = false;
+    const init = async () => {
+      RewardEntitlementService.resetMemory();
+      if (disposed) return;
+      setReferralProgress(0);
+      setReferralUnlockedCount(0);
+      const cached = await RewardEntitlementService.hydrateCache();
+      if (disposed) return;
+      if (cached) {
+        setReferralProgress(cached.progress);
+        setReferralUnlockedCount(cached.unlocked_milestones.length);
+      }
+      try {
+        const status = await RewardEntitlementService.fetchStatus();
+        if (disposed) return;
+        setReferralProgress(status.progress);
+        setReferralUnlockedCount(status.unlocked_milestones.length);
+      } catch {
+        // Referral status is non-critical; silently ignore fetch failures
+      }
+    };
+    void init();
+    return () => { disposed = true; };
+  }, [activeAccountId]);
 
   const refreshLfsPending = useCallback(async (repoPaths: string[]) => {
     const next: Record<string, { count: number; bytes: number }> = {};
@@ -1158,6 +1189,39 @@ export default function SettingsScreen() {
       setAppIconLoading(false);
     }
   }, [t]);
+
+  const handleRewardThemeSelect = useCallback(async (style: string) => {
+    setStyle(style as 'terminal-mono' | 'crt-green' | 'developer-desk');
+    // Refresh referral unlocked count after theme change
+    const status = RewardEntitlementService.getStatus();
+    if (status) {
+      setReferralProgress(status.progress);
+      setReferralUnlockedCount(status.unlocked_milestones.length);
+    }
+  }, [setStyle]);
+
+  const handleRewardIconSelect = useCallback(async (iconName: string) => {
+    const iconAppName = iconName === 'TerminalMono'
+      ? 'TerminalMono'
+      : iconName === 'AmberTerminal'
+        ? 'AmberTerminal'
+        : iconName === 'MonochromeGrid'
+          ? 'MonochromeGrid'
+          : null;
+    if (iconAppName) {
+      await handleAppIconSelect(iconAppName as AppIconName);
+    }
+    // Refresh referral unlocked count after icon change
+    const status = RewardEntitlementService.getStatus();
+    if (status) {
+      setReferralProgress(status.progress);
+      setReferralUnlockedCount(status.unlocked_milestones.length);
+    }
+  }, [handleAppIconSelect]);
+
+  const handleOpenRewardCatalog = useCallback(() => {
+    setShowRewardCatalog(true);
+  }, []);
   const startOAuthFlow = useCallback(async (hostId: string | null, scopes: OAuthScope[]) => {
     const key = hostId ?? '__fresh__';
     setOauthLoading((prev) => ({ ...prev, [key]: true }));
@@ -1526,6 +1590,9 @@ export default function SettingsScreen() {
         appIconSupported={appIconSupported}
         appIconLoading={appIconLoading}
         onOpenAppIconPicker={() => setShowAppIconPicker(true)}
+        referralProgress={referralProgress}
+        referralUnlockedCount={referralUnlockedCount}
+        onOpenRewardCatalog={handleOpenRewardCatalog}
       />
       <SettingsModals
         colors={colors}
@@ -1705,6 +1772,16 @@ export default function SettingsScreen() {
           </Text>
         </TouchableOpacity>
       </Modal>
+
+      <RewardCatalogModal
+        visible={showRewardCatalog}
+        onRequestClose={() => setShowRewardCatalog(false)}
+        onSelectTheme={handleRewardThemeSelect}
+        onSelectIcon={handleRewardIconSelect}
+        currentStyle={uiStyle}
+        currentIcon={appIcon}
+        appIconSupported={appIconSupported}
+      />
       </View>
       <ScreenHeader title={t('settings.title')} />
     </SafeAreaView>

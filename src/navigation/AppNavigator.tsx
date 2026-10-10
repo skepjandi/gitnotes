@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { NavigationContainer, DarkTheme, DefaultTheme, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -41,12 +41,13 @@ import { useAIStore } from '../stores/aiStore';
 import { useAIHubStore } from '../stores/aiHubStore';
 import { selectIsPro, useProStore } from '../stores/proStore';
 import { useFloatingGitButtonStore } from '../stores/floatingGitButtonStore';
+import { ReferralService } from '../services/ReferralService';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const getLinkingConfig = (): LinkingOptions<RootStackParamList> => {
   const baseConfig: LinkingOptions<RootStackParamList> = {
-    prefixes: ['gitnotes://'],
+    prefixes: ['gitnotes://', 'https://gitnotes.org'],
     config: {
       screens: {
         MainTabs: {
@@ -104,6 +105,30 @@ export default function AppNavigator({ showOnboarding, onOnboardingComplete, onO
   useEffect(() => {
     void hydrateFloatingGitButton();
   }, [hydrateFloatingGitButton]);
+
+  // Handle referral deep links: gitnotes://r/<code> and https://gitnotes.org/r/<code>
+  // captureReferralUrl returns true if consumed, false otherwise.
+  const handleReferralDeepLink = useCallback(async (url: string) => {
+    await ReferralService.captureReferralUrl(url);
+  }, []);
+
+  // Handle AppState changes (foregrounding) to check for pending deep links
+  useEffect(() => {
+    const checkIncomingUrl = async () => {
+      try {
+        const initialUrl = await Linking.getInitialURL();
+        if (initialUrl) {
+          await handleReferralDeepLink(initialUrl);
+        }
+      } catch { /* ignore */ }
+    };
+    void checkIncomingUrl();
+
+    const subscription = Linking.addEventListener('url', (event: { url: string }) => {
+      void handleReferralDeepLink(event.url);
+    });
+    return () => subscription.remove();
+  }, [handleReferralDeepLink]);
 
   // Deferred interstitial: only consume the one-shot flag after confirming navigation is ready.
   // navigationReady state variable ensures re-check when onReady fires.

@@ -13,6 +13,7 @@ import type { GitOp } from './gitOperationStore';
 import { slugifyLocal, getExtensionForFormat } from '../components/editor/editorShared';
 import { parseRepoPath } from '../utils/gitPathParser';
 import { applyNoteTagsToContent, applyNoteColorToContent } from '../services/NoteGitHubSyncService';
+import { __recordAndMaybePrompt } from '../services/ReviewPromptService';
 
 function pathsEqual(a: { owner: string; repo: string } | null, b: { owner: string; repo: string }): boolean {
   return !!a && a.owner === b.owner && a.repo === b.repo;
@@ -163,6 +164,8 @@ export const useNoteStore = create<NoteState & NoteActions>()((set, get) => ({
       }
 
       const newNote = await StorageService.createNote({ ...input, repo, filePath });
+      // Fire-and-forget: must never block or fail the note creation flow.
+      void __recordAndMaybePrompt('note');
       set((state) => ({ notes: sortNotesWithPinnedFirst([...state.notes, newNote]) }));
       return newNote;
     } catch (err) {

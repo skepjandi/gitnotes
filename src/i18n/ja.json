@@ -562,6 +562,7 @@
       "lfsFiles": "Git LFSで追跡されている大きなファイルはオンデマンドでダウンロードされます。オフラインで表示するには保留中のファイルをダウンロードしてください。",
       "templatesRepo": "カスタムノートテンプレートを保存と同期するためにGitHubリポジトリを接続します。",
       "clearData": "このデバイスからすべてのノート、ToDo、キャンバスを完全に削除します。GitHubのファイルには影響しません。",
+      "quickSetup": "クイックセットアップ",
       "resetOnboarding": "次のアプリ起動時にウェルカム画面をもう一度表示します。データは削除されません。",
       "enableAI": "ノートの整理、コンテンツの生成などをサポートするAIチャットアシスタントを有効にします。",
       "model": "チャットと文章作成に使用するAIモデルを選択します。モデルによって速度、性能、コストが異なる場合があります。",
@@ -735,7 +736,7 @@
         "title": "クイックセットアップ",
         "description": "GitHubでサインインすると、ノートのプライベートリポジトリを自動的に作成します — 設定不要です。",
         "signInButton": "GitHubでサインイン",
-        "complexButton": "複雑な設定"
+        "backButton": "戻る"
       },
       "oauth": {
         "title": "GitHubに接続中",
@@ -766,7 +767,7 @@
       "error": {
         "title": "問題が発生しました",
         "tryAgainButton": "再試行",
-        "useAdvancedButton": "高度な設定を使用"
+        "backButton": "設定に戻る"
       },
       "quickSetupBanner": "クイックセットアップ（推奨）",
       "quickSetupBannerSub": "GitHubでサインインして30秒でリポジトリを作成"

@@ -1593,7 +1593,7 @@ export default function SettingsScreen() {
         referralProgress={referralProgress}
         referralUnlockedCount={referralUnlockedCount}
         onOpenRewardCatalog={handleOpenRewardCatalog}
-        onQuickSetup={() => navigation.navigate('Onboarding', { quickSetup: true })}
+        onQuickSetup={() => navigation.navigate('QuickSetup', undefined)}
       />
       <SettingsModals
         colors={colors}

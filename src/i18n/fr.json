@@ -685,6 +685,9 @@
     "steps": {
       "welcomeTitle": "Welcome to GitNotēs",
       "welcomeDescription": "Your development notes, perfectly organized with Git integration.",
+      "connectGitHub": "Se connecter à GitHub",
+      "customSetup": "Configuration personnalisée",
+      "nextCustomSetup": "Suivant : configuration personnalisée",
       "linkTitle": "Link to Git Repositories",
       "linkDescription": "Connect your notes to GitHub repositories and track changes.",
       "foldersTitle": "Organize with Folders",
@@ -783,7 +786,8 @@
         "failed": "Échec de la Connexion"
       },
       "message": {
-        "successSimple": "Votre compte GitHub est connecté. Configuration de vos notes…",
+      "successSimple": "Votre compte GitHub est connecté. Configuration de vos notes…",
+      "successQuickSetup": "Votre compte GitHub est connecté. Continuez la configuration de vos notes…",
         "success": "Votre compte GitHub est maintenant connecté.",
         "denied": "La connexion à GitHub a été annulée ou refusée.",
         "freeTierLimit": "Vous avez atteint le nombre maximum de comptes sur le plan gratuit. Passez à Pro pour ajouter d'autres comptes.",

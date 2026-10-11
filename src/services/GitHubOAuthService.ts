@@ -79,8 +79,8 @@ export interface PendingOAuthFlow {
   redirectUri: string;
   clientId: string;
   hostId: string | null;
-  /** 'onboarding' = return to OnboardingScreen instead of Settings after success */
-  returnTo?: 'settings' | 'onboarding';
+  /** 'onboarding' | 'quick-setup' = return to OnboardingScreen / QuickSetupScreen after success */
+  returnTo?: 'settings' | 'onboarding' | 'quick-setup';
   /** GitHub login from successful OAuth, used to pre-fill repo name */
   githubLogin?: string;
   /** Set by exchangeCode after callback; read by OnboardingScreen on return */
@@ -186,7 +186,7 @@ export class GitHubOAuthService {
     clientId: string;
     hostId: string | null;
     scopes?: string[];
-    returnTo?: 'settings' | 'onboarding';
+    returnTo?: 'settings' | 'onboarding' | 'quick-setup';
   }): Promise<OAuthInitiationResult> {
     const { backendUrl, redirectUri, clientId, hostId, scopes = ['read:user', 'user:email', 'repo'], returnTo = 'settings' } = params;
 
@@ -274,6 +274,13 @@ export class GitHubOAuthService {
     hostId: string | null;
   }): Promise<OAuthCallbackResult> {
     const { code, codeVerifier, state, redirectUri, clientId, backendUrl, hostId } = params;
+    const recordResult = (result: OAuthCallbackResult): OAuthCallbackResult => {
+      const pending = pendingOAuthFlows.get(state);
+      if (pending) {
+        pending.oauthResult = result;
+      }
+      return result;
+    };
 
     try {
       const response = await httpClient.post(
@@ -302,7 +309,7 @@ export class GitHubOAuthService {
 
       if (hostId === null) {
         if (!await canCreateAdditionalIdentity('__new__', 'github', null)) {
-          return { outcome: 'free_tier_limit_reached' };
+          return recordResult({ outcome: 'free_tier_limit_reached' });
         }
         const account = await AccountStorage.addAccount(null, {
           login: data.login,
@@ -355,7 +362,7 @@ export class GitHubOAuthService {
 
       const valid = validateOAuthCredential(credential);
       if (!valid.valid) {
-        return { outcome: 'malformed' };
+        return recordResult({ outcome: 'malformed' });
       }
 
       await AccountStorage.setOAuthCredential(resolvedHostId, credential);
@@ -367,7 +374,6 @@ export class GitHubOAuthService {
       }
       return successResult;
     } catch (err) {
-      pendingOAuthFlows.delete(state);
       const error = err as {
         response?: { status?: number; data?: { code?: string; message?: string } };
         message?: string;
@@ -375,16 +381,16 @@ export class GitHubOAuthService {
       if (error.response?.status === 400 || error.response?.status === 422) {
         const code = error.response.data?.code ?? 'exchange_denied';
         const message = error.response.data?.message ?? '';
-        return { outcome: 'backend_error', code: mapBackendError(code), message };
+        return recordResult({ outcome: 'backend_error', code: mapBackendError(code), message });
       }
       if (error.response?.status === 503) {
-        return { outcome: 'backend_error', code: 'backend_unreachable', message: 'Backend service unavailable' };
+        return recordResult({ outcome: 'backend_error', code: 'backend_unreachable', message: 'Backend service unavailable' });
       }
       if (error.response?.status === 500) {
-        return { outcome: 'backend_error', code: 'backend_unreachable', message: 'Backend service unavailable' };
+        return recordResult({ outcome: 'backend_error', code: 'backend_unreachable', message: 'Backend service unavailable' });
       }
       console.warn('[GitHubOAuthService] exchange failed:', error.message);
-      return { outcome: 'backend_error', code: 'network_error', message: error.message ?? '' };
+      return recordResult({ outcome: 'backend_error', code: 'network_error', message: error.message ?? '' });
     }
   }
 

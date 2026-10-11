@@ -186,11 +186,11 @@ GitNotēs uses a **centralized branch model** for clone-mode repositories:
 - OAuth: `gitnotes://oauth/callback`
 - App: `gitnotes://app/callback`
 
-### Simple onboarding lifecycle
+### OAuth repository setup lifecycle
 
-Simple onboarding (visible on the welcome screen's "Quick Setup" banner) uses GitHub OAuth to create a private notes repository in one streamlined flow:
+The direct GitHub welcome action and Settings Quick Setup use GitHub OAuth to create a private notes repository in one streamlined flow. The dedicated repository setup screen is `QuickSetupScreen`; standard onboarding only handles the direct connection and its normal setup steps:
 
-1. **OAuth sign-in:** `OnboardingScreen` initiates OAuth via `GitHubOAuthService.initiate({ returnTo: 'onboarding' })`. The pending flow is stored in `pendingOAuthFlows` keyed by state. `OAuthCallbackScreen` receives the deep link, calls `GitHubOAuthService.exchangeCode()`, stores the result in the pending flow, and navigates back to `OnboardingScreen` with `fromOAuth=true`.
+1. **OAuth sign-in:** `OnboardingScreen` initiates OAuth with `returnTo: 'onboarding'`; `QuickSetupScreen` uses `returnTo: 'quick-setup'`. The pending flow is stored in `pendingOAuthFlows` keyed by state. `OAuthCallbackScreen` receives the deep link, calls `GitHubOAuthService.exchangeCode()`, stores the result in the pending flow, and routes back to the matching initiating screen with the state.
 2. **Repository creation:** `GitHubService.createRepository({ name })` sends `POST /user/repos` with `{ name, private: true, auto_init: true }`. Errors (401/403/422/transport) are re-thrown so the UI can show appropriate recovery options.
 3. **Clone:** `repoStore.addRepository()` registers and clones the canonical `owner/repo`.
 4. **Welcome note:** `noteStore.createNote()` writes `notes/welcome-to-gitnotes.md` locally through the working-tree path. The note is a local working-tree change subject to the normal stage/commit/push lifecycle.

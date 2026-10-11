@@ -28,6 +28,7 @@ import ThoughtDumpScreen from '../screens/ThoughtDumpScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import PaywallScreen from '../screens/PaywallScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
+import QuickSetupScreen from '../screens/QuickSetupScreen';
 import OAuthCallbackScreen from '../screens/OAuthCallbackScreen';
 import AppCallbackScreen from '../screens/AppCallbackScreen';
 import ExploreCommitScreen from '../screens/ExploreCommitScreen';
@@ -212,11 +213,20 @@ export default function AppNavigator({ showOnboarding, onOnboardingComplete, onO
               name="Onboarding"
               options={{ headerShown: false }}
             >
-              {({ route }) => (
+              {() => (
                 <OnboardingScreen
                   onComplete={onOnboardingComplete!}
                   onSkip={onOnboardingSkip!}
-                  quickSetup={(route.params as { quickSetup?: boolean } | undefined)?.quickSetup ?? false}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen
+              name="QuickSetup"
+              options={{ headerShown: false }}
+            >
+              {() => (
+                <QuickSetupScreen
+                  onComplete={onOnboardingComplete!}
                 />
               )}
             </Stack.Screen>

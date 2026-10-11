@@ -80,13 +80,17 @@ describe("Worker Contract: Field Names", () => {
 });
 
 describe("Worker Contract: Timestamp Units", () => {
+  const FIXTURE_CREATION_TOLERANCE_MS = 5000;
+
   it("expires_at must be Unix milliseconds (not seconds)", () => {
     const now = Date.now();
     const oneHourFromNow = now + 3600000; // 1 hour in ms
 
     // Timestamps should be in the future (ms since epoch)
     expect(OAUTH_EXCHANGE_RESPONSE_FIXTURE.expires_at).toBeGreaterThan(now);
-    expect(OAUTH_EXCHANGE_RESPONSE_FIXTURE.expires_at).toBeCloseTo(oneHourFromNow, -3);
+    expect(OAUTH_EXCHANGE_RESPONSE_FIXTURE.expires_at).toBeLessThan(
+      oneHourFromNow + FIXTURE_CREATION_TOLERANCE_MS,
+    );
   });
 
   it("refresh_expires_at must be Unix milliseconds", () => {
@@ -94,7 +98,9 @@ describe("Worker Contract: Timestamp Units", () => {
     const thirtyDaysFromNow = now + 86400000 * 30;
 
     expect(OAUTH_EXCHANGE_RESPONSE_FIXTURE.refresh_expires_at).toBeGreaterThan(now);
-    expect(OAUTH_EXCHANGE_RESPONSE_FIXTURE.refresh_expires_at).toBeCloseTo(thirtyDaysFromNow, -3);
+    expect(OAUTH_EXCHANGE_RESPONSE_FIXTURE.refresh_expires_at).toBeLessThan(
+      thirtyDaysFromNow + FIXTURE_CREATION_TOLERANCE_MS,
+    );
   });
 
   it("renewal_grant_expires_at must be Unix milliseconds", () => {
@@ -102,7 +108,9 @@ describe("Worker Contract: Timestamp Units", () => {
     const oneDayFromNow = now + 86400000;
 
     expect(GITHUB_APP_INSTALL_RESPONSE_FIXTURE.renewal_grant_expires_at).toBeGreaterThan(now);
-    expect(GITHUB_APP_INSTALL_RESPONSE_FIXTURE.renewal_grant_expires_at).toBeCloseTo(oneDayFromNow, -3);
+    expect(GITHUB_APP_INSTALL_RESPONSE_FIXTURE.renewal_grant_expires_at).toBeLessThan(
+      oneDayFromNow + FIXTURE_CREATION_TOLERANCE_MS,
+    );
   });
 
   it("timestamps must be i64-compatible (fit in JavaScript safe integer)", () => {

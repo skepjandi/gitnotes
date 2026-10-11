@@ -74,6 +74,33 @@ export const WorkerErrorCode = {
 
   // Configuration
   CONFIGURATION_MISSING: "configuration_missing",
+
+  // Referral: rate limit exceeded
+  RATE_LIMIT_EXCEEDED: "rate_limit_exceeded",
+
+  // Referral: code not found
+  CODE_NOT_FOUND: "code_not_found",
+
+  // Referral: code already used by this recipient
+  CODE_ALREADY_USED: "code_already_used",
+
+  // Referral: identity proof required
+  IDENTITY_REQUIRED: "identity_required",
+
+  // Referral: identity mismatch (self-referral or replay)
+  IDENTITY_MISMATCH: "identity_mismatch",
+
+  // Referral: self-referral not allowed
+  SELF_REFERRAL_NOT_ALLOWED: "self_referral_not_allowed",
+
+  // Referral: invalid milestone requested
+  INVALID_MILESTONE: "invalid_milestone",
+
+  // Referral: milestone already unlocked
+  MILESTONE_ALREADY_UNLOCKED: "milestone_already_unlocked",
+
+  // Referral: code expired (dedicated alias)
+  REFERRAL_CODE_EXPIRED: "code_expired",
 } as const;
 
 // eslint-disable-next-line no-redeclare
@@ -254,6 +281,117 @@ export interface HealthResponse {
   status: "ok";
   version: string;
 }
+
+// -----------------------------------------------------------------------------
+// Referral Types
+// -----------------------------------------------------------------------------
+
+// Identity proof header constants - match Worker exactly
+export const REFERRAL_AUTH_HEADER = "X-Referral-Token";
+export const REFERRAL_INSTALL_ID_HEADER = "X-Referral-Install-ID";
+
+/**
+ * Identity proof for referral endpoints.
+ * Exactly one field must be provided - discriminated by `kind`.
+ *
+ * `github` - GitHub OAuth bearer token; Worker verifies against GitHub /user API.
+ *            Also carries the SecureStore installation ID so the backend can
+ *            apply per-install rate limits independently of GitHub identity.
+ * `installation` - SecureStore random UUID; reinstall-abuse limited fallback.
+ *                   Used when no verifiable GitHub OAuth token is available.
+ */
+export type ReferralIdentityProof =
+  | { kind: "github"; token: string; installationId: string }
+  | { kind: "installation"; installationId: string };
+
+export const REFERRAL_MILESTONES = [1, 3, 5, 10, 15, 20] as const;
+export type ReferralMilestone = (typeof REFERRAL_MILESTONES)[number];
+
+export type ReferralRewardType = "theme" | "icon";
+
+export interface ReferralRewardCatalogEntry {
+  milestone: ReferralMilestone;
+  name: string;
+  reward_type: ReferralRewardType;
+  reward_key: string;
+}
+
+export const REFERRAL_REWARD_CATALOG: readonly ReferralRewardCatalogEntry[] = [
+  { milestone: 1, name: "Terminal Mono", reward_type: "icon", reward_key: "terminal-mono-icon" },
+  { milestone: 3, name: "Terminal Mono", reward_type: "theme", reward_key: "terminal-mono-theme" },
+  { milestone: 5, name: "Amber Terminal", reward_type: "icon", reward_key: "amber-terminal-icon" },
+  { milestone: 10, name: "CRT Green", reward_type: "theme", reward_key: "crt-green-theme" },
+  { milestone: 15, name: "Monochrome Grid", reward_type: "icon", reward_key: "monochrome-grid-icon" },
+  { milestone: 20, name: "Developer Desk", reward_type: "theme", reward_key: "developer-desk-theme" },
+] as const;
+
+export type ReferralCreateRequest = Record<string, never>;
+
+export const ReferralCreateRequestSchema = z.strictObject({});
+
+export interface ReferralCreateResponse {
+  code: string;
+  share_url: string;
+  expires_at: number;
+}
+
+export const ReferralCreateResponseSchema = z.object({
+  code: z.string().min(1),
+  share_url: z.url(),
+  expires_at: z.number().int().positive(),
+});
+
+export interface ReferralCompleteRequest {
+  code: string;
+}
+
+export const ReferralCompleteRequestSchema = z.strictObject({
+  code: z.string().min(1),
+});
+
+export interface ReferralCompleteResponse {
+  accepted: boolean;
+}
+
+export const ReferralCompleteResponseSchema = z.strictObject({
+  accepted: z.boolean(),
+});
+
+export interface ReferralMilestoneInfo {
+  milestone: ReferralMilestone;
+  name: string;
+  reward_type: ReferralRewardType;
+  reward_key: string;
+  unlocked: boolean;
+}
+
+export interface ReferralStatusResponse {
+  has_pending_code: boolean;
+  pending_code: string | null;
+  pending_expires_at: number | null;
+  progress: number;
+  catalog_version: number;
+  unlocked_milestones: ReadonlyArray<ReferralMilestone>;
+  milestones: ReadonlyArray<ReferralMilestoneInfo>;
+}
+
+export const ReferralStatusResponseSchema = z.object({
+  has_pending_code: z.boolean(),
+  pending_code: z.string().nullable(),
+  pending_expires_at: z.number().int().nullable(),
+  progress: z.number().int().nonnegative(),
+  catalog_version: z.number().int().positive(),
+  unlocked_milestones: z.array(z.union([z.literal(1), z.literal(3), z.literal(5), z.literal(10), z.literal(15), z.literal(20)])).readonly(),
+  milestones: z.array(z.object({
+    milestone: z.union([z.literal(1), z.literal(3), z.literal(5), z.literal(10), z.literal(15), z.literal(20)]),
+    name: z.string(),
+    reward_type: z.enum(["theme", "icon"]),
+    reward_key: z.string(),
+    unlocked: z.boolean(),
+  })).readonly(),
+});
+
+export const REFERRAL_LINK_BASE = "https://gitnotes.org/r/";
 
 // -----------------------------------------------------------------------------
 // Error Classes

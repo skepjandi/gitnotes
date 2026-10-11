@@ -29,7 +29,7 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Valid alternate icon names. `null` represents the default (reset) icon. */
-export type AppIconName = 'Neon' | 'Grayscale' | 'Gold' | null;
+export type AppIconName = 'Neon' | 'Grayscale' | 'Gold' | 'TerminalMono' | 'AmberTerminal' | 'MonochromeGrid' | null;
 
 /** Result shape returned by mutate operations (set / reset). */
 export interface AppIconResult {
@@ -63,7 +63,7 @@ export interface AppIconHydration extends AppIconResult {
 /** Dedicated AsyncStorage key for the app icon preference. */
 export const APP_ICON_STORAGE_KEY = '@gitnotes:app_icon';
 
-const VALID_NAMES: ReadonlySet<string> = new Set(['Neon', 'Grayscale', 'Gold']);
+const VALID_NAMES: ReadonlySet<string> = new Set(['Neon', 'Grayscale', 'Gold', 'TerminalMono', 'AmberTerminal', 'MonochromeGrid']);
 
 function isAppIconSwitchingSupported(): boolean {
   return supportsAlternateIcons && !(Platform.OS === 'android' && __DEV__);

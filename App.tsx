@@ -31,6 +31,7 @@ import { AppLoadingView } from './src/components/ui/AppLoadingView';
 import { BacklinksProvider } from './src/contexts/BacklinksContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { OnboardingService } from './src/services/OnboardingService';
+import { initializeOnLaunch } from './src/services/ReviewPromptService';
 import { NotificationService } from './src/services/NotificationService';
 import * as Notifications from 'expo-notifications';
 import { useReminderStore, type ReminderNavigationFilter } from './src/stores/reminderStore';
@@ -74,6 +75,8 @@ export default function App() {
   // setShowOnboarding is called as early as possible to unblock the renderer.
   const checkOnboarding = useCallback(async () => {
     await bootstrapStorage();
+    // Initialize review-prompt first-launch timestamp before any usage events fire.
+    void initializeOnLaunch();
     // Restore durable git-operation locks (queued mutations + failed deletes)
     // before StartupSyncGate drains/pulls and the UI reads lock state.
     void hydrateGitOperationRegistry();

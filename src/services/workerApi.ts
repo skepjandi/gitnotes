@@ -30,6 +30,14 @@ import {
   type GitHubAppRenewalRequest,
   type GitHubAppRenewalResponse,
   type HealthResponse,
+  type ReferralCreateRequest,
+  type ReferralCreateResponse,
+  type ReferralCompleteRequest,
+  type ReferralCompleteResponse,
+  type ReferralStatusResponse,
+  type ReferralIdentityProof,
+  REFERRAL_AUTH_HEADER,
+  REFERRAL_INSTALL_ID_HEADER,
 } from "../types/worker";
 
 /**
@@ -55,6 +63,7 @@ type HttpMethod = "GET" | "POST" | "DELETE";
  * @param method - HTTP method
  * @param body - Request body (will be JSON-serialized)
  * @param signal - Optional AbortSignal for cancellation
+ * @param extraHeaders - Optional additional headers (e.g., identity proof)
  * @returns Parsed response of type T
  * @throws WorkerApiError for non-2xx responses
  */
@@ -62,12 +71,14 @@ async function request<T>(
   path: string,
   method: HttpMethod,
   body?: unknown,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  extraHeaders?: Record<string, string>
 ): Promise<T> {
   const url = `${getBackendUrl()}${path}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
+    ...extraHeaders,
   };
 
   const fetchOptions: RequestInit = {
@@ -108,6 +119,26 @@ async function request<T>(
   }
 
   return JSON.parse(text) as T;
+}
+
+/**
+ * Build identity headers for referral endpoints from a ReferralIdentityProof.
+ *
+ * For the GitHub branch: sends both the GitHub bearer token (verifiable identity)
+ * AND the SecureStore installation ID (per-install rate-limit key).
+ *
+ * For the installation-only branch: sends only the installation ID header.
+ * Tokens are NEVER sent in request bodies or query parameters.
+ */
+function buildReferralHeaders(identityProof: ReferralIdentityProof): Record<string, string> {
+  if (identityProof.kind === "github") {
+    return {
+      [REFERRAL_AUTH_HEADER]: identityProof.token,
+      [REFERRAL_INSTALL_ID_HEADER]: identityProof.installationId,
+    };
+  } else {
+    return { [REFERRAL_INSTALL_ID_HEADER]: identityProof.installationId };
+  }
 }
 
 /**
@@ -205,6 +236,54 @@ export const workerApi = {
       signal?: AbortSignal
     ): Promise<GitHubAppRenewalResponse> {
       return request<GitHubAppRenewalResponse>("/app/renewal", "POST", req, signal);
+    },
+  },
+
+  /**
+   * Referral endpoints.
+   */
+  referrals: {
+    /**
+     * Create a new referral code.
+     * @param _req - Empty request body (identity comes from header)
+     * @param identityProof - GitHub token or installation ID
+     * @param signal - Optional AbortSignal
+     */
+    async create(
+      _req: ReferralCreateRequest,
+      identityProof: ReferralIdentityProof,
+      signal?: AbortSignal
+    ): Promise<ReferralCreateResponse> {
+      const headers = buildReferralHeaders(identityProof);
+      return request<ReferralCreateResponse>("/referrals/create", "POST", _req, signal, headers);
+    },
+
+    /**
+     * Complete a referral claim.
+     * @param req - Must contain only `code` field
+     * @param identityProof - GitHub token or installation ID
+     * @param signal - Optional AbortSignal
+     */
+    async complete(
+      req: ReferralCompleteRequest,
+      identityProof: ReferralIdentityProof,
+      signal?: AbortSignal
+    ): Promise<ReferralCompleteResponse> {
+      const headers = buildReferralHeaders(identityProof);
+      return request<ReferralCompleteResponse>("/referrals/complete", "POST", req, signal, headers);
+    },
+
+    /**
+     * Get referral status.
+     * @param identityProof - GitHub token or installation ID
+     * @param signal - Optional AbortSignal
+     */
+    async status(
+      identityProof: ReferralIdentityProof,
+      signal?: AbortSignal
+    ): Promise<ReferralStatusResponse> {
+      const headers = buildReferralHeaders(identityProof);
+      return request<ReferralStatusResponse>("/referrals/status", "GET", undefined, signal, headers);
     },
   },
 };

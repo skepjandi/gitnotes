@@ -1,4 +1,4 @@
-export type ThemeStyle = 'neumorphic' | 'flat' | 'neo-brutalist' | 'retrofuturistic';
+export type ThemeStyle = 'neumorphic' | 'flat' | 'neo-brutalist' | 'retrofuturistic' | 'terminal-mono' | 'crt-green' | 'developer-desk';
 
 export interface Palette {
   bg: string;
@@ -191,6 +191,131 @@ export const RETROFUTURISTIC_DARK: Palette = {
   elevated: '#1E1E3A',
 };
 
+// Referral reward palettes
+// Terminal Mono — classic black terminal with amber phosphor accent.
+// Meets WCAG AA contrast for text on background (amber on #0D0D0A: ~7.2:1).
+export const TERMINAL_MONO_LIGHT: Palette = {
+  bg: '#F5F5F5',
+  surface: '#FFFFFF',
+  highlight: '#FFFFFF',
+  shadow: '#BFBFBF',
+  text: '#1A1A1A',
+  textSecondary: '#6E6E73',
+  accent: '#FF8C00', // Amber
+  accentMuted: '#FFB347',
+  error: '#FF3B30',
+  success: '#34C759',
+  warning: '#FF9500',
+  background: '#F5F5F5',
+  surfaceSecondary: '#EBEBEB',
+  primary: '#FF8C00',
+  border: '#D8D8D8',
+  card: '#FFFFFF',
+  elevated: '#FFFFFF',
+};
+
+export const TERMINAL_MONO_DARK: Palette = {
+  bg: '#0D0D0A',
+  surface: '#1A1A17',
+  highlight: '#262620',
+  shadow: '#000000',
+  text: '#F5F5F0',
+  textSecondary: '#A8A89F',
+  accent: '#FFB347', // Lighter amber for dark
+  accentMuted: '#CC8800',
+  error: '#FF6B6B',
+  success: '#4ADE80',
+  warning: '#FFD700',
+  background: '#0D0D0A',
+  surfaceSecondary: '#141410',
+  primary: '#FFB347',
+  border: '#333330',
+  card: '#1A1A17',
+  elevated: '#262620',
+};
+
+// CRT Green — green phosphor CRT monitor aesthetic.
+export const CRT_GREEN_LIGHT: Palette = {
+  bg: '#F0F5F0',
+  surface: '#FFFFFF',
+  highlight: '#FFFFFF',
+  shadow: '#BFBFBF',
+  text: '#1A2E1A',
+  textSecondary: '#5C7A5C',
+  accent: '#22C55E', // Green phosphor
+  accentMuted: '#4ADE80',
+  error: '#DC2626',
+  success: '#16A34A',
+  warning: '#CA8A04',
+  background: '#F0F5F0',
+  surfaceSecondary: '#E5EBE5',
+  primary: '#22C55E',
+  border: '#C6D6C6',
+  card: '#FFFFFF',
+  elevated: '#FFFFFF',
+};
+
+export const CRT_GREEN_DARK: Palette = {
+  bg: '#0A0E0A',
+  surface: '#141E14',
+  highlight: '#1E2A1E',
+  shadow: '#000000',
+  text: '#D4E8D4',
+  textSecondary: '#8FBC8F',
+  accent: '#4ADE80', // Bright phosphor green
+  accentMuted: '#22C55E',
+  error: '#EF4444',
+  success: '#4ADE80',
+  warning: '#FACC15',
+  background: '#0A0E0A',
+  surfaceSecondary: '#1A281A',
+  primary: '#4ADE80',
+  border: '#2E3E2E',
+  card: '#141E14',
+  elevated: '#1E2A1E',
+};
+
+// Developer Desk — IDE/editor inspired with syntax-highlighting accents.
+export const DEVELOPER_DESK_LIGHT: Palette = {
+  bg: '#FAFAFA',
+  surface: '#FFFFFF',
+  highlight: '#FFFFFF',
+  shadow: '#BFBFBF',
+  text: '#24292E',
+  textSecondary: '#6E7C8A',
+  accent: '#0A84FF', // VS Code blue
+  accentMuted: '#64D2FF',
+  error: '#D32F2F',
+  success: '#28A745',
+  warning: '#F9A825',
+  background: '#FAFAFA',
+  surfaceSecondary: '#F0F0F0',
+  primary: '#0A84FF',
+  border: '#D0D7DE',
+  card: '#FFFFFF',
+  elevated: '#FFFFFF',
+};
+
+export const DEVELOPER_DESK_DARK: Palette = {
+  bg: '#1E1E1E', // VS Code dark background
+  surface: '#252526',
+  highlight: '#2D2D30',
+  shadow: '#000000',
+  text: '#D4D4D4',
+  textSecondary: '#858585',
+  accent: '#569CD6', // VS Code syntax blue
+  accentMuted: '#4FC1FF',
+  error: '#F14C4C',
+  success: '#4EC9B0', // VS Code teal
+  warning: '#DCDCAA', // VS Code yellow
+  background: '#1E1E1E',
+  surfaceSecondary: '#333333',
+  primary: '#569CD6',
+  border: '#3C3C3C',
+  card: '#252526',
+  elevated: '#2D2D30',
+};
+
 // Note color-coding palette. Keys must match `NoteColor` in models/Note.
 // These render as the card border accent in `NoteCard` and as swatches in
 // `ColorPicker`. They are intentionally theme-agnostic — same hex in both
@@ -312,5 +437,8 @@ export function resolveColors(style: ThemeStyle, isDark: boolean): Palette {
   if (style === 'neumorphic') return isDark ? NEUMORPHIC_DARK : NEUMORPHIC_LIGHT;
   if (style === 'neo-brutalist') return isDark ? NEUTRAL_BRUTALIST_DARK : NEUTRAL_BRUTALIST_LIGHT;
   if (style === 'retrofuturistic') return isDark ? RETROFUTURISTIC_DARK : RETROFUTURISTIC_LIGHT;
+  if (style === 'terminal-mono') return isDark ? TERMINAL_MONO_DARK : TERMINAL_MONO_LIGHT;
+  if (style === 'crt-green') return isDark ? CRT_GREEN_DARK : CRT_GREEN_LIGHT;
+  if (style === 'developer-desk') return isDark ? DEVELOPER_DESK_DARK : DEVELOPER_DESK_LIGHT;
   return isDark ? FLAT_DARK : FLAT_LIGHT;
 }

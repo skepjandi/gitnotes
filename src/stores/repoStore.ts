@@ -18,6 +18,8 @@ import {
 } from '../services/git/repoAccessPreflight';
 import { reposAffectedByRemovedHosts, type RemovedHostRef } from '../services/git/repoRemovalCascade';
 import { initializeForRepo, removeForRepo } from '../services/git/activeBranchStore';
+import { ReferralService } from '../services/ReferralService';
+import { RewardEntitlementService } from '../services/RewardEntitlementService';
 import { setCredential } from '../services/git/engine/GitEngine';
 import {
   DEV_BUNDLE_LOAD_RETRY_MESSAGE,
@@ -149,6 +151,14 @@ export const useRepoStore = create<RepoState & RepoActions>()((set, get) => ({
       );
     }
 
+    const isFirstRepo = (await StorageService.getSavedRepositories()).length === 0;
+
+    // Persist 'pending' BEFORE GitService.addRepository (which pre-persists the repo row).
+    // If clone fails, status stays 'pending' so retry remains eligible.
+    if (isFirstRepo) {
+      await ReferralService.setFirstRepoPending();
+    }
+
     const repo = await GitService.addRepository(path, name, resolvedProvider, hostId ?? activeHost?.hostId);
 
     try {
@@ -174,6 +184,13 @@ export const useRepoStore = create<RepoState & RepoActions>()((set, get) => ({
     }
 
     await initializeForRepo(repo);
+
+    // onFirstRepoCloneSuccess guards on status === 'pending', so it fires for:
+    //   - first-try success
+    //   - retry-after-failure success (status stays pending on clone failure)
+    // It is idempotent — only the first successful connection triggers completion.
+    await ReferralService.onFirstRepoCloneSuccess();
+    RewardEntitlementService.resetMemory();
 
     const updated = await StorageService.getSavedRepositories();
     set({ repositories: updated });

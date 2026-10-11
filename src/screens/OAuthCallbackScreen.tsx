@@ -26,6 +26,7 @@ export default function OAuthCallbackScreen() {
   const { refreshAccounts } = useAccounts();
   const [result, setResult] = useState<OAuthCallbackResult | null>(null);
   const pendingStateRef = useRef<string | null>(null);
+  const returnToRef = useRef<'settings' | 'onboarding' | 'quick-setup'>('settings');
 
   useEffect(() => {
     const { code, state, error, error_description } = route.params ?? {};
@@ -42,6 +43,7 @@ export default function OAuthCallbackScreen() {
     }
 
     pendingStateRef.current = state;
+    returnToRef.current = pending.returnTo ?? 'settings';
 
     if (error) {
       const deniedResult = { outcome: 'denied' as const, code: error, message: error_description };
@@ -66,16 +68,32 @@ export default function OAuthCallbackScreen() {
       backendUrl: pending.backendUrl,
       hostId: pending.hostId,
     })
-      .then(setResult)
-      .catch(() => setResult({ outcome: 'malformed' }));
+      .then((nextResult) => {
+        const currentPending = pendingOAuthFlows.get(state);
+        if (currentPending) {
+          currentPending.oauthResult = nextResult;
+        }
+        setResult(nextResult);
+      })
+      .catch(() => {
+        const currentPending = pendingOAuthFlows.get(state);
+        if (currentPending) {
+          currentPending.oauthResult = { outcome: 'malformed' };
+        }
+        setResult({ outcome: 'malformed' });
+      });
   }, [route.params]);
 
   const handleDone = () => {
     navigation.navigate('MainTabs', { screen: 'SettingsTab' });
   };
 
-  const handleDoneSimple = () => {
+  const handleDoneOnboarding = () => {
     navigation.navigate('Onboarding', { fromOAuth: true, oauthState: pendingStateRef.current ?? null });
+  };
+
+  const handleDoneQuickSetup = () => {
+    navigation.navigate('QuickSetup', { oauthState: pendingStateRef.current ?? null });
   };
 
   useEffect(() => {
@@ -100,11 +118,7 @@ export default function OAuthCallbackScreen() {
   const success = result.outcome === 'success';
   const denied = result.outcome === 'denied' || result.outcome === 'cancelled';
   const freeTierLimit = result.outcome === 'free_tier_limit_reached';
-  const simpleMode = (() => {
-    if (!pendingStateRef.current) return false;
-    const pending = pendingOAuthFlows.get(pendingStateRef.current);
-    return pending?.returnTo === 'onboarding';
-  })();
+  const returnTo = returnToRef.current;
   const title = success
     ? t('onboarding.oauthCallback.title.success')
     : denied
@@ -113,9 +127,11 @@ export default function OAuthCallbackScreen() {
         ? t('onboarding.oauthCallback.title.freeTierLimit')
         : t('onboarding.oauthCallback.title.failed');
   const message = success
-    ? simpleMode
+    ? returnTo === 'onboarding'
       ? t('onboarding.oauthCallback.message.successSimple')
-      : t('onboarding.oauthCallback.message.success')
+      : returnTo === 'quick-setup'
+        ? t('onboarding.oauthCallback.message.successQuickSetup')
+        : t('onboarding.oauthCallback.message.success')
     : denied
       ? t('onboarding.oauthCallback.message.denied')
       : freeTierLimit
@@ -133,8 +149,10 @@ export default function OAuthCallbackScreen() {
         <Text className="text-base text-center" style={{ color: colors.textSecondary }}>
           {message}
         </Text>
-        {simpleMode ? (
-          <Button label={t('onboarding.oauthCallback.continueButton')} onPress={handleDoneSimple} className="mt-4" />
+        {returnTo === 'onboarding' ? (
+          <Button label={t('onboarding.oauthCallback.continueButton')} onPress={handleDoneOnboarding} className="mt-4" />
+        ) : returnTo === 'quick-setup' ? (
+          <Button label={t('onboarding.oauthCallback.continueButton')} onPress={handleDoneQuickSetup} className="mt-4" />
         ) : (
           <Button label={t('onboarding.oauthCallback.backToSettingsButton')} onPress={handleDone} className="mt-4" />
         )}

@@ -685,6 +685,9 @@
     "steps": {
       "welcomeTitle": "Welcome to GitNotēs",
       "welcomeDescription": "Your development notes, perfectly organized with Git integration.",
+      "connectGitHub": "GitHub에 연결",
+      "customSetup": "사용자 지정 설정",
+      "nextCustomSetup": "다음: 사용자 지정 설정",
       "linkTitle": "Link to Git Repositories",
       "linkDescription": "Connect your notes to GitHub repositories and track changes.",
       "foldersTitle": "Organize with Folders",
@@ -783,7 +786,8 @@
         "failed": "로그인 실패"
       },
       "message": {
-        "successSimple": "GitHub 계정이 연결되었습니다. 노트를 설정하는 중…",
+      "successSimple": "GitHub 계정이 연결되었습니다. 노트를 설정하는 중…",
+      "successQuickSetup": "GitHub 계정이 연결되었습니다. 노트 설정을 계속하세요…",
         "success": "GitHub 계정이 연결되었습니다.",
         "denied": "GitHub 로그인이 취소되거나 거부되었습니다.",
         "freeTierLimit": "무료 플랜에서 허용된 최대 계정 수에 도달했습니다. 더 많은 계정을 추가하려면 Pro로 업그레이드하세요.",

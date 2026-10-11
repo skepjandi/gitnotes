@@ -287,7 +287,7 @@ describe('GitHubOAuthService', () => {
       expect(result.code).toBe('exchange_denied');
     });
 
-    it('removes pending flow after exchangeCode is called', async () => {
+    it('retains a failed pending flow so the caller can show retry UI', async () => {
       const { mod, mockPost, mockGetRandomBytesAsync, mockDigestStringAsync } = await loadService();
       mockGetRandomBytesAsync.mockResolvedValue('verifier-abc');
       mockDigestStringAsync.mockResolvedValue('sha-256-abc');
@@ -314,7 +314,7 @@ describe('GitHubOAuthService', () => {
 
       expect(result.outcome).toBe('backend_error');
       expect(result.code).toBe('network_error');
-      expect(mod.pendingOAuthFlows.has('state-abc')).toBe(false);
+      expect(mod.pendingOAuthFlows.get('state-abc')?.oauthResult).toEqual(result);
     });
 
     it('returns backend_unreachable when exchange responds with HTTP 500', async () => {

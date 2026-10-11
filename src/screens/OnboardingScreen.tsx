@@ -743,7 +743,7 @@ export default function OnboardingScreen({
                   </Text>
                 ) : null}
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   fullWidth
                   testID="onboarding.button.custom-setup"
                   onPress={() => setCurrentStep(TOKEN_STEP)}

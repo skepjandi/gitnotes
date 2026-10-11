@@ -8,6 +8,7 @@
 AppNavigator (Native Stack Navigator)
 │
 ├── OnboardingScreen              # First-run onboarding flow
+├── QuickSetupScreen              # GitHub repository setup from Settings
 ├── MainTabs (TabNavigator)       # Bottom tab navigator (5 tabs)
 │   ├── HomeTab → HomeScreen
 │   ├── NotesTab → NotesListScreen
@@ -77,6 +78,7 @@ The canonical route param types are in `src/navigation/types.ts`:
 | `ExploreFile` | `{ repoId: string; path: string }` |
 | `ConflictResolve` | `{ repoId: string; path: string }` *(in types, no screen component — navigation target only)* |
 | `PdfViewer` | `{ owner: string; repo: string; branch?; path: string; title? }` |
+| `QuickSetup` | `{ oauthState?: string | null }` |
 
 ## Screens
 
@@ -283,15 +285,19 @@ When a non-Pro user taps a Pro-locked style (Neumorphic or Retrofuturistic), `pr
 
 ### OnboardingScreen
 
-**Purpose:** First-run setup for new users, with two distinct paths:
+**Purpose:** First-run setup for new users, with standard provider configuration and direct GitHub connection from the welcome step.
 
-**Mode selection:** On the welcome step, a "Quick Setup" banner offers a simplified path. The "Back" button (visible after entering Quick mode) returns to the standard flow.
+**Welcome actions:** `Connect to GitHub` starts the OAuth flow immediately. `Custom Setup` advances to the provider and token configuration path. Quick Setup is not embedded in first-run onboarding.
 
-**Quick mode:** GitHub OAuth sign-in → editable private repo name (pre-filled from GitHub login as `gitnotes-<login>`) → private auto-initialized repository created via `POST /user/repos` with `{private:true, auto_init:true}` → clone of the new repo → one welcome note (`notes/welcome-to-gitnotes.md`) written locally through `noteStore.createNote()` → done. The welcome note is a local working-tree change subject to the normal stage/commit/push lifecycle, not a separate API upload. Errors (OAuth denial, name collision, 403, network failure) are handled without losing onboarding progress and allow retry. Quick mode is also accessible from Settings via the Quick Setup row.
+### QuickSetupScreen
+
+**Purpose:** Dedicated GitHub repository setup launched from Settings. It is also the return target for OAuth callbacks started by this flow.
+
+**Flow:** GitHub OAuth sign-in → editable private repo name (pre-filled from GitHub login as `gitnotes-<login>`) → private auto-initialized repository created via `POST /user/repos` with `{private:true, auto_init:true}` → clone of the new repo → one welcome note (`notes/welcome-to-gitnotes.md`) written locally through `noteStore.createNote()` → done. The welcome note is a local working-tree change subject to the normal stage/commit/push lifecycle, not a separate API upload. Errors (OAuth denial, name collision, 403, network failure) retain the appropriate retry step.
 
 **Standard mode:** Provider picker (GitHub, GitLab, Gitea, Forgejo), then for GitHub: PAT / OAuth / GitHub App auth method selector. Non-GitHub providers use token entry with optional instance URL. After authentication, clone or skip. Then optional GitNotēs Pro promotion screen. Finally `HomeScreen`.
 
-**Callback behavior:** OAuth callback (`gitnotes://oauth/callback`) is handled by `OAuthCallbackScreen`. In Quick mode the callback stores the result in `pendingOAuthFlows` and navigates back to `OnboardingScreen` with `fromOAuth=true` so the result is consumed and the appropriate Quick step is shown. In Standard mode the callback navigates to Settings.
+**Callback behavior:** OAuth callback (`gitnotes://oauth/callback`) is handled by `OAuthCallbackScreen`. The callback reads `pendingOAuthFlows.returnTo` and navigates back to either `OnboardingScreen` or `QuickSetupScreen`, preserving the OAuth state so the initiating screen consumes the matching result. Settings-launched OAuth continues to return to Settings.
 
 ---
 

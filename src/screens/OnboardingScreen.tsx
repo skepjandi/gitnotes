@@ -20,9 +20,6 @@ import { useAccounts } from '../contexts/AccountsContext';
 import { OnboardingService } from '../services/OnboardingService';
 import { GitHubOAuthService, pendingOAuthFlows } from '../services/GitHubOAuthService';
 import { GitHubAppService } from '../services/GitHubAppService';
-import { GitHubService, type GitHubCreatedRepository } from '../services/GitHubService';
-import { useNoteStore } from '../stores/noteStore';
-import { useRepoStore } from '../stores/repoStore';
 import { Button, Input, Surface } from '../components/ui';
 import { ProviderSelector } from '../components/ProviderSelector';
 import { SafeAreaView } from '../components/ui/SafeAreaView';
@@ -39,11 +36,7 @@ import {
 interface OnboardingScreenProps {
   onComplete: () => void;
   onSkip: () => void;
-  quickSetup?: boolean;
 }
-
-type OnboardingMode = 'quick' | 'standard';
-type SimpleStep = 'select' | 'oauth' | 'repo-name' | 'creating' | 'cloning' | 'seeding' | 'done' | 'error';
 
 /**
  * Resolves the backend URL for OAuth/App handlers, normalizes the URL to avoid
@@ -69,7 +62,6 @@ const INFO_STEP_ICONS = [
 export default function OnboardingScreen({
   onComplete,
   onSkip,
-  quickSetup = false,
 }: OnboardingScreenProps) {
   const { t } = useTranslation();
 
@@ -124,134 +116,102 @@ export default function OnboardingScreen({
   const [isGithubAuthLoading, setIsGithubAuthLoading] = useState(false);
   const [githubAuthError, setGithubAuthError] = useState<string | null>(null);
 
-  // Simple onboarding mode state
-  const [onboardingMode, setOnboardingMode] = useState<OnboardingMode>(quickSetup ? 'quick' : 'standard');
-  const [simpleStep, setSimpleStep] = useState<SimpleStep>('select');
-  const [simpleRepoName, setSimpleRepoName] = useState('');
-  const [simpleError, setSimpleError] = useState<string | null>(null);
-  const [simpleCreatedRepo, setSimpleCreatedRepo] = useState<{ full_name: string; name: string; default_branch: string; hostId: string | undefined } | null>(null);
+  // Track OAuth result for Welcome step GitHub connect
+  const oauthConsumedByState = useRef(new Set<string>());
 
-  useEffect(() => {
-    if (quickSetup) {
-      setOnboardingMode('quick');
-      setSimpleStep('select');
-    }
-  }, [quickSetup]);
-
-  // Track OAuth result consumption per state key to allow retries with a fresh flow.
-  const oauthConsumedByState = useRef(new Map<string, true>());
-
-  // Handle return from OAuth callback (Simple mode continuation).
-  // Uses oauthState to select the exact pending flow from the latest OAuth attempt,
-  // preventing an older denied flow from being mistakenly selected on retry.
   useEffect(() => {
     if (!route.params?.fromOAuth) return;
     const stateKey = route.params.oauthState ?? null;
     if (!stateKey) return;
-    if (oauthConsumedByState.current.get(stateKey)) return;
-    if (!pendingOAuthFlows) return;
+    if (oauthConsumedByState.current.has(stateKey)) return;
     const pending = pendingOAuthFlows.get(stateKey);
     if (!pending) return;
-    oauthConsumedByState.current.set(stateKey, true);
+    if (pending.returnTo !== 'onboarding') return;
+    oauthConsumedByState.current.add(stateKey);
     if (pending.oauthResult?.outcome === 'success') {
-      const login = pending.githubLogin ?? '';
-      setSimpleRepoName(login ? `gitnotes-${login}` : 'gitnotes');
-      setSimpleStep('repo-name');
+      setCurrentStep(INFO_STEP_START);
+      setGithubAuthError(null);
     } else if (pending.oauthResult) {
       const res = pending.oauthResult;
       if (res.outcome === 'denied' || res.outcome === 'cancelled') {
-        setSimpleStep('select');
-        setSimpleError(t('onboarding.simple.signInCancelled'));
+        setGithubAuthError(t('onboarding.simple.signInCancelled'));
       } else if (res.outcome === 'free_tier_limit_reached') {
-        setSimpleStep('select');
-        setSimpleError(t('onboarding.simple.accountLimitReached'));
+        setGithubAuthError(t('onboarding.simple.accountLimitReached'));
       } else {
-        setSimpleStep('select');
-        setSimpleError(t('onboarding.simple.signInFailed'));
+        setGithubAuthError(t('onboarding.simple.signInFailed'));
       }
       pendingOAuthFlows.delete(stateKey);
     }
-  }, [route.params?.fromOAuth, route.params?.oauthState, t]);
+  }, [route.params?.fromOAuth, route.params?.oauthState, t, INFO_STEP_START]);
 
   const finish = useCallback(async () => {
     await OnboardingService.completeOnboarding();
     onComplete();
   }, [onComplete]);
 
-  const handleSelectSimple = useCallback(() => {
-    setOnboardingMode('quick');
-    setSimpleStep('oauth');
-    setSimpleError(null);
-  }, []);
-
   const handleNext = useCallback(async () => {
     if (currentStep < TOKEN_STEP) {
-      // Step 0 (Welcome) -> advance to step 1 (Connect a Git Host)
       setCurrentStep(currentStep + 1);
     } else if (currentStep === TOKEN_STEP) {
-      // Step 1: Connect a Git Host
-      if (githubAuthMethod === 'quick') {
-        handleSelectSimple();
+      const normalizedInstanceUrl = instanceUrl.trim();
+      if (
+        selectedProvider !== 'github' &&
+        normalizedInstanceUrl
+      ) {
+        let parsedInstanceUrl: URL;
+        try {
+          parsedInstanceUrl = new URL(normalizedInstanceUrl);
+        } catch {
+          setTokenError(t('connectHost.error.invalidUrl'));
+          return;
+        }
+        if (
+          parsedInstanceUrl.protocol !== 'https:' &&
+          parsedInstanceUrl.protocol !== 'http:'
+        ) {
+          setTokenError(t('connectHost.error.invalidUrl'));
+          return;
+        }
+        if (parsedInstanceUrl.protocol === 'http:') {
+          const shouldContinue = await new Promise<boolean>((resolve) => {
+            Alert.alert(
+              t('provider.insecureUrlTitle'),
+              t('provider.insecureUrlBody'),
+              [
+                {
+                  text: t('common.cancel'),
+                  style: 'cancel',
+                  onPress: () => resolve(false),
+                },
+                { text: t('common.continue'), onPress: () => resolve(true) },
+              ],
+            );
+          });
+          if (!shouldContinue) return;
+        }
+      }
+      // Skip token validation if token is empty
+      if (!token.trim()) {
+        setCurrentStep(INFO_STEP_START);
         return;
       }
-      if (token.trim()) {
-        const normalizedInstanceUrl = instanceUrl.trim();
-        if (
-          selectedProvider !== 'github' &&
-          normalizedInstanceUrl
-        ) {
-          let parsedInstanceUrl: URL;
-          try {
-            parsedInstanceUrl = new URL(normalizedInstanceUrl);
-          } catch {
-            setTokenError(t('connectHost.error.invalidUrl'));
-            return;
-          }
-          if (
-            parsedInstanceUrl.protocol !== 'https:' &&
-            parsedInstanceUrl.protocol !== 'http:'
-          ) {
-            setTokenError(t('connectHost.error.invalidUrl'));
-            return;
-          }
-          if (parsedInstanceUrl.protocol === 'http:') {
-            const shouldContinue = await new Promise<boolean>((resolve) => {
-              Alert.alert(
-                t('provider.insecureUrlTitle'),
-                t('provider.insecureUrlBody'),
-                [
-                  {
-                    text: t('common.cancel'),
-                    style: 'cancel',
-                    onPress: () => resolve(false),
-                  },
-                  { text: t('common.continue'), onPress: () => resolve(true) },
-                ],
-              );
-            });
-            if (!shouldContinue) return;
-          }
-        }
-        setIsVerifying(true);
-        setTokenError(null);
-        const result = await connectHost({
-          provider: selectedProvider,
-          token: token.trim(),
-          instanceBaseUrl:
-            selectedProvider === 'github'
-              ? null
-              : normalizedInstanceUrl || null,
-        });
-        if (result.ok) {
-          await refreshAccounts();
-          setIsVerifying(false);
-           setCurrentStep(INFO_STEP_START);
-        } else {
-          setIsVerifying(false);
-          setTokenError(result.error ?? 'Invalid token. Please check and try again.');
-        }
-      } else {
+      setIsVerifying(true);
+      setTokenError(null);
+      const result = await connectHost({
+        provider: selectedProvider,
+        token: token.trim(),
+        instanceBaseUrl:
+          selectedProvider === 'github'
+            ? null
+            : normalizedInstanceUrl || null,
+      });
+      if (result.ok) {
+        await refreshAccounts();
+        setIsVerifying(false);
         setCurrentStep(INFO_STEP_START);
+      } else {
+        setIsVerifying(false);
+        setTokenError(result.error ?? 'Invalid token. Please check and try again.');
       }
     } else if (currentStep === AI_STEP) {
       await finish();
@@ -261,14 +221,12 @@ export default function OnboardingScreen({
     }
   }, [
     currentStep,
-    githubAuthMethod,
-    token,
     selectedProvider,
     instanceUrl,
+    token,
     connectHost,
     refreshAccounts,
     finish,
-    handleSelectSimple,
     AI_STEP,
     TOKEN_STEP,
     INFO_STEP_START,
@@ -300,6 +258,7 @@ export default function OnboardingScreen({
         redirectUri,
         clientId,
         hostId: null,
+        returnTo: 'onboarding',
       });
       if (!result.ok) {
         setGithubAuthError(
@@ -331,7 +290,6 @@ export default function OnboardingScreen({
             callback.searchParams.get('error_description') ?? undefined,
         });
       }
-        setCurrentStep(INFO_STEP_START);
     } catch (err) {
       setGithubAuthError(
         err instanceof Error ? err.message : t('onboarding.simple.signInFailed'),
@@ -339,7 +297,7 @@ export default function OnboardingScreen({
     } finally {
       setIsGithubAuthLoading(false);
     }
-  }, [INFO_STEP_START, navigation, t]);
+  }, [navigation, t]);
 
   /**
    * Initiate GitHub App installation flow.
@@ -392,218 +350,8 @@ export default function OnboardingScreen({
     }
   }, [navigation, t]);
 
-  const handleInitiateSimpleOAuth = useCallback(async () => {
-    setIsGithubAuthLoading(true);
-    setSimpleError(null);
-    try {
-      const backendUrl = resolveBackendUrl();
-      const clientId = process.env.EXPO_PUBLIC_GITHUB_OAUTH_CLIENT_ID;
-      if (!clientId) {
-        setSimpleError(t('onboarding.simple.oauthNotConfigured'));
-        return;
-      }
-      const redirectUri = OAUTH_CALLBACK_URL;
-      const result = await GitHubOAuthService.initiate({
-        backendUrl,
-        redirectUri,
-        clientId,
-        hostId: null,
-        returnTo: 'onboarding',
-      });
-      if (!result.ok) {
-        setSimpleError(
-          result.reason === 'backend_unreachable'
-            ? t('onboarding.simple.serverUnavailable')
-            : t('onboarding.simple.couldNotStartSignIn'),
-        );
-        return;
-      }
-      const browserResult = await GitHubOAuthService.openAuthorizationUrl(
-        result.authorizationUrl,
-        redirectUri,
-      );
-      if (browserResult.outcome === 'failed') {
-        setSimpleError(t('onboarding.simple.couldNotOpenBrowser'));
-        return;
-      }
-      if (browserResult.outcome === 'cancelled') {
-        setSimpleError(t('onboarding.simple.signInCancelledSimple'));
-        return;
-      }
-      if (browserResult.outcome === 'callback') {
-        const callback = new URL(browserResult.url);
-        const callbackState = callback.searchParams.get('state') ?? undefined;
-        const pendingByCallbackState = callbackState ? pendingOAuthFlows.get(callbackState) : undefined;
-        const pendingByReturnTo = Array.from(pendingOAuthFlows.values()).find(p => p.returnTo === 'onboarding' && p.oauthResult?.outcome === 'success');
-        const pending = pendingByCallbackState ?? pendingByReturnTo;
-        if (pending?.oauthResult?.outcome === 'success') {
-          const login = pending.githubLogin ?? '';
-          setSimpleRepoName(login ? `gitnotes-${login}` : 'gitnotes');
-          setSimpleStep('repo-name');
-        } else {
-          navigation.navigate('OAuthCallback', {
-            code: callback.searchParams.get('code') ?? undefined,
-            state: callback.searchParams.get('state') ?? undefined,
-            error: callback.searchParams.get('error') ?? undefined,
-            error_description:
-              callback.searchParams.get('error_description') ?? undefined,
-          });
-          await refreshAccounts();
-        }
-      }
-    } catch (err) {
-      setSimpleError(err instanceof Error ? err.message : t('onboarding.simple.signInFailed'));
-    } finally {
-      setIsGithubAuthLoading(false);
-    }
-  }, [navigation, refreshAccounts, t]);
-
-  const handleCreateRepoAndClone = useCallback(async () => {
-    const name = simpleRepoName.trim();
-    if (!name) {
-      setSimpleError(t('onboarding.simple.enterRepoName'));
-      return;
-    }
-
-    let repoData = simpleCreatedRepo
-      ? { full_name: simpleCreatedRepo.full_name, name: simpleCreatedRepo.name, default_branch: simpleCreatedRepo.default_branch, hostId: simpleCreatedRepo.hostId }
-      : null;
-
-    if (!repoData) {
-      setSimpleStep('creating');
-      setSimpleError(null);
-
-      const pending = route.params?.oauthState
-        ? pendingOAuthFlows.get(route.params.oauthState)
-        : Array.from(pendingOAuthFlows.values()).find(p => p.returnTo === 'onboarding' && p.oauthResult?.outcome === 'success');
-      const oauthResult = pending?.oauthResult;
-      if (oauthResult?.outcome !== 'success') {
-        setSimpleError(t('onboarding.simple.notAuthenticated'));
-        setSimpleStep('oauth');
-        return;
-      }
-      const credential = oauthResult.credential;
-      const hostId = credential.hostId;
-
-      let created: GitHubCreatedRepository;
-      try {
-        created = await GitHubService.createRepository({ name });
-      } catch (err: unknown) {
-        const error = err as { status?: number };
-        if (error.status === 422) {
-          setSimpleError(t('onboarding.simple.repoAlreadyExists', { name }));
-          setSimpleStep('repo-name');
-          return;
-        }
-        if (error.status === 401 || error.status === 403) {
-          setSimpleError(t('onboarding.simple.permissionDenied'));
-          setSimpleStep('oauth');
-          return;
-        }
-        setSimpleError(t('onboarding.simple.couldNotCreateRepo'));
-        setSimpleStep('repo-name');
-        return;
-      }
-
-      repoData = { full_name: created.full_name, name: created.name, default_branch: created.default_branch, hostId };
-      setSimpleCreatedRepo(repoData);
-    }
-
-    if (!repoData) {
-      return;
-    }
-
-    const { full_name: repoPath, name: repoName, hostId: repoHostId } = repoData;
-
-    setSimpleStep('cloning');
-    let repoAdded = false;
-    try {
-      const result = await useRepoStore.getState().addRepository(
-        repoPath,
-        repoName,
-        'github',
-        { allowUnverifiedWrite: true },
-        repoHostId,
-      );
-      repoAdded = !!result;
-    } catch (err: unknown) {
-      const error = err as { message?: string };
-      if (error?.message?.includes('already exists')) {
-        const existing = useRepoStore.getState().repositories.find(r => r.path === repoPath);
-        if (!existing) {
-          setSimpleError(t('onboarding.simple.couldNotCloneRepo'));
-          setSimpleStep('error');
-          return;
-        }
-        repoAdded = true;
-      } else {
-        setSimpleError(t('onboarding.simple.couldNotCloneRepo'));
-        setSimpleStep('error');
-        return;
-      }
-    }
-    if (!repoAdded) {
-      // If addRepository returned falsy without throwing, check if repo already exists locally
-      const existing = useRepoStore.getState().repositories.find(r => r.path === repoPath);
-      if (existing) {
-        repoAdded = true;
-      } else {
-        setSimpleError(t('onboarding.simple.couldNotCloneRepo'));
-        setSimpleStep('error');
-        return;
-      }
-    }
-
-    setSimpleStep('seeding');
-    const noteStore = useNoteStore.getState();
-    const existingNote = noteStore.notes.find(n => n.title === 'Welcome to GitNotēs' && n.repo === repoPath);
-    if (!existingNote) {
-      const welcomeContent = [
-        '# Welcome to GitNotēs',
-        '',
-        "You've successfully set up your notes repository!",
-        '',
-        '## Getting Started',
-        '',
-        '- Create new notes using the + button',
-        '- Organize with folders and tags',
-        '- Your notes sync automatically to GitHub',
-        '',
-        '## Tips',
-        '',
-        '- Use # for headings',
-        '- Create checklists with - [ ]',
-        '- Link notes with [[wiki-links]]',
-        '',
-        'Happy writing!',
-      ].join('\n');
-      const created = await noteStore.createNote({
-        title: 'Welcome to GitNotēs',
-        content: welcomeContent,
-        format: 'markdown',
-        repo: repoPath,
-        branch: repoData.default_branch,
-        folderPath: 'notes',
-        filePath: 'notes/welcome-to-gitnotes.md',
-      });
-      if (!created) {
-        setSimpleError(t('onboarding.simple.couldNotSeedNote'));
-        setSimpleStep('error');
-        return;
-      }
-    }
-    setSimpleStep('done');
-    if (route.params?.oauthState) {
-      pendingOAuthFlows.delete(route.params.oauthState);
-    }
-    await refreshAccounts();
-  }, [simpleRepoName, refreshAccounts, t, simpleCreatedRepo, route.params?.oauthState]);
-
   const isTokenStep = currentStep === TOKEN_STEP;
   const isAIStep = currentStep === AI_STEP;
-
-  // Derive effective mode directly from quickSetup prop to avoid stale state on first render
-  const effectiveMode = quickSetup ? 'quick' : onboardingMode;
 
   const showInstanceUrl = selectedProvider !== 'github';
   const isGitHub = selectedProvider === 'github';
@@ -934,292 +682,16 @@ export default function OnboardingScreen({
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
-          {!quickSetup && (
-            <View className="flex-row justify-end px-5 pt-2.5">
-              <Button
-                variant="ghost"
-                label="Skip"
-                testID="onboarding.button.skip"
-                onPress={handleSkip}
-              />
-            </View>
-          )}
+          <View className="flex-row justify-end px-5 pt-2.5">
+            <Button
+              variant="ghost"
+              label="Skip"
+              testID="onboarding.button.skip"
+              onPress={handleSkip}
+            />
+          </View>
 
-          {effectiveMode === 'quick' ? (
-            <View className="flex-1 px-10" style={{ justifyContent: 'center' }}>
-              {simpleStep === 'select' && (
-                <>
-                  <Surface
-                    elevation="raised"
-                    radius="pill"
-                    className="w-[140px] h-[140px] items-center justify-center mb-6 self-center"
-                  >
-                    <Ionicons
-                      name="rocket-outline"
-                      size={72}
-                      color={colors.accent}
-                    />
-                  </Surface>
-                  <Text
-                    className="text-[28px] font-bold text-center"
-                    style={{ color: colors.text }}
-                  >
-                    {t('onboarding.simple.select.title')}
-                  </Text>
-                  <Text
-                    className="text-base text-center leading-6 mt-3"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    {t('onboarding.simple.select.description')}
-                  </Text>
-                  <View className="mt-8 gap-3">
-                    <Button
-                      variant="primary"
-                      fullWidth
-                      testID="onboarding.simple.button.sign-in"
-                      onPress={handleSelectSimple}
-                      label={t('onboarding.simple.select.signInButton')}
-                      leadingIcon={
-                        <Ionicons name="logo-github" size={20} color={colors.accent} />
-                      }
-                    />
-                    {!quickSetup && (
-                      <Button
-                        variant="ghost"
-                        fullWidth
-                        testID="onboarding.simple.button.standard"
-                        onPress={() => setOnboardingMode('standard')}
-                        label={t('onboarding.simple.select.backButton')}
-                      />
-                    )}
-                  </View>
-                  {simpleError ? (
-                    <Text className="text-[13px] text-center mt-4" style={{ color: '#FF3B30' }}>
-                      {simpleError}
-                    </Text>
-                  ) : null}
-                </>
-              )}
-              {simpleStep === 'oauth' && (
-                <>
-                  <Surface
-                    elevation="raised"
-                    radius="pill"
-                    className="w-[140px] h-[140px] items-center justify-center mb-6 self-center"
-                  >
-                    <Ionicons
-                      name="logo-github"
-                      size={72}
-                      color={colors.accent}
-                    />
-                  </Surface>
-                  <Text
-                    className="text-[28px] font-bold text-center"
-                    style={{ color: colors.text }}
-                  >
-                    {t('onboarding.simple.oauth.title')}
-                  </Text>
-                  <Text
-                    className="text-base text-center leading-6 mt-3"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    {isGithubAuthLoading ? t('onboarding.simple.oauth.openingGitHub') : simpleError ?? t('onboarding.simple.oauth.pleaseSignIn')}
-                  </Text>
-                  {isGithubAuthLoading && (
-                    <ActivityIndicator size="large" color={colors.accent} className="mt-6 self-center" />
-                  )}
-                  {!isGithubAuthLoading && (
-                    <View className="mt-6 gap-3">
-                      <Button
-                        variant="primary"
-                        fullWidth
-                        testID="onboarding.simple.button.retry-oauth"
-                        onPress={handleInitiateSimpleOAuth}
-                        label={t('onboarding.simple.oauth.tryAgainButton')}
-                      />
-                      <Button
-                        variant="ghost"
-                        fullWidth
-                        testID="onboarding.simple.button.back"
-                        onPress={() => { setSimpleStep('select'); setSimpleError(null); }}
-                        label={t('onboarding.simple.oauth.backButton')}
-                      />
-                    </View>
-                  )}
-                </>
-              )}
-              {simpleStep === 'repo-name' && (
-                <>
-                  <Surface
-                    elevation="raised"
-                    radius="pill"
-                    className="w-[140px] h-[140px] items-center justify-center mb-6 self-center"
-                  >
-                    <Ionicons
-                      name="folder-outline"
-                      size={72}
-                      color={colors.accent}
-                    />
-                  </Surface>
-                  <Text
-                    className="text-[28px] font-bold text-center"
-                    style={{ color: colors.text }}
-                  >
-                    {t('onboarding.simple.repoName.title')}
-                  </Text>
-                  <Text
-                    className="text-base text-center leading-6 mt-3"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    {t('onboarding.simple.repoName.description')}
-                  </Text>
-                  <Input
-                    testID="onboarding.simple.input.repo-name"
-                    placeholder={t('onboarding.simple.repoName.placeholder')}
-                    value={simpleRepoName}
-                    onChangeText={(t) => { setSimpleRepoName(t); setSimpleError(null); }}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    containerStyle={{ width: '100%', marginTop: 20 }}
-                  />
-                  {simpleError ? (
-                    <Text className="text-[13px] text-center mt-3" style={{ color: '#FF3B30' }}>
-                      {simpleError}
-                    </Text>
-                  ) : null}
-                  <Button
-                    variant="primary"
-                    fullWidth
-                    testID="onboarding.simple.button.create"
-                    onPress={handleCreateRepoAndClone}
-                    label={t('onboarding.simple.repoName.createButton')}
-                    className="mt-4"
-                    disabled={!simpleRepoName.trim()}
-                  />
-                </>
-              )}
-              {simpleStep === 'creating' && (
-                <>
-                  <ActivityIndicator size="large" color={colors.accent} className="self-center mb-6" />
-                  <Text className="text-xl font-bold text-center" style={{ color: colors.text }}>
-                    {t('onboarding.simple.progress.creatingTitle')}
-                  </Text>
-                  <Text className="text-base text-center leading-6 mt-3" style={{ color: colors.textSecondary }}>
-                    {t('onboarding.simple.progress.creatingBody')}
-                  </Text>
-                </>
-              )}
-              {simpleStep === 'cloning' && (
-                <>
-                  <ActivityIndicator size="large" color={colors.accent} className="self-center mb-6" />
-                  <Text className="text-xl font-bold text-center" style={{ color: colors.text }}>
-                    {t('onboarding.simple.progress.cloningTitle')}
-                  </Text>
-                  <Text className="text-base text-center leading-6 mt-3" style={{ color: colors.textSecondary }}>
-                    {t('onboarding.simple.progress.cloningBody')}
-                  </Text>
-                </>
-              )}
-              {simpleStep === 'seeding' && (
-                <>
-                  <ActivityIndicator size="large" color={colors.accent} className="self-center mb-6" />
-                  <Text className="text-xl font-bold text-center" style={{ color: colors.text }}>
-                    {t('onboarding.simple.progress.seedingTitle')}
-                  </Text>
-                  <Text className="text-base text-center leading-6 mt-3" style={{ color: colors.textSecondary }}>
-                    {t('onboarding.simple.progress.seedingBody')}
-                  </Text>
-                </>
-              )}
-              {simpleStep === 'done' && (
-                <>
-                  <Surface
-                    elevation="raised"
-                    radius="pill"
-                    className="w-[140px] h-[140px] items-center justify-center mb-6 self-center"
-                  >
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={72}
-                      color={colors.accent}
-                    />
-                  </Surface>
-                  <Text
-                    className="text-[28px] font-bold text-center"
-                    style={{ color: colors.text }}
-                  >
-                    {t('onboarding.simple.done.title')}
-                  </Text>
-                  <Text
-                    className="text-base text-center leading-6 mt-3"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    {t('onboarding.simple.done.description')}
-                  </Text>
-                  <Button
-                    variant="primary"
-                    fullWidth
-                    testID="onboarding.simple.button.done"
-                    onPress={finish}
-                    label={t('onboarding.simple.done.getStartedButton')}
-                    className="mt-6"
-                  />
-                </>
-              )}
-              {simpleStep === 'error' && (
-                <>
-                  <Surface
-                    elevation="raised"
-                    radius="pill"
-                    className="w-[140px] h-[140px] items-center justify-center mb-6 self-center"
-                  >
-                    <Ionicons
-                      name="alert-circle-outline"
-                      size={72}
-                      color={colors.accent}
-                    />
-                  </Surface>
-                  <Text
-                    className="text-[28px] font-bold text-center"
-                    style={{ color: colors.text }}
-                  >
-                    {t('onboarding.simple.error.title')}
-                  </Text>
-                  <Text
-                    className="text-base text-center leading-6 mt-3"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    {simpleError ?? t('onboarding.simple.unexpectedError')}
-                  </Text>
-                  <View className="mt-6 gap-3">
-                    <Button
-                      variant="primary"
-                      fullWidth
-                      testID="onboarding.simple.button.retry"
-                      onPress={() => {
-                        if (simpleCreatedRepo) {
-                          // Repo was created but a later step failed - retry without re-creating
-                          handleCreateRepoAndClone();
-                        } else {
-                          // Repo creation itself failed - return to name entry
-                          setSimpleStep('repo-name');
-                          setSimpleError(null);
-                        }
-                      }}
-                      label={t('onboarding.simple.error.tryAgainButton')}
-                    />
-                    <Button
-                      variant="ghost"
-                      fullWidth
-                      testID="onboarding.simple.button.back-select"
-                      onPress={() => { setSimpleStep('select'); setSimpleError(null); setOnboardingMode('standard'); }}
-                      label={t('onboarding.simple.error.backButton')}
-                    />
-                  </View>
-                </>
-              )}
-            </View>
-          ) : currentStep === HOST_STEP ? (
+          {currentStep === HOST_STEP ? (
             <View className="flex-1 px-10 items-center">
               <Surface
                 elevation="raised"
@@ -1245,25 +717,39 @@ export default function OnboardingScreen({
                 {t('onboarding.steps.welcomeDescription')}
               </Text>
 
-              <TouchableOpacity
-                testID="onboarding.button.quick-setup"
-                className="mt-6 px-6 py-3 rounded-lg"
-                style={{ backgroundColor: `${colors.accent}15`, borderWidth: 1, borderColor: colors.accent }}
-                onPress={() => { setOnboardingMode('quick'); }}
-              >
-                <Text
-                  className="text-base font-semibold text-center"
-                  style={{ color: colors.accent }}
-                >
-                  ⚡ {t('onboarding.simple.quickSetupBanner')}
-                </Text>
-                <Text
-                  className="text-sm text-center mt-1"
-                  style={{ color: colors.textSecondary }}
-                >
-                  {t('onboarding.simple.quickSetupBannerSub')}
-                </Text>
-              </TouchableOpacity>
+              <View className="mt-8 gap-3" style={{ width: '100%', maxWidth: 300 }}>
+                <Button
+                  variant="primary"
+                  fullWidth
+                  testID="onboarding.button.connect-github"
+                  onPress={handleInitiateOAuth}
+                  disabled={isGithubAuthLoading}
+                  label={
+                    isGithubAuthLoading
+                      ? t('common.connecting', { defaultValue: 'Connecting...' })
+                      : t('onboarding.steps.connectGitHub', { defaultValue: 'Connect to GitHub' })
+                  }
+                  leadingIcon={
+                    isGithubAuthLoading ? (
+                      <ActivityIndicator color={colors.accent} size={18} />
+                    ) : (
+                      <Ionicons name="logo-github" size={20} color={colors.accent} />
+                    )
+                  }
+                />
+                {githubAuthError ? (
+                  <Text className="text-[13px] text-center" style={{ color: '#FF3B30' }}>
+                    {githubAuthError}
+                  </Text>
+                ) : null}
+                <Button
+                  variant="ghost"
+                  fullWidth
+                  testID="onboarding.button.custom-setup"
+                  onPress={() => setCurrentStep(TOKEN_STEP)}
+                  label={t('onboarding.steps.customSetup', { defaultValue: 'Custom Setup' })}
+                />
+              </View>
             </View>
           ) : isTokenStep ? (
             <View
@@ -1501,68 +987,67 @@ export default function OnboardingScreen({
             </View>
           )}
 
-          {effectiveMode !== 'quick' && (
-            <View className="px-5 pb-10">
-              <View className="flex-row justify-center mb-6">
-                {Array.from({ length: TOTAL_STEPS }).map((_, index) => (
-                  <Surface
-                    key={index}
-                    elevation="subtle"
-                    radius="pill"
-                    inset={index === currentStep}
-                    style={{
-                      width: 14,
-                      height: 14,
-                      marginHorizontal: 4,
-                      backgroundColor:
-                        index === currentStep ? colors.accent : colors.surface,
-                    }}
-                  >
-                    <View />
-                  </Surface>
-                ))}
-              </View>
+          <View className="px-5 pb-10">
+            <View className="flex-row justify-center mb-6">
+              {Array.from({ length: TOTAL_STEPS }).map((_, index) => (
+                <Surface
+                  key={index}
+                  elevation="subtle"
+                  radius="pill"
+                  inset={index === currentStep}
+                  style={{
+                    width: 14,
+                    height: 14,
+                    marginHorizontal: 4,
+                    backgroundColor:
+                      index === currentStep ? colors.accent : colors.surface,
+                  }}
+                >
+                  <View />
+                </Surface>
+              ))}
+            </View>
 
-              {isAIStep ? (
-                <Button
-                  variant="primary"
-                  fullWidth
-                  testID="onboarding.button.pro-continue"
-                  onPress={handleNext}
-                  label={t('common.continue', { defaultValue: 'Continue' })}
-                  trailingIcon={
-                    <Ionicons name="checkmark" size={20} color={colors.accent} />
-                  }
-                  iconAlign="edge"
-                />
-              ) : isGitHub && githubAuthMethod !== 'pat' ? (
-                // OAuth / App selected — Next skips token step; auth runs in background
-                <Button
-                  variant="primary"
-                  fullWidth
-                  testID="onboarding.button.next"
-                  onPress={handleNext}
-                  disabled={isGithubAuthLoading}
-                  label={
-                    isGithubAuthLoading
-                      ? t('common.connecting', { defaultValue: 'Connecting...' })
-                      : t('onboarding.skipForNow', {
-                          defaultValue: 'Skip for Now',
-                        })
-                  }
-                  trailingIcon={
-                    isGithubAuthLoading ? (
-                      <ActivityIndicator color={colors.accent} />
-                    ) : (
-                      <Ionicons
-                        name="arrow-forward"
-                        size={20}
-                        color={colors.accent}
-                      />
-                    )
-                  }
-                  iconAlign="edge"
-                />
+            {isAIStep ? (
+              <Button
+                variant="primary"
+                fullWidth
+                testID="onboarding.button.pro-continue"
+                onPress={handleNext}
+                label={t('common.continue', { defaultValue: 'Continue' })}
+                trailingIcon={
+                  <Ionicons name="checkmark" size={20} color={colors.accent} />
+                }
+                iconAlign="edge"
+              />
+            ) : isGitHub && githubAuthMethod !== 'pat' ? (
+              // OAuth / App selected — Next skips token step; auth runs in background
+              <Button
+                variant="primary"
+                fullWidth
+                testID="onboarding.button.next"
+                onPress={handleNext}
+                disabled={isGithubAuthLoading}
+                label={
+                  isGithubAuthLoading
+                    ? t('common.connecting', { defaultValue: 'Connecting...' })
+                    : t('onboarding.skipForNow', {
+                        defaultValue: 'Skip for Now',
+                      })
+                }
+                trailingIcon={
+                  isGithubAuthLoading ? (
+                    <ActivityIndicator color={colors.accent} />
+                  ) : (
+                    <Ionicons
+                      name="arrow-forward"
+                      size={20}
+                      color={colors.accent}
+                    />
+                  )
+                }
+                iconAlign="edge"
+              />
               ) : (
                 <Button
                   variant="primary"
@@ -1582,7 +1067,7 @@ export default function OnboardingScreen({
                               defaultValue: 'Skip for Now',
                             })
                         : currentStep === HOST_STEP
-                          ? t('onboarding.nextCustomSetup', {
+                          ? t('onboarding.steps.nextCustomSetup', {
                               defaultValue: 'Next: Custom Setup',
                             })
                           : t('common.next', { defaultValue: 'Next' })
@@ -1616,8 +1101,7 @@ export default function OnboardingScreen({
                   Report it on GitHub Issues
                 </Text>
               </Text>
-            </View>
-          )}
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

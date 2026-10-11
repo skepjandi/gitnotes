@@ -683,6 +683,9 @@
     "steps": {
       "welcomeTitle": "Welcome to GitNotēs",
       "welcomeDescription": "Your development notes, perfectly organized with Git integration.",
+      "connectGitHub": "GitHubに接続",
+      "customSetup": "カスタムセットアップ",
+      "nextCustomSetup": "次へ: カスタムセットアップ",
       "linkTitle": "Link to Git Repositories",
       "linkDescription": "Connect your notes to GitHub repositories and track changes.",
       "foldersTitle": "Organize with Folders",
@@ -781,7 +784,8 @@
         "failed": "サインインに失敗しました"
       },
       "message": {
-        "successSimple": "GitHubアカウントに接続しました。ノートを設定しています…",
+      "successSimple": "GitHubアカウントに接続しました。ノートを設定しています…",
+      "successQuickSetup": "GitHubアカウントに接続しました。ノートの設定を続けてください…",
         "success": "GitHubアカウントに接続しました。",
         "denied": "GitHubのサインインがキャンセルまたは拒否されました。",
         "freeTierLimit": "無料プランで許可されているアカウント数の上限に達しました。Proにアップグレードしてアカウントを追加してください。",

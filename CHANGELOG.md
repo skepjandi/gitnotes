@@ -10,6 +10,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-10-11
 
+### fix(settings): place Quick Setup in Accounts
+
+**What:** Quick Setup was separated from the account controls in Settings.
+
+**Fix:** Place Quick Setup at the top of the Accounts section while preserving its navigation behavior.
+
 ### fix(onboarding): align welcome actions
 
 **What:** The Custom Setup action rendered as an unframed text control beside the filled GitHub action.

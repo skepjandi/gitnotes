@@ -337,6 +337,18 @@ describe('SettingsContent style selector [four-way selector]', () => {
   beforeEach(() => { mockAlertCalls = []; });
 
   describe('Rendering — four-way style selector', () => {
+    it('toggles the Themes section', () => {
+      const props = makeProps({ isPro: true });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+      const themesSection = getByTestId('settings.section.themes');
+
+      expect(themesSection.props.accessibilityState.expanded).toBe(true);
+      fireEvent.press(themesSection);
+      expect(themesSection.props.accessibilityState.expanded).toBe(false);
+      fireEvent.press(themesSection);
+      expect(themesSection.props.accessibilityState.expanded).toBe(true);
+    });
+
     it('renders all four style options for Pro users', () => {
       const props = makeProps({ isPro: true });
       const { getByTestId } = render(<SettingsContent {...props} />);

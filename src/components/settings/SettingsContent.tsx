@@ -311,7 +311,7 @@ export function SettingsContent(props: SettingsContentProps) {
   const [showTimeoutPicker, setShowTimeoutPicker] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showResetAIMemoryModal, setShowResetAIMemoryModal] = useState(false);
-  const [themesExpanded, setThemesExpanded] = useState(true);
+  const [themesExpanded, setThemesExpanded] = useState(false);
   const [oauthConnected, setOauthConnected] = useState<Record<string, boolean>>({});
   const [overflowHostId, setOverflowHostId] = useState<string | null>(null);
   const [expandedHostIds, setExpandedHostIds] = useState<Set<string>>(new Set());

@@ -405,7 +405,12 @@ export default function HomeScreen() {
       <QuickAccessShelf items={pinnedItems} onOpen={handleOpenRecentItem} onLongPress={handleLongPressRecentItem} />
       <BentoRecent items={recentItems} onOpen={handleOpenRecentItem} onLongPress={handleLongPressRecentItem} />
 
-      <Modal visible={showFormatPicker} onRequestClose={handleFormatPickerClose} fullWidth>
+      <Modal
+        visible={showFormatPicker}
+        onRequestClose={handleFormatPickerClose}
+        fullWidth
+        contentStyle={{ minWidth: 320, maxWidth: 420 }}
+      >
         <Text className="text-lg font-bold text-center mb-4" style={{ color: colors.text }}>{t('home.format.pickerTitle')}</Text>
         <View style={{ gap: 10 }}>
           {FORMAT_OPTIONS.map((option) => (

@@ -24,9 +24,17 @@
  */
 
 import React from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { render as baseRender, fireEvent, act } from '@testing-library/react-native';
 import { SettingsContent } from '../../../src/components/settings/SettingsContent';
 import { RewardEntitlementService } from '../../../src/services/RewardEntitlementService';
+
+function render(element: React.ReactElement) {
+  const rendered = baseRender(element);
+  act(() => {
+    fireEvent.press(rendered.getByTestId('settings.section.themes'));
+  });
+  return rendered;
+}
 
 // ---------------------------------------------------------------------------
 // Module-level mocks (must precede any imports)
@@ -337,6 +345,18 @@ describe('SettingsContent style selector [four-way selector]', () => {
   beforeEach(() => { mockAlertCalls = []; });
 
   describe('Rendering — four-way style selector', () => {
+    it('toggles the Themes section', () => {
+      const props = makeProps({ isPro: true });
+      const { getByTestId } = baseRender(<SettingsContent {...props} />);
+      const themesSection = getByTestId('settings.section.themes');
+
+      expect(themesSection.props.accessibilityState.expanded).toBe(false);
+      act(() => { fireEvent.press(themesSection); });
+      expect(themesSection.props.accessibilityState.expanded).toBe(true);
+      act(() => { fireEvent.press(themesSection); });
+      expect(themesSection.props.accessibilityState.expanded).toBe(false);
+    });
+
     it('renders all four style options for Pro users', () => {
       const props = makeProps({ isPro: true });
       const { getByTestId } = render(<SettingsContent {...props} />);

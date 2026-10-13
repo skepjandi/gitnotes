@@ -1,5 +1,5 @@
 import React, { Fragment, ReactNode } from 'react';
-import { Pressable, StyleProp, Text, View, ViewStyle, StyleSheet } from 'react-native';
+import { AccessibilityState, Pressable, StyleProp, Text, View, ViewStyle, StyleSheet } from 'react-native';
 import { Surface } from './Surface';
 import { useTheme, useTokens } from '../../contexts/ThemeContext';
 
@@ -88,10 +88,23 @@ export interface GroupRowProps {
   testID?: string;
   accessibilityRole?: 'button' | 'link' | 'none';
   accessibilityLabel?: string;
+  accessibilityState?: AccessibilityState;
 }
 
 export function GroupRow(props: GroupRowProps) {
-  const { onPress, onLongPress, disabled, leading, trailing, style, children, testID, accessibilityRole, accessibilityLabel } = props;
+  const {
+    onPress,
+    onLongPress,
+    disabled,
+    leading,
+    trailing,
+    style,
+    children,
+    testID,
+    accessibilityRole,
+    accessibilityLabel,
+    accessibilityState,
+  } = props;
   const { colors, spacing } = useTokens();
 
   const content = (
@@ -125,6 +138,7 @@ export function GroupRow(props: GroupRowProps) {
       style={({ pressed }) => ({ backgroundColor: pressed ? colors.shadow + '14' : 'transparent' })}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
+      accessibilityState={accessibilityState}
     >
       {content}
     </Pressable>

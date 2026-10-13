@@ -171,6 +171,7 @@ export default function RewardCatalogModal({
     <Modal
       visible={visible}
       onRequestClose={onRequestClose}
+      bottomSheet
     >
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>Referral Rewards</Text>

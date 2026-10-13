@@ -311,6 +311,7 @@ export function SettingsContent(props: SettingsContentProps) {
   const [showTimeoutPicker, setShowTimeoutPicker] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showResetAIMemoryModal, setShowResetAIMemoryModal] = useState(false);
+  const [themesExpanded, setThemesExpanded] = useState(false);
   const [oauthConnected, setOauthConnected] = useState<Record<string, boolean>>({});
   const [overflowHostId, setOverflowHostId] = useState<string | null>(null);
   const [expandedHostIds, setExpandedHostIds] = useState<Set<string>>(new Set());
@@ -429,6 +430,26 @@ export function SettingsContent(props: SettingsContentProps) {
       <Group
         title={t('settings.appearance')}
       >
+        <GroupRow
+          testID="settings.section.themes"
+          onPress={() => {
+            HapticService.selection();
+            setThemesExpanded((expanded) => !expanded);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={themesExpanded ? 'Collapse themes' : 'Expand themes'}
+          accessibilityState={{ expanded: themesExpanded }}
+          trailing={
+            <Ionicons
+              name={themesExpanded ? 'chevron-down' : 'chevron-forward'}
+              size={18}
+              color={colors.textSecondary}
+            />
+          }
+        >
+          <Text style={[styles.settingLabel, { color: colors.text }]}>Themes</Text>
+        </GroupRow>
+        <View style={!themesExpanded ? { display: 'none' } : undefined}>
         <GroupRow
           testID="settings.option.style.basic"
           onPress={() => { HapticService.selection(); setStyle('flat'); }}
@@ -554,6 +575,7 @@ export function SettingsContent(props: SettingsContentProps) {
         >
           <Text style={[styles.settingLabel, { color: colors.text }]}>Developer Desk</Text>
         </GroupRow>
+        </View>
         <GroupRow
           trailing={
             <View className="flex-row items-center gap-2">

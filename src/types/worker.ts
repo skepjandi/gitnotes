@@ -32,6 +32,11 @@ export const WORKER_BACKEND_URL_ENV = "EXPO_PUBLIC_GITNOTES_BACKEND_URL";
  */
 export const GITHUB_OAUTH_CLIENT_ID_ENV = "EXPO_PUBLIC_GITHUB_OAUTH_CLIENT_ID";
 
+/**
+ * Development-only referral progress override for local reward UI testing.
+ */
+export const DEV_REFERRAL_PROGRESS_ENV = "EXPO_PUBLIC_DEV_REFERRAL_PROGRESS";
+
 // -----------------------------------------------------------------------------
 // Error Envelope - matches Rust ApiErrorCode and ApiErrorResponse.
 // The `code` field uses snake_case strings matching Rust enum variants.

@@ -29,6 +29,7 @@ import { ReferralIdentityService, getIdentityScope } from './ReferralIdentitySer
 import {
   REFERRAL_REWARD_CATALOG,
   REFERRAL_MILESTONES,
+  DEV_REFERRAL_PROGRESS_ENV,
   type ReferralMilestone,
   type ReferralRewardType,
   type ReferralMilestoneInfo,
@@ -113,6 +114,31 @@ function cacheKeyForScope(scopeId: string): string {
   return `${REFERRAL_STATUS_CACHE_PREFIX}${scopeId}`;
 }
 
+function getDevReferralProgressOverride(): number | undefined {
+  if (!__DEV__) return undefined;
+
+  const rawValue = process.env[DEV_REFERRAL_PROGRESS_ENV]?.trim();
+  if (!rawValue) return undefined;
+
+  const value = Number(rawValue);
+  return Number.isInteger(value) && value >= 0 ? value : undefined;
+}
+
+function applyDevReferralProgressOverride(status: ReferralStatus): ReferralStatus {
+  const progress = getDevReferralProgressOverride();
+  if (progress === undefined) return status;
+
+  const unlockedMilestones = REFERRAL_MILESTONES.filter((milestone) => milestone <= progress);
+  const rewards = deriveRewards(
+    REFERRAL_REWARD_CATALOG.map((reward) => ({
+      ...reward,
+      unlocked: unlockedMilestones.includes(reward.milestone),
+    })),
+  );
+
+  return { ...status, progress, unlocked_milestones: unlockedMilestones, rewards };
+}
+
 // ---------------------------------------------------------------------------
 // Core API
 // ---------------------------------------------------------------------------
@@ -143,7 +169,7 @@ export async function fetchStatus(): Promise<ReferralStatus> {
     return _cachedStatus ?? { has_pending_code: false, pending_code: null, pending_expires_at: null, progress: 0, catalog_version: 1, unlocked_milestones: [], rewards: [] };
   }
 
-  const status: ReferralStatus = {
+  const serverStatus: ReferralStatus = {
     has_pending_code: response.has_pending_code,
     pending_code: response.pending_code,
     pending_expires_at: response.pending_expires_at,
@@ -152,6 +178,7 @@ export async function fetchStatus(): Promise<ReferralStatus> {
     unlocked_milestones: response.unlocked_milestones,
     rewards: deriveRewards(response.milestones),
   };
+  const status = applyDevReferralProgressOverride(serverStatus);
 
   if (requestGen !== _generation) {
     return _cachedStatus ?? status;
@@ -161,7 +188,7 @@ export async function fetchStatus(): Promise<ReferralStatus> {
   if (requestGen !== _generation) {
     return status;
   }
-  const cachePayload: CachedStatus = { status, fetchedAt: Date.now() };
+  const cachePayload: CachedStatus = { status: serverStatus, fetchedAt: Date.now() };
   await AsyncStorage.setItem(cacheKeyForScope(scopeId), JSON.stringify(cachePayload));
 
   return status;
@@ -208,8 +235,9 @@ export async function hydrateCache(): Promise<ReferralStatus | undefined> {
     if (requestGen !== _generation) {
       return undefined;
     }
-    _cachedStatus = cached.status;
-    return cached.status;
+    const status = applyDevReferralProgressOverride(cached.status);
+    _cachedStatus = status;
+    return status;
   } catch {
     return undefined;
   }

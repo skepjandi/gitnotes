@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
@@ -69,9 +69,11 @@ export default function ExploreFileScreen() {
 
   const isReadOnly = isBinary || isLfsPointer;
 
-  const [mode, setMode] = useState<'preview' | 'edit'>('edit');
-
   const fileLanguage = useMemo(() => classifyFile(filePath), [filePath]);
+
+  const [mode, setMode] = useState<'preview' | 'edit'>(
+    () => fileLanguage.mode === 'plain' ? 'edit' : 'preview',
+  );
 
   const eligibleForPreview = useMemo(
     () => !isBinary && !isLfsPointer && fileLanguage.mode !== 'plain',
@@ -93,7 +95,7 @@ export default function ExploreFileScreen() {
     setIsDirty(false);
     setSaveError(null);
     setSavedAt(null);
-    setMode('edit');
+    setMode(fileLanguage.mode === 'plain' ? 'edit' : 'preview');
     (async () => {
       try {
         const workingTreeUri = GitFsService.workingTreeUri({ repoPath: storedRepo.path });
@@ -117,7 +119,7 @@ export default function ExploreFileScreen() {
     return () => {
       cancelled = true;
     };
-  }, [storedRepo, filePath, isBinary]);
+  }, [storedRepo, filePath, isBinary, fileLanguage.mode]);
 
   const handleSave = useCallback(async () => {
     if (isSaving || isCheckingOut || !isDirty || !storedRepo) return;
@@ -188,7 +190,7 @@ export default function ExploreFileScreen() {
   return (
     <SafeAreaView edges={['top']} className="flex-1" style={{ flex: 1, backgroundColor: colors.background }} testID="explore-file.root">
       <View
-        className="flex-row items-center gap-2 px-4 py-3"
+        className="flex-row items-center gap-2 px-4 py-2.5"
         style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
       >
         <Pressable
@@ -212,13 +214,29 @@ export default function ExploreFileScreen() {
         {!loading && !error && content != null && !isReadOnly && eligibleForPreview && (
           <Pressable
             onPress={() => setMode(mode === 'preview' ? 'edit' : 'preview')}
-            hitSlop={8}
+            hitSlop={6}
             accessibilityRole="button"
             accessibilityLabel={mode === 'preview' ? 'Switch to edit mode' : 'Switch to preview mode'}
             testID="explore-file.mode-toggle"
-            style={{ marginRight: 12 }}
+            style={({ pressed }) => [
+              styles.headerAction,
+              {
+                backgroundColor: mode === 'edit'
+                  ? colors.accent + '1a'
+                  : colors.accent + '12',
+                borderColor: mode === 'edit'
+                  ? colors.accent + '66'
+                  : colors.accent + '33',
+                opacity: pressed ? 0.72 : 1,
+              },
+            ]}
           >
-            <Text style={{ color: colors.accent, fontWeight: '600' }}>
+            <Ionicons
+              name={mode === 'preview' ? 'create-outline' : 'eye-outline'}
+              size={16}
+              color={colors.accent}
+            />
+            <Text style={{ color: colors.accent, fontWeight: '700' }}>
               {mode === 'preview' ? 'Edit' : 'Preview'}
             </Text>
           </Pressable>
@@ -228,14 +246,26 @@ export default function ExploreFileScreen() {
           <>
             <Pressable
               onPress={handleCancel}
-              hitSlop={8}
+              hitSlop={6}
               accessibilityRole="button"
               accessibilityLabel="Cancel editing"
               testID="explore-file.cancel"
               disabled={isSaving}
-              style={{ marginRight: 12 }}
+              style={({ pressed }) => [
+                styles.headerAction,
+                {
+                  backgroundColor: isSaving ? colors.surfaceSecondary : colors.error + '10',
+                  borderColor: isSaving ? colors.border : colors.error + '44',
+                  opacity: pressed && !isSaving ? 0.72 : 1,
+                },
+              ]}
             >
-              <Text style={{ color: isSaving ? colors.textSecondary : colors.error }}>
+              <Ionicons
+                name="close-outline"
+                size={16}
+                color={isSaving ? colors.textSecondary : colors.error}
+              />
+              <Text style={{ color: isSaving ? colors.textSecondary : colors.error, fontWeight: '600' }}>
                 Cancel
               </Text>
             </Pressable>
@@ -246,14 +276,28 @@ export default function ExploreFileScreen() {
               accessibilityLabel="Save changes"
               testID="explore-file.save"
               disabled={isSaving || !isDirty || isCheckingOut}
+              style={({ pressed }) => [
+                styles.headerAction,
+                {
+                  backgroundColor: isSaving || !isDirty || isCheckingOut
+                    ? colors.surfaceSecondary
+                    : colors.accent,
+                  borderColor: isSaving || !isDirty || isCheckingOut
+                    ? colors.border
+                    : colors.accent,
+                  opacity: pressed && !(isSaving || !isDirty || isCheckingOut) ? 0.8 : 1,
+                },
+              ]}
             >
+              <Ionicons
+                name={savedAt ? 'checkmark-circle-outline' : 'save-outline'}
+                size={16}
+                color={isSaving || !isDirty || isCheckingOut ? colors.textSecondary : colors.background}
+              />
               <Text
                 style={{
-                  color:
-                    isSaving || !isDirty || isCheckingOut
-                      ? colors.textSecondary
-                      : colors.accent,
-                  fontWeight: '600',
+                  color: isSaving || !isDirty || isCheckingOut ? colors.textSecondary : colors.background,
+                  fontWeight: '700',
                 }}
               >
                 {isSaving ? 'Saving…' : savedAt ? 'Saved' : 'Save'}
@@ -348,6 +392,19 @@ export default function ExploreFileScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = {
+  headerAction: {
+    minHeight: 34,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    flexDirection: 'row' as const,
+    gap: 4,
+  },
+};
 
 /** Fallback checkout safety using GitBranchCoordinator when outside provider context. */
 function useCheckoutSafetySafe(): { isCheckingOut: boolean } | null {

@@ -17,11 +17,6 @@
 'use strict';
 
 // Inline the corrected functions (mirrors scripts/generate-branding.js after fix)
-function srgbToLinear(c) {
-  const x = c / 255;
-  return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
-}
-
 function linearToSrgb(c) {
   return Math.round(
     c <= 0.0031308 ? c * 12.92 * 255 : (1.055 * Math.pow(c, 1 / 2.4) - 0.055) * 255,
@@ -242,6 +237,112 @@ describe('base variant — must be byte-identical to top-level defaults', () => 
     const defaultHash = crypto.createHash('sha256').update(require('fs').readFileSync(defaultFile)).digest('hex');
     const baseHash = crypto.createHash('sha256').update(require('fs').readFileSync(baseFile)).digest('hex');
     expect(baseHash).toBe(defaultHash);
+  });
+});
+
+describe('variant registry — all seven variants are registered', () => {
+  const VARIANT_KEYS = ['base', 'grayscale', 'neon', 'gold', 'terminal-mono', 'amber-terminal', 'monochrome-grid'];
+  const VARIANT_TARGET_NAMES = ['icon.png', 'adaptive-icon.png', 'monochrome-icon.png'];
+
+  test('variant registry has exactly seven entries', () => {
+    const path = require('path');
+    const ROOT = path.resolve(__dirname, '../..');
+    // VARIANTS is not directly exported, so we verify via generated output dirs
+    const altDir = path.join(ROOT, 'assets', 'generated', 'alternate');
+    const actualVariants = require('fs').readdirSync(altDir).filter(f =>
+      require('fs').statSync(path.join(altDir, f)).isDirectory()
+    );
+    expect(actualVariants.sort()).toEqual(VARIANT_KEYS.sort());
+  });
+
+  test('each variant directory contains all three target output files', () => {
+    const path = require('path');
+    const ROOT = path.resolve(__dirname, '../..');
+    const altDir = path.join(ROOT, 'assets', 'generated', 'alternate');
+    for (const variant of VARIANT_KEYS) {
+      for (const name of VARIANT_TARGET_NAMES) {
+        const filePath = path.join(altDir, variant, name);
+        expect(require('fs').existsSync(filePath)).toBe(true);
+      }
+    }
+  });
+
+  test('retro variant names match FILTER_PRESETS keys', () => {
+    const path = require('path');
+    const ROOT = path.resolve(__dirname, '../..');
+    const { FILTER_PRESETS } = require(path.join(ROOT, 'scripts/retro-icon-filters'));
+    const RETRO_VARIANTS = ['neon', 'gold', 'terminal-mono', 'amber-terminal', 'monochrome-grid'];
+    for (const key of RETRO_VARIANTS) {
+      expect(FILTER_PRESETS).toHaveProperty(key);
+    }
+  });
+});
+
+describe('retro variant outputs — dimensions, alpha, and non-identity', () => {
+  const path = require('path');
+  const ROOT = path.resolve(__dirname, '../..');
+  const altDir = path.join(ROOT, 'assets', 'generated', 'alternate');
+  const sharp = require('sharp');
+
+  const RETRO_VARIANTS = ['neon', 'gold', 'terminal-mono', 'amber-terminal', 'monochrome-grid'];
+
+  test.each(RETRO_VARIANTS)('%s variant produces 1024x1024 PNG with alpha', async (variant) => {
+    const filePath = path.join(altDir, variant, 'icon.png');
+    const meta = await sharp(filePath).metadata();
+    expect(meta.width).toBe(1024);
+    expect(meta.height).toBe(1024);
+    expect(meta.hasAlpha).toBe(true);
+    expect(meta.format).toBe('png');
+  });
+
+  test.each(RETRO_VARIANTS)('%s adaptive-icon.png is 1024x1024 with alpha', async (variant) => {
+    const filePath = path.join(altDir, variant, 'adaptive-icon.png');
+    const meta = await sharp(filePath).metadata();
+    expect(meta.width).toBe(1024);
+    expect(meta.height).toBe(1024);
+    expect(meta.hasAlpha).toBe(true);
+  });
+
+  test.each(RETRO_VARIANTS)('%s monochrome-icon.png is 1024x1024 with alpha', async (variant) => {
+    const filePath = path.join(altDir, variant, 'monochrome-icon.png');
+    const meta = await sharp(filePath).metadata();
+    expect(meta.width).toBe(1024);
+    expect(meta.height).toBe(1024);
+    expect(meta.hasAlpha).toBe(true);
+  });
+
+  test.each(RETRO_VARIANTS)('%s output differs from base (not identical)', async (variant) => {
+    const baseFile = path.join(altDir, 'base', 'icon.png');
+    const variantFile = path.join(altDir, variant, 'icon.png');
+    const baseData = require('fs').readFileSync(baseFile);
+    const variantData = require('fs').readFileSync(variantFile);
+    expect(baseData).not.toEqual(variantData);
+  });
+
+  test('each retro variant icon.png differs from the other retro variants', () => {
+    const crypto = require('crypto');
+    const hashes = {};
+    for (const variant of RETRO_VARIANTS) {
+      const filePath = path.join(altDir, variant, 'icon.png');
+      hashes[variant] = crypto.createHash('sha256').update(require('fs').readFileSync(filePath)).digest('hex');
+    }
+    const uniqueHashes = new Set(Object.values(hashes));
+    expect(uniqueHashes.size).toBe(RETRO_VARIANTS.length);
+  });
+});
+
+describe('grayscale variant — grayscale output for colored source', () => {
+  const path = require('path');
+  const ROOT = path.resolve(__dirname, '../..');
+  const altDir = path.join(ROOT, 'assets', 'generated', 'alternate');
+  const sharp = require('sharp');
+
+  test('grayscale/icon.png is 1024x1024 with alpha', async () => {
+    const filePath = path.join(altDir, 'grayscale', 'icon.png');
+    const meta = await sharp(filePath).metadata();
+    expect(meta.width).toBe(1024);
+    expect(meta.height).toBe(1024);
+    expect(meta.hasAlpha).toBe(true);
   });
 });
 

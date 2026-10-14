@@ -177,12 +177,20 @@
     },
     "security": "セキュリティ",
     "appearance": "外観",
+    "styleGroups": {
+      "default": "デフォルト",
+      "pro": "Pro",
+      "referralRewards": "紹介リワード"
+    },
     "style": {
       "basic": "基本",
       "neumorphic": "ニューモーフィズム",
       "neoBrutalist": "ネオブルータリズム",
       "retrofuturistic": "レトロフューチュリスティック",
-      "hint": "基本とネオブルータリズムは無料で使えます。ニューモーフィズムとレトロフューチュリスティックはGitNotēs Proが必要です。"
+      "terminalMono": "ターミナルMono",
+      "crtGreen": "CRTグリーン",
+      "developerDesk": "開発者デスク",
+      "hint": "基本とネオブルータリズムは無料で使えます。ニューモーフィズムとレトロフューチュリスティックはGitNotēs Proが必要です。紹介テーマはGitNotēsを共有すると解除されます。"
     },
     "darkMode": "ダークモード",
     "accentColor": "アクセントカラー",

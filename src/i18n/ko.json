@@ -177,12 +177,20 @@
     },
     "security": "보안",
     "appearance": "모양",
+    "styleGroups": {
+      "default": "기본",
+      "pro": "Pro",
+      "referralRewards": "추천 보상"
+    },
     "style": {
       "basic": "기본",
       "neumorphic": "뉴모피즘",
       "neoBrutalist": "네오브루탈리즘",
       "retrofuturistic": "레트로퓨처리즘",
-      "hint": "기본과 네오브루탈리즘은 무료입니다. 뉴모피즘과 레트로퓨처리즘은 GitNotēs Pro가 필요합니다."
+      "terminalMono": "터미널 Mono",
+      "crtGreen": "CRT 그린",
+      "developerDesk": "개발자 데스크",
+      "hint": "기본과 네오브루탈리즘은 무료입니다. 뉴모피즘과 레트로퓨처리즘은 GitNotēs Pro가 필요합니다. 추천 테마는 GitNotēs를 공유하면 잠금이 해제됩니다."
     },
     "darkMode": "다크 모드",
     "accentColor": "강조 색상",

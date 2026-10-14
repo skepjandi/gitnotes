@@ -240,13 +240,13 @@ describe('FILTER_PRESETS', () => {
     expect(colorInPalette(74, 255, 240, neon.palette)).toBe(true); // #4afff0 cyan
   });
 
-  test('gold preset has amber/cream/brown palette', () => {
+  test('gold preset has golden/ochre palette', () => {
     const gold = FILTER_PRESETS['gold'];
     expect(gold.blockSize).toBe(36);
     expect(gold.palette.length).toBeGreaterThanOrEqual(4);
-    // Signature colors: amber and yellow
-    expect(colorInPalette(184, 105, 0, gold.palette)).toBe(true); // #b86900 amber
-    expect(colorInPalette(245, 183, 0, gold.palette)).toBe(true); // #f5b700 yellow
+    // Signature colors: golden-ochre and yellow
+    expect(colorInPalette(201, 162, 0, gold.palette)).toBe(true); // #c9a200 golden-ochre midtone
+    expect(colorInPalette(245, 183, 0, gold.palette)).toBe(true); // #f5b700 yellow primary
   });
 
   test('terminal-mono preset has green terminal palette', () => {

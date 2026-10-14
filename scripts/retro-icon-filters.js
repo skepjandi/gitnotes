@@ -33,7 +33,7 @@ const { process } = require('bitmapped');
 // Palette color arrays for each preset (hex colors)
 const PALETTES = {
   neon: ['#0a1c5a', '#00c6ff', '#4afff0', '#ff2ad6'],
-  gold: ['#5c2d00', '#b86900', '#f5b700', '#ffe069'],
+  gold: ['#6b4a00', '#c9a200', '#f5b700', '#ffe069'],
   'terminal-mono': ['#003014', '#008a34', '#16ff5a', '#beff91'],
   'amber-terminal': ['#541c00', '#be4800', '#ff8a00', '#ffd65c'],
   'monochrome-grid': ['#232d37', '#556676', '#9baab8', '#e1e8ee'],

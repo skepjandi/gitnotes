@@ -214,13 +214,25 @@ export default function ExploreFileScreen() {
         {!loading && !error && content != null && !isReadOnly && eligibleForPreview && (
           <Pressable
             onPress={() => setMode(mode === 'preview' ? 'edit' : 'preview')}
-            hitSlop={8}
+            hitSlop={6}
             accessibilityRole="button"
             accessibilityLabel={mode === 'preview' ? 'Switch to edit mode' : 'Switch to preview mode'}
             testID="explore-file.mode-toggle"
-            style={{ marginRight: 12 }}
+            style={({ pressed }) => [
+              styles.headerAction,
+              {
+                backgroundColor: colors.accent + '14',
+                borderColor: colors.accent + '44',
+                opacity: pressed ? 0.72 : 1,
+              },
+            ]}
           >
-            <Text style={{ color: colors.accent, fontWeight: '600' }}>
+            <Ionicons
+              name={mode === 'preview' ? 'create-outline' : 'eye-outline'}
+              size={16}
+              color={colors.accent}
+            />
+            <Text style={{ color: colors.accent, fontWeight: '700' }}>
               {mode === 'preview' ? 'Edit' : 'Preview'}
             </Text>
           </Pressable>
@@ -230,14 +242,26 @@ export default function ExploreFileScreen() {
           <>
             <Pressable
               onPress={handleCancel}
-              hitSlop={8}
+              hitSlop={6}
               accessibilityRole="button"
               accessibilityLabel="Cancel editing"
               testID="explore-file.cancel"
               disabled={isSaving}
-              style={{ marginRight: 12 }}
+              style={({ pressed }) => [
+                styles.headerAction,
+                {
+                  backgroundColor: isSaving ? colors.surfaceSecondary : colors.error + '10',
+                  borderColor: isSaving ? colors.border : colors.error + '44',
+                  opacity: pressed && !isSaving ? 0.72 : 1,
+                },
+              ]}
             >
-              <Text style={{ color: isSaving ? colors.textSecondary : colors.error }}>
+              <Ionicons
+                name="close-outline"
+                size={16}
+                color={isSaving ? colors.textSecondary : colors.error}
+              />
+              <Text style={{ color: isSaving ? colors.textSecondary : colors.error, fontWeight: '600' }}>
                 Cancel
               </Text>
             </Pressable>
@@ -248,14 +272,28 @@ export default function ExploreFileScreen() {
               accessibilityLabel="Save changes"
               testID="explore-file.save"
               disabled={isSaving || !isDirty || isCheckingOut}
+              style={({ pressed }) => [
+                styles.headerAction,
+                {
+                  backgroundColor: isSaving || !isDirty || isCheckingOut
+                    ? colors.surfaceSecondary
+                    : colors.accent,
+                  borderColor: isSaving || !isDirty || isCheckingOut
+                    ? colors.border
+                    : colors.accent,
+                  opacity: pressed && !(isSaving || !isDirty || isCheckingOut) ? 0.8 : 1,
+                },
+              ]}
             >
+              <Ionicons
+                name={savedAt ? 'checkmark-circle-outline' : 'save-outline'}
+                size={16}
+                color={isSaving || !isDirty || isCheckingOut ? colors.textSecondary : colors.background}
+              />
               <Text
                 style={{
-                  color:
-                    isSaving || !isDirty || isCheckingOut
-                      ? colors.textSecondary
-                      : colors.accent,
-                  fontWeight: '600',
+                  color: isSaving || !isDirty || isCheckingOut ? colors.textSecondary : colors.background,
+                  fontWeight: '700',
                 }}
               >
                 {isSaving ? 'Saving…' : savedAt ? 'Saved' : 'Save'}
@@ -350,6 +388,19 @@ export default function ExploreFileScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = {
+  headerAction: {
+    minHeight: 38,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    flexDirection: 'row' as const,
+    gap: 5,
+  },
+};
 
 /** Fallback checkout safety using GitBranchCoordinator when outside provider context. */
 function useCheckoutSafetySafe(): { isCheckingOut: boolean } | null {

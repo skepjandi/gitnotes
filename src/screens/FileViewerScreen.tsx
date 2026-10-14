@@ -9,46 +9,14 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { useMarkdown } from 'react-native-marked';
 
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../contexts/ThemeContext';
 import { GitHubService } from '../services/GitHubService';
-import { NeorgContentParser } from '../services/NeorgContentParser';
-import { OrgContentParser } from '../services/OrgContentParser';
-import StructuredRenderer from '../components/StructuredRenderer';
-import CanvasPreview from '../components/CanvasPreview';
+import FileContentRenderer from '../components/FileContentRenderer';
 import { SafeAreaView } from '../components/ui/SafeAreaView';
-import { JsonRenderer } from '../components/JsonRenderer';
 import { HapticService } from '../utils/haptics';
-import { getMarkdownStyles, stripTopMetadata } from '../utils/preview';
-import { useRenderStyle } from '../stores/renderStyleStore';
-
-type Mode = 'markdown' | 'neorg' | 'org' | 'json' | 'code' | 'plain';
-
-const MARKDOWN_EXTS = ['md', 'markdown'];
-const NEORG_EXTS = ['norg'];
-const ORG_EXTS = ['org'];
-const CODE_EXTS = new Set([
-  'ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs',
-  'py', 'rb', 'go', 'rs', 'java', 'kt', 'swift',
-  'c', 'cpp', 'cc', 'h', 'hpp',
-  'cs', 'php', 'scala', 'lua', 'sh', 'bash', 'zsh',
-  'css', 'scss', 'less', 'html', 'htm', 'xml', 'svg',
-  'json', 'yaml', 'yml', 'toml', 'ini', 'conf', 'env',
-  'sql', 'graphql', 'proto', 'dockerfile', 'makefile', 'gitignore',
-]);
-
-function detectMode(filename: string): Mode {
-  const lower = filename.toLowerCase();
-  const ext = lower.split('.').pop() ?? '';
-  if (MARKDOWN_EXTS.includes(ext)) return 'markdown';
-  if (NEORG_EXTS.includes(ext)) return 'neorg';
-  if (ORG_EXTS.includes(ext)) return 'org';
-  if (ext === 'json') return 'json';
-  if (CODE_EXTS.has(ext)) return 'code';
-  return 'plain';
-}
+import { classifyFile } from '../utils/fileLanguage';
 
 function formatBytes(bytes?: number): string {
   if (!bytes || bytes <= 0) return '';
@@ -62,11 +30,6 @@ function formatBytes(bytes?: number): string {
   return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unit]}`;
 }
 
-function MarkdownBody({ value, styles: mdStyles }: { value: string; styles: ReturnType<typeof getMarkdownStyles> }) {
-  const nodes = useMarkdown(value, { styles: mdStyles });
-  return <>{React.Children.toArray(nodes)}</>;
-}
-
 export default function FileViewerScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'FileViewer'>>();
   const route = useRoute<RouteProp<RootStackParamList, 'FileViewer'>>();
@@ -77,7 +40,7 @@ export default function FileViewerScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const fileName = useMemo(() => path.split('/').pop() ?? path, [path]);
-  const mode: Mode = useMemo(() => detectMode(fileName), [fileName]);
+  const classification = useMemo(() => classifyFile(fileName), [fileName]);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,26 +60,20 @@ export default function FileViewerScreen() {
     };
   }, [owner, repo, branch, path]);
 
-  const renderContent = useMemo(() => {
-    if (!content) return '';
-    if (mode === 'markdown') return stripTopMetadata(content, 'markdown');
-    if (mode === 'neorg') return stripTopMetadata(content, 'neorg');
-    if (mode === 'org') return stripTopMetadata(content, 'org');
-    return content;
-  }, [content, mode]);
-
-  const parsedNeorg = useMemo(() => {
-    if (!renderContent) return null;
-    if (mode !== 'neorg' && mode !== 'org') return null;
-    const parser = mode === 'org' ? OrgContentParser : NeorgContentParser;
-    const parsed = parser.parseContent(renderContent);
-    return parsed.success && parsed.blocks ? parsed.blocks : null;
-  }, [renderContent, mode]);
-
-  const markdownOverrides = useRenderStyle('markdown');
-  const markdownStyles = useMemo(
-    () => getMarkdownStyles(colors, isDark, markdownOverrides),
-    [colors, isDark, markdownOverrides],
+  const handleOpenNote = useMemo(
+    () =>
+      (targetPath: string, _fragment?: string): boolean => {
+        const targetTitle = targetPath.split('/').pop() ?? targetPath;
+        navigation.navigate('FileViewer', {
+          owner,
+          repo,
+          branch,
+          path: targetPath,
+          title: targetTitle,
+        });
+        return true;
+      },
+    [navigation, owner, repo, branch],
   );
 
   return (
@@ -137,19 +94,19 @@ export default function FileViewerScreen() {
             {title || fileName}
           </Text>
           <Text className="text-[11px] mt-0.5" style={{ color: colors.textSecondary }} numberOfLines={1}>
-            {[mode.toUpperCase(), formatBytes(size), branch ?? 'main'].filter(Boolean).join(' · ')}
+            {[classification.mode.toUpperCase(), formatBytes(size), branch ?? 'main'].filter(Boolean).join(' · ')}
           </Text>
         </View>
         <View className="p-2 w-10" />
       </View>
 
       {error ? (
-        <View className="flex-1 items-center justify-center p-6 gap-3">
+        <View className="flex-1 items-center justify-center p-6 gap-3" testID="file-viewer.error">
           <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
           <Text className="text-sm text-center" style={{ color: colors.error }}>{error}</Text>
         </View>
       ) : content == null ? (
-        <View className="flex-1 items-center justify-center p-6 gap-3">
+        <View className="flex-1 items-center justify-center p-6 gap-3" testID="file-viewer.loading">
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
@@ -158,37 +115,14 @@ export default function FileViewerScreen() {
           contentContainerClassName="p-4 pb-10"
           showsVerticalScrollIndicator
         >
-          {mode === 'markdown' ? (
-            <MarkdownBody value={renderContent} styles={markdownStyles} />
-          ) : mode === 'json' ? (
-            <JsonRenderer content={renderContent} />
-          ) : (mode === 'neorg' || mode === 'org') && parsedNeorg ? (
-            <StructuredRenderer
-              blocks={parsedNeorg}
-              format={mode === 'org' ? 'org' : 'neorg'}
-              currentNotePath={path}
-              CanvasPreview={CanvasPreview}
-              onOpenNote={(targetPath: string, _fragment?: string) => {
-                const targetTitle = targetPath.split('/').pop() ?? targetPath;
-                navigation.navigate('FileViewer', {
-                  owner,
-                  repo,
-                  branch,
-                  path: targetPath,
-                  title: targetTitle,
-                });
-                return true;
-              }}
-            />
-          ) : (
-            <Text
-              className={mode === 'code' ? 'text-[13px] leading-[18px] font-mono' : 'text-sm leading-5'}
-              style={{ color: colors.text }}
-              selectable
-            >
-              {renderContent}
-            </Text>
-          )}
+          <FileContentRenderer
+            content={content}
+            path={fileName}
+            classification={classification}
+            isDark={isDark}
+            colors={colors}
+            onOpenNote={handleOpenNote}
+          />
         </ScrollView>
       )}
     </SafeAreaView>

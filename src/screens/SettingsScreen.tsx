@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Linking, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { Modal } from '../components/ui';
@@ -76,6 +76,12 @@ import {
 import { AppIconService, type AppIconName } from '../services/AppIconService';
 import RewardCatalogModal from '../components/settings/RewardCatalogModal';
 import { RewardEntitlementService } from '../services/RewardEntitlementService';
+import {
+  isAppIconOptionUnlocked,
+  PRO_APP_ICON_OPTIONS,
+  REFERRAL_APP_ICON_OPTIONS,
+  isReferralAppIconUnlocked,
+} from '../components/settings/referralAppIcons';
 
 // Mirrors GitFsService's MAX_CLONE_RETRIES so a failing repo can't loop the outer flow.
 const MAX_OUTER_CLONE_RETRIES = 1;
@@ -90,6 +96,23 @@ function resolveBackendUrl(): string {
   const configured = process.env.EXPO_PUBLIC_GITNOTES_BACKEND_URL;
   const base = configured ?? WORKER_BASE_URL;
   return base.replace(/\/api\/v1\/?$/, '');
+}
+
+function getAppIconAsset(option: 'neon' | 'grayscale' | 'gold' | 'terminal-mono' | 'amber-terminal' | 'monochrome-grid') {
+  switch (option) {
+    case 'neon':
+      return require('../../assets/generated/alternate/neon/icon.png');
+    case 'grayscale':
+      return require('../../assets/generated/alternate/grayscale/icon.png');
+    case 'gold':
+      return require('../../assets/generated/alternate/gold/icon.png');
+    case 'terminal-mono':
+      return require('../../assets/generated/alternate/terminal-mono/icon.png');
+    case 'amber-terminal':
+      return require('../../assets/generated/alternate/amber-terminal/icon.png');
+    case 'monochrome-grid':
+      return require('../../assets/generated/alternate/monochrome-grid/icon.png');
+  }
 }
 
 type ImportAtAddOutcome = 'imported' | 'cancelled' | 'failed';
@@ -1698,10 +1721,11 @@ export default function SettingsScreen() {
             <Ionicons name="close" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
-        <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 16 }}>
-          {t('settings.appIcon.pickerHint', { defaultValue: 'Choose an alternate app icon' })}
-        </Text>
-        <Group>
+        <ScrollView style={{ maxHeight: 500 }} contentContainerStyle={{ paddingBottom: 8 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 16 }}>
+            {t('settings.appIcon.pickerHint', { defaultValue: 'Choose an alternate app icon' })}
+          </Text>
+          <Group>
           <GroupRow
             testID="settings.button.app-icon.default"
             disabled={appIconLoading}
@@ -1718,60 +1742,93 @@ export default function SettingsScreen() {
               {t('settings.appIcon.default', { defaultValue: 'Default' })}
             </Text>
           </GroupRow>
-          <GroupRow
-            testID="settings.button.app-icon.neon"
-            disabled={appIconLoading}
-            onPress={() => { void handleAppIconSelect('Neon'); }}
-            leading={
-              <Image
-                source={require('../../assets/generated/alternate/neon/icon.png')}
-                style={{ width: 40, height: 40, borderRadius: 8 }}
-              />
-            }
-            trailing={appIcon === 'Neon' ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
-          >
-            <Text style={{ color: appIcon === 'Neon' ? colors.primary : colors.text, fontSize: 16 }}>Neon</Text>
-          </GroupRow>
-          <GroupRow
-            testID="settings.button.app-icon.grayscale"
-            disabled={appIconLoading}
-            onPress={() => { void handleAppIconSelect('Grayscale'); }}
-            leading={
-              <Image
-                source={require('../../assets/generated/alternate/grayscale/icon.png')}
-                style={{ width: 40, height: 40, borderRadius: 8 }}
-              />
-            }
-            trailing={appIcon === 'Grayscale' ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
-          >
-            <Text style={{ color: appIcon === 'Grayscale' ? colors.primary : colors.text, fontSize: 16 }}>Grayscale</Text>
-          </GroupRow>
-          <GroupRow
-            testID="settings.button.app-icon.gold"
-            disabled={appIconLoading}
-            onPress={() => { void handleAppIconSelect('Gold'); }}
-            leading={
-              <Image
-                source={require('../../assets/generated/alternate/gold/icon.png')}
-                style={{ width: 40, height: 40, borderRadius: 8 }}
-              />
-            }
-            trailing={appIcon === 'Gold' ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
-          >
-            <Text style={{ color: appIcon === 'Gold' ? colors.primary : colors.text, fontSize: 16 }}>Gold</Text>
-          </GroupRow>
-        </Group>
-        <TouchableOpacity
-          testID="settings.button.app-icon.reset"
-          disabled={appIconLoading}
-          onPress={() => { void handleAppIconSelect(null); }}
-          className="mt-4 py-3.5 rounded-lg items-center"
-          style={{ backgroundColor: colors.surface }}
-        >
-          <Text style={{ color: colors.text, fontSize: 16 }}>
-            {t('settings.appIcon.reset', { defaultValue: 'Reset to Default' })}
+          <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 16, marginBottom: 8 }}>
+            Pro Icons
           </Text>
-        </TouchableOpacity>
+          {PRO_APP_ICON_OPTIONS.map((option) => {
+            const unlocked = !isProLoading && isAppIconOptionUnlocked(option, isPro, referralProgress);
+            return (
+              <GroupRow
+                key={option.name}
+                testID={`settings.button.app-icon.${option.assetSlug}`}
+                disabled={appIconLoading || isProLoading}
+                onPress={
+                  isProLoading
+                    ? undefined
+                    : unlocked
+                      ? () => { void handleAppIconSelect(option.name); }
+                      : openPaywall
+                }
+                leading={
+                  <Image
+                    source={getAppIconAsset(option.assetSlug)}
+                    style={{ width: 40, height: 40, borderRadius: 8 }}
+                  />
+                }
+                trailing={
+                  unlocked && appIcon === option.name
+                    ? <Ionicons name="checkmark" size={20} color={colors.primary} />
+                    : !unlocked && !isProLoading
+                      ? <Ionicons name="lock-closed" size={18} color={colors.textSecondary} />
+                      : null
+                }
+              >
+                <Text style={{ color: unlocked && appIcon === option.name ? colors.primary : colors.text, fontSize: 16 }}>
+                  {option.label}
+                </Text>
+                {!unlocked && !isProLoading && (
+                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Requires Pro</Text>
+                )}
+              </GroupRow>
+            );
+          })}
+          {REFERRAL_APP_ICON_OPTIONS.length > 0 && (
+            <>
+              <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 16, marginBottom: 8 }}>
+                Referral Rewards
+              </Text>
+              {REFERRAL_APP_ICON_OPTIONS.map((option) => {
+                const unlocked = isReferralAppIconUnlocked(option, referralProgress);
+                return (
+                  <GroupRow
+                    key={option.name}
+                    testID={`settings.button.app-icon.${option.assetSlug}`}
+                    disabled={appIconLoading || !unlocked}
+                    onPress={unlocked ? () => { void handleAppIconSelect(option.name); } : undefined}
+                    leading={
+                      <Image
+                        source={getAppIconAsset(option.assetSlug)}
+                        style={{ width: 40, height: 40, borderRadius: 8 }}
+                      />
+                    }
+                    trailing={unlocked && appIcon === option.name ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
+                  >
+                    <Text style={{ color: unlocked && appIcon === option.name ? colors.primary : colors.text, fontSize: 16 }}>
+                      {option.label}
+                    </Text>
+                    {!unlocked && (
+                      <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
+                        Unlock at {option.milestone} referrals
+                      </Text>
+                    )}
+                  </GroupRow>
+                );
+              })}
+            </>
+          )}
+          </Group>
+          <TouchableOpacity
+            testID="settings.button.app-icon.reset"
+            disabled={appIconLoading}
+            onPress={() => { void handleAppIconSelect(null); }}
+            className="mt-4 py-3.5 rounded-lg items-center"
+            style={{ backgroundColor: colors.surface }}
+          >
+            <Text style={{ color: colors.text, fontSize: 16 }}>
+              {t('settings.appIcon.reset', { defaultValue: 'Reset to Default' })}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </Modal>
 
       <RewardCatalogModal

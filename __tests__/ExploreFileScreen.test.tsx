@@ -171,7 +171,21 @@ jest.mock('@/components/ui/heading', () => {
   };
 });
 
-// ─── helpers ───────────────────────────────────────────────────────────────────
+jest.mock('@/components/FileContentRenderer', () => {
+  const React = require('react');
+  return {
+    __esModule: true,
+    default: ({ testID }: { testID?: string }) =>
+      React.createElement('View', { testID: testID ?? 'file-content-renderer.root' }),
+  };
+});
+
+jest.mock('@/utils/fileLanguage', () => ({
+  classifyFile: (path: string) => {
+    const result = jest.requireActual('@/utils/fileLanguage').classifyFile(path);
+    return result;
+  },
+}));
 
 function setupRoute(repoId: string, path: string) {
   (useRoute as jest.Mock).mockReturnValue({ params: { repoId, path } });
@@ -193,6 +207,7 @@ describe('ExploreFileScreen', () => {
     mockFileExists.mockReturnValue(true);
     mockFileText.mockResolvedValue('Hello world');
     mockServiceUpdate.mockResolvedValue(undefined);
+    mockServiceUpdate.mockClear();
   });
 
   describe('happy path', () => {
@@ -414,8 +429,12 @@ describe('ExploreFileScreen', () => {
   });
 
   describe('checkout blocking', () => {
+    afterEach(() => {
+      const { useCheckoutSafety } = require('@/contexts/CheckoutSafetyContext');
+      (useCheckoutSafety as jest.Mock).mockReturnValue({ isCheckingOut: false });
+    });
+
     it('disables Save button when isCheckingOut is true', async () => {
-      jest.clearAllMocks();
       mockRepositories = [mockRepo];
       mockFileExists.mockReturnValue(true);
       mockFileText.mockResolvedValue('Hello world');
@@ -443,6 +462,302 @@ describe('ExploreFileScreen', () => {
         fireEvent.press(saveButton);
       });
       expect(mockServiceUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('preview/edit mode', () => {
+    it('defaults to edit mode showing the TextInput editor', async () => {
+      setupRoute('repo-1', 'notes/hello.md');
+
+      const { getByTestId } = render(<ExploreFileScreen />);
+
+      const editor = await waitFor(
+        () => getByTestId('explore-file.editor'),
+        { timeout: 3000 },
+      );
+      expect(editor).toBeTruthy();
+    });
+
+    it('shows mode toggle for a markdown file', async () => {
+      setupRoute('repo-1', 'notes/hello.md');
+
+      const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(() => getByTestId('explore-file.root'), { timeout: 3000 });
+
+      const toggle = queryByTestId('explore-file.mode-toggle');
+      expect(toggle).toBeTruthy();
+    });
+
+    it('shows mode toggle for a code file', async () => {
+      setupRoute('repo-1', 'notes/hello.ts');
+
+      const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(() => getByTestId('explore-file.root'), { timeout: 3000 });
+
+      const toggle = queryByTestId('explore-file.mode-toggle');
+      expect(toggle).toBeTruthy();
+    });
+
+    it('shows mode toggle for a json file', async () => {
+      setupRoute('repo-1', 'notes/hello.json');
+
+      const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(() => getByTestId('explore-file.root'), { timeout: 3000 });
+
+      const toggle = queryByTestId('explore-file.mode-toggle');
+      expect(toggle).toBeTruthy();
+    });
+
+    it('does NOT show mode toggle for a plain text file', async () => {
+      setupRoute('repo-1', 'notes/hello.txt');
+
+      const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(() => getByTestId('explore-file.root'), { timeout: 3000 });
+
+      const toggle = queryByTestId('explore-file.mode-toggle');
+      expect(toggle).toBeNull();
+    });
+
+    it('does NOT show mode toggle for a binary file', async () => {
+      setupRoute('repo-1', 'image.png');
+
+      const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(
+        () => getByTestId('explore-file.binary-message'),
+        { timeout: 3000 },
+      );
+
+      const toggle = queryByTestId('explore-file.mode-toggle');
+      expect(toggle).toBeNull();
+    });
+
+    it('does NOT show mode toggle for an LFS pointer file', async () => {
+      setupRoute('repo-1', 'large.txt');
+
+      mockFileText.mockResolvedValue(
+        'version https://git-lfs.github.com/spec/v1\noid sha256:abc123\nsize 123456\n',
+      );
+
+      const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(
+        () => getByTestId('explore-file.lfs-pointer-message'),
+        { timeout: 3000 },
+      );
+
+      const toggle = queryByTestId('explore-file.mode-toggle');
+      expect(toggle).toBeNull();
+    });
+
+    it('toggling to preview shows FileContentRenderer', async () => {
+      setupRoute('repo-1', 'notes/hello.md');
+
+      const { getByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(
+        () => getByTestId('explore-file.editor'),
+        { timeout: 3000 },
+      );
+
+      const toggle = getByTestId('explore-file.mode-toggle');
+      await act(async () => {
+        fireEvent.press(toggle);
+      });
+
+      const preview = await waitFor(
+        () => getByTestId('explore-file.preview-content'),
+        { timeout: 3000 },
+      );
+      expect(preview).toBeTruthy();
+    });
+
+    it('toggling back to edit restores the TextInput editor', async () => {
+      setupRoute('repo-1', 'notes/hello.md');
+
+      const { getByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(
+        () => getByTestId('explore-file.editor'),
+        { timeout: 3000 },
+      );
+
+      const toggle = getByTestId('explore-file.mode-toggle');
+      await act(async () => {
+        fireEvent.press(toggle);
+      });
+
+      await waitFor(
+        () => getByTestId('explore-file.preview-content'),
+        { timeout: 3000 },
+      );
+
+      await act(async () => {
+        fireEvent.press(toggle);
+      });
+
+      const restoredEditor = await waitFor(
+        () => getByTestId('explore-file.editor'),
+        { timeout: 3000 },
+      );
+      expect(restoredEditor).toBeTruthy();
+    });
+
+    it('save and cancel buttons are absent in preview mode', async () => {
+      setupRoute('repo-1', 'notes/hello.md');
+
+      const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 });
+
+      const toggle = getByTestId('explore-file.mode-toggle');
+      await act(async () => {
+        fireEvent.press(toggle);
+      });
+
+      await waitFor(
+        () => getByTestId('explore-file.preview-content'),
+        { timeout: 3000 },
+      );
+
+      expect(queryByTestId('explore-file.save')).toBeNull();
+      expect(queryByTestId('explore-file.cancel')).toBeNull();
+    });
+
+    it('save and cancel buttons are present in edit mode', async () => {
+      setupRoute('repo-1', 'notes/hello.md');
+
+      const { getByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 });
+
+      expect(getByTestId('explore-file.save')).toBeTruthy();
+      expect(getByTestId('explore-file.cancel')).toBeTruthy();
+    });
+
+    it('dirty state is preserved when switching from edit to preview and back', async () => {
+      setupRoute('repo-1', 'notes/hello.md');
+
+      const { getByTestId } = render(<ExploreFileScreen />);
+
+      const editor = await waitFor(
+        () => getByTestId('explore-file.editor'),
+        { timeout: 3000 },
+      );
+
+      const textInput = editor as unknown as TextInput;
+      fireEvent(textInput, 'changeText', 'Dirty content');
+
+      const toggle = getByTestId('explore-file.mode-toggle');
+      await act(async () => {
+        fireEvent.press(toggle);
+      });
+
+      await waitFor(
+        () => getByTestId('explore-file.preview-content'),
+        { timeout: 3000 },
+      );
+
+      await act(async () => {
+        fireEvent.press(toggle);
+      });
+
+      const restoredEditor = await waitFor(
+        () => getByTestId('explore-file.editor'),
+        { timeout: 3000 },
+      );
+      const restoredInput = restoredEditor as unknown as TextInput;
+      expect(restoredInput.props.value).toBe('Dirty content');
+    });
+
+    it('preview mode for markdown file shows markdown renderer testID', async () => {
+      setupRoute('repo-1', 'notes/hello.md');
+
+      const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 });
+
+      const toggle = getByTestId('explore-file.mode-toggle');
+      await act(async () => {
+        fireEvent.press(toggle);
+      });
+
+      await waitFor(
+        () => getByTestId('explore-file.preview-content'),
+        { timeout: 3000 },
+      );
+
+      const rendererRoot = queryByTestId('file-content-renderer.root');
+      expect(rendererRoot).toBeTruthy();
+    });
+
+    it('preview mode for json file shows json renderer testID', async () => {
+      setupRoute('repo-1', 'notes/hello.json');
+
+      const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 });
+
+      const toggle = getByTestId('explore-file.mode-toggle');
+      await act(async () => {
+        fireEvent.press(toggle);
+      });
+
+      await waitFor(
+        () => getByTestId('explore-file.preview-content'),
+        { timeout: 3000 },
+      );
+
+      const rendererRoot = queryByTestId('file-content-renderer.root');
+      expect(rendererRoot).toBeTruthy();
+    });
+
+    it('preview mode for code file shows code renderer testID', async () => {
+      setupRoute('repo-1', 'notes/hello.ts');
+
+      const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 });
+
+      const toggle = getByTestId('explore-file.mode-toggle');
+      await act(async () => {
+        fireEvent.press(toggle);
+      });
+
+      await waitFor(
+        () => getByTestId('explore-file.preview-content'),
+        { timeout: 3000 },
+      );
+
+      const rendererRoot = queryByTestId('file-content-renderer.root');
+      expect(rendererRoot).toBeTruthy();
+    });
+
+    it('mode toggle label is Edit when in preview', async () => {
+      setupRoute('repo-1', 'notes/hello.md');
+
+      const { getByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 });
+
+      const toggle = getByTestId('explore-file.mode-toggle');
+      expect(toggle).toBeTruthy();
+
+      await act(async () => {
+        fireEvent.press(toggle);
+      });
+
+      await waitFor(
+        () => getByTestId('explore-file.preview-content'),
+        { timeout: 3000 },
+      );
+
+      const toggleAgain = getByTestId('explore-file.mode-toggle');
+      expect(toggleAgain).toBeTruthy();
     });
   });
 });

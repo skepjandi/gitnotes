@@ -176,8 +176,6 @@ export default function SettingsScreen() {
   const toggleGithubTools = useAIStore((state) => state.toggleGithubTools);
   const dailyQuotePersonalizationEnabled = useAIStore((state) => state.dailyQuotePersonalizationEnabled);
   const toggleDailyQuotePersonalization = useAIStore((state) => state.toggleDailyQuotePersonalization);
-  const dailyQuoteSourceVisible = useAIStore((state) => state.dailyQuoteSourceVisible);
-  const toggleDailyQuoteSourceVisible = useAIStore((state) => state.toggleDailyQuoteSourceVisible);
   const setActionMode = useAIStore((state) => state.setActionMode);
 
   const [showRepoPickerModal, setShowRepoPickerModal] = useState(false);
@@ -1579,8 +1577,6 @@ export default function SettingsScreen() {
         onToggleGithubTools={() => { void toggleGithubTools(); }}
         dailyQuotePersonalizationEnabled={dailyQuotePersonalizationEnabled}
         onToggleDailyQuotePersonalization={() => { void toggleDailyQuotePersonalization(); }}
-        dailyQuoteSourceVisible={dailyQuoteSourceVisible}
-        onToggleDailyQuoteSourceVisible={() => { void toggleDailyQuoteSourceVisible(); }}
         onOpenModelSelector={() => setShowModelSelector(true)}
         onToggleActionMode={() => { void setActionMode(actionMode === 'auto' ? 'confirm' : 'auto'); }}
         onOpenChatRepoPicker={() => { setShowTemplatesRepoPicker(false); setShowChatRepoPicker(true); }}

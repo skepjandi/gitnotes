@@ -388,10 +388,6 @@
     "clear": "クリア",
     "clearAllSuccess": "すべてのノートが消去されました。",
     "clearAllFailed": "ノートの消去に失敗しました。",
-    "dailyQuoteSource": {
-      "label": "出典を表示",
-      "description": "引用元の書籍・作品を表示"
-    },
     "dailyQuotePersonalization": {
       "label": "AIパーソナライズ",
       "description": "ノートに基づいて名言をパーソナライズ"

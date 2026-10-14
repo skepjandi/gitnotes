@@ -244,8 +244,6 @@ interface TestSettingsContentProps {
   onToggleGithubTools: () => void;
   dailyQuotePersonalizationEnabled: boolean;
   onToggleDailyQuotePersonalization: () => void;
-  dailyQuoteSourceVisible: boolean;
-  onToggleDailyQuoteSourceVisible: () => void;
   isBiometricLockEnabled: boolean;
   isBiometricAvailable: boolean;
   biometricKind: unknown;
@@ -340,8 +338,6 @@ function makeProps(overrides: Partial<TestSettingsContentProps> = {}): TestSetti
     onToggleGithubTools: jest.fn(),
     dailyQuotePersonalizationEnabled: false,
     onToggleDailyQuotePersonalization: jest.fn(),
-    dailyQuoteSourceVisible: false,
-    onToggleDailyQuoteSourceVisible: jest.fn(),
     isBiometricLockEnabled: false,
     isBiometricAvailable: false,
     biometricKind: null,

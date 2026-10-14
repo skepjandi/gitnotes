@@ -389,10 +389,6 @@
     "clear": "Effacer",
     "clearAllSuccess": "Toutes les notes ont été effacées.",
     "clearAllFailed": "Échec de l’effacement des notes.",
-    "dailyQuoteSource": {
-      "label": "Afficher les Sources",
-      "description": "Afficher le livre/l'œuvre d'où provient la citation"
-    },
     "dailyQuotePersonalization": {
       "label": "Personnalisation par l'IA",
       "description": "Personnaliser les citations en fonction de vos notes"

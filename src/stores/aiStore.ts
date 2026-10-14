@@ -45,7 +45,6 @@ interface AIActions {
   toggleAiPersonalization: () => Promise<void>;
   toggleGithubTools: () => Promise<void>;
   toggleDailyQuotePersonalization: () => Promise<void>;
-  toggleDailyQuoteSourceVisible: () => Promise<void>;
 }
 
 const createDefaultProviders = (): AIProviderConfig[] => [
@@ -99,7 +98,7 @@ const createDefaultSettings = (): AISettings => ({
   chatRepoBranch: 'main',
   chatRepoAccountId: null,
   providers: createDefaultProviders(),
-  dailyQuoteEnabled: true,
+  dailyQuoteEnabled: false,
   aiPersonalizationEnabled: false,
   githubToolsEnabled: false,
   dailyQuotePersonalizationEnabled: false,
@@ -354,11 +353,6 @@ export const useAIStore = create<AIState & AIActions>()((set, get) => ({
 
   toggleDailyQuotePersonalization: async () => {
     set((state) => ({ dailyQuotePersonalizationEnabled: !state.dailyQuotePersonalizationEnabled, error: null }));
-    await get().persistSettings();
-  },
-
-  toggleDailyQuoteSourceVisible: async () => {
-    set((state) => ({ dailyQuoteSourceVisible: !state.dailyQuoteSourceVisible, error: null }));
     await get().persistSettings();
   },
 

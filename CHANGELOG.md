@@ -8,6 +8,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-10-14
+
+### fix(daily-quote): disable daily quote by default and remove source-visibility toggle
+
+**What:** New installs had the Daily Quote feature enabled by default, and a Show Sources toggle existed in Settings.
+
+**Fix:** Changed the fresh-install default for `dailyQuoteEnabled` from `true` to `false`. Removed the Show Sources settings row and its toggle action while preserving `dailyQuoteSourceVisible` in the persisted state for backwards compatibility. `DailyQuoteCard` now always shows `quote.source` when present. Removed `dailyQuoteSource` translation entries from all locale files.
+
 ## 2026-10-13
 
 ### feat(referral): add development progress override

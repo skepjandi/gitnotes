@@ -514,10 +514,6 @@
     "pullPhaseTemplates": "Importing templates…",
     "repoPathPlaceholder": "owner/repo",
     "tokenPlaceholder": "github_pat_xxxxxxxxxxxxxxxxxxxx",
-    "dailyQuoteSource": {
-      "label": "Show Sources",
-      "description": "Show the book/work the quote is from"
-    },
     "dailyQuotePersonalization": {
       "label": "AI Personalization",
       "description": "Personalize quotes based on your notes"

@@ -212,8 +212,6 @@ function makeProps(overrides: Record<string, unknown> = {}): Record<string, unkn
     onToggleGithubTools: jest.fn(),
     dailyQuotePersonalizationEnabled: false,
     onToggleDailyQuotePersonalization: jest.fn(),
-    dailyQuoteSourceVisible: false,
-    onToggleDailyQuoteSourceVisible: jest.fn(),
     isBiometricLockEnabled: false,
     isBiometricAvailable: false,
     biometricKind: null,

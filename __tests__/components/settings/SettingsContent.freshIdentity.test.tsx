@@ -217,8 +217,6 @@ function makeProps(overrides: Partial<React.ComponentProps<typeof SettingsConten
     onToggleGithubTools: jest.fn(),
     dailyQuotePersonalizationEnabled: false,
     onToggleDailyQuotePersonalization: jest.fn(),
-    dailyQuoteSourceVisible: false,
-    onToggleDailyQuoteSourceVisible: jest.fn(),
     isBiometricLockEnabled: false,
     isBiometricAvailable: false,
     biometricKind: null,

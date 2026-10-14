@@ -389,10 +389,6 @@
     "clear": "Leeren",
     "clearAllSuccess": "Alle Notizen wurden gelöscht.",
     "clearAllFailed": "Notizen konnten nicht gelöscht werden.",
-    "dailyQuoteSource": {
-      "label": "Quellen anzeigen",
-      "description": "Das Buch/die Quelle der Zitate anzeigen"
-    },
     "dailyQuotePersonalization": {
       "label": "KI-Personalisierung",
       "description": "Zitate basierend auf deinen Notizen personalisieren"

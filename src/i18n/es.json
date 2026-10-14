@@ -389,10 +389,6 @@
     "clear": "Limpiar",
     "clearAllSuccess": "Todas las notas se han eliminado.",
     "clearAllFailed": "No se pudieron eliminar las notas.",
-    "dailyQuoteSource": {
-      "label": "Mostrar Fuentes",
-      "description": "Mostrar el libro/obra de donde proviene la cita"
-    },
     "dailyQuotePersonalization": {
       "label": "Personalización con IA",
       "description": "Personalizar citas según tus notas"

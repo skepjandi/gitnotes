@@ -49,6 +49,8 @@ export function CodeBlock({ code, language, isDark }: CodeBlockProps) {
   };
 
   const plainTextColor = themeColors.plain;
+  const lineNumberColor = isDark ? '#475569' : '#94a3b8';
+  const lineNumberGutterColor = isDark ? '#1e293b' : '#e2e8f0';
 
   const renderCode = () => {
     if (oversized) {
@@ -76,7 +78,8 @@ export function CodeBlock({ code, language, isDark }: CodeBlockProps) {
       return null;
     }
 
-    const lineNumberWidth = String(lineCount).length * 10 + 16;
+    const digitWidth = 10;
+    const lineNumberWidth = String(lineCount).length * digitWidth + 12;
     const lineElements: React.ReactNode[] = [];
 
     for (let i = 0; i < lines.length; i++) {
@@ -85,7 +88,7 @@ export function CodeBlock({ code, language, isDark }: CodeBlockProps) {
           key={i}
           style={[
             styles.lineNumberText,
-            { color: plainTextColor, width: lineNumberWidth },
+            { color: lineNumberColor, width: lineNumberWidth },
           ]}
           testID={i === 0 ? 'code-block-line-number-1' : undefined}
         >
@@ -101,7 +104,20 @@ export function CodeBlock({ code, language, isDark }: CodeBlockProps) {
       }
     }
 
-    return <View style={[styles.lineNumbers, { width: lineNumberWidth }]}>{lineElements}</View>;
+    return (
+      <View
+        style={[
+          styles.lineNumbers,
+          {
+            width: lineNumberWidth,
+            backgroundColor: lineNumberGutterColor,
+            borderRightColor: isDark ? '#334155' : '#cbd5e1',
+          },
+        ]}
+      >
+        {lineElements}
+      </View>
+    );
   };
 
   return (
@@ -109,18 +125,47 @@ export function CodeBlock({ code, language, isDark }: CodeBlockProps) {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           {language ? (
-            <Text style={[styles.languageLabel, { color: isDark ? '#cbd5e1' : '#475569' }]}>
-              {oversized ? `${language.toUpperCase()} (LARGE FILE)` : language.toUpperCase()}
+            <Text
+              style={[
+                styles.languageLabel,
+                { color: isDark ? '#94a3b8' : '#64748b' },
+              ]}
+              numberOfLines={1}
+            >
+              {oversized ? `${language.toUpperCase()} \u00B7 LARGE FILE` : language.toUpperCase()}
             </Text>
           ) : oversized ? (
-            <Text style={[styles.languageLabel, { color: isDark ? '#cbd5e1' : '#475569' }]}>
+            <Text style={[styles.languageLabel, { color: isDark ? '#94a3b8' : '#64748b' }]}>
               LARGE FILE
             </Text>
           ) : null}
         </View>
 
-        <Pressable testID="code-block.button.copy" accessibilityRole="button" accessibilityLabel="Copy" onPress={handleCopy} style={styles.copyButton}>
-          <Text style={[styles.copyText, { color: isDark ? '#93c5fd' : '#2563eb' }]}>{copied ? 'Copied!' : 'Copy'}</Text>
+        <Pressable
+          testID="code-block.button.copy"
+          accessibilityRole="button"
+          accessibilityLabel={copied ? 'Copied to clipboard' : 'Copy code to clipboard'}
+          onPress={handleCopy}
+          style={({ pressed }) => [
+            styles.copyButton,
+            {
+              backgroundColor: copied
+                ? isDark ? '#166534' : '#dcfce7'
+                : pressed
+                  ? isDark ? '#1e293b' : '#f1f5f9'
+                  : 'transparent',
+              opacity: pressed && !copied ? 0.72 : 1,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.copyText,
+              { color: copied ? (isDark ? '#4ade80' : '#16a34a') : (isDark ? '#60a5fa' : '#2563eb') },
+            ]}
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </Text>
         </Pressable>
       </View>
 
@@ -136,13 +181,13 @@ export default CodeBlock;
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     overflow: 'hidden',
   },
   containerLight: {
     backgroundColor: '#f8fafc',
-    borderColor: '#dbe4f0',
+    borderColor: '#e2e8f0',
   },
   containerDark: {
     backgroundColor: '#0f172a',
@@ -152,33 +197,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'transparent',
   },
   headerLeft: {
     flex: 1,
+    marginRight: 8,
   },
   languageLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.6,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.8,
   },
   copyButton: {
-    paddingHorizontal: 4,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    minWidth: 52,
+    alignItems: 'center',
   },
   copyText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   scrollView: {
     maxWidth: '100%',
   },
   scrollContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-    paddingTop: 4,
+    paddingHorizontal: 10,
+    paddingBottom: 10,
+    paddingTop: 2,
     flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   codeContainer: {
     flexDirection: 'row',
@@ -190,14 +242,13 @@ const styles = StyleSheet.create({
   },
   lineNumbers: {
     flexDirection: 'column',
-    paddingRight: 12,
+    paddingRight: 10,
     borderRightWidth: 1,
-    borderRightColor: 'rgba(128, 128, 128, 0.2)',
-    marginRight: 12,
+    marginRight: 10,
   },
   lineNumberText: {
     fontFamily: 'Menlo',
-    fontSize: 13,
+    fontSize: 12,
     lineHeight: 20,
     textAlign: 'right',
   },

@@ -37,6 +37,11 @@ import { GIT_HOST_LABELS } from '../../services/git/GitHost';
 import { useTokens } from '../../contexts/ThemeContext';
 import type { AppIconName } from '../../services/AppIconService';
 import type { ThemeStyle } from '../../theme/tokens';
+import {
+  DEFAULT_STYLE_OPTIONS,
+  PRO_STYLE_OPTIONS,
+  REFERRAL_STYLE_OPTIONS,
+} from './styleOptions';
 
 type ThemeColors = {
   background: string;
@@ -446,131 +451,92 @@ export function SettingsContent(props: SettingsContentProps) {
           <Text style={[styles.settingLabel, { color: colors.text }]}>Themes</Text>
         </GroupRow>
         <View style={!themesExpanded ? { display: 'none' } : undefined}>
-        <GroupRow
-          testID="settings.option.style.basic"
-          onPress={() => { HapticService.selection(); setStyle('flat'); }}
-          accessibilityRole="button"
-          accessibilityLabel={t('settings.style.basic')}
-          trailing={
-            uiStyle === 'flat' ? (
-              <Ionicons name="checkmark" size={18} color={colors.accent} />
-            ) : null
-          }
-        >
-          <Text style={[styles.settingLabel, { color: colors.text }]}>{t('settings.style.basic')}</Text>
-        </GroupRow>
-        <GroupRow
-          testID="settings.option.style.neumorphic"
-          onPress={isPro ? () => { HapticService.selection(); setStyle('neumorphic'); } : () => promptProUpgrade(t, onOpenPaywall)}
-          accessibilityRole="button"
-          accessibilityLabel={t('settings.style.neumorphic')}
-          trailing={
-            <View className="flex-row items-center gap-2">
-              {uiStyle === 'neumorphic' ? (
-                <Ionicons name="checkmark" size={18} color={colors.accent} />
-              ) : !isPro ? (
-                <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
-              ) : null}
-            </View>
-          }
-        >
-          <Text style={[styles.settingLabel, { color: colors.text }]}>{t('settings.style.neumorphic')}</Text>
-        </GroupRow>
-        <GroupRow
-          testID="settings.option.style.neo-brutalist"
-          onPress={() => { HapticService.selection(); setStyle('neo-brutalist'); }}
-          accessibilityRole="button"
-          accessibilityLabel={t('settings.style.neoBrutalist')}
-          trailing={
-            <View className="flex-row items-center gap-2">
-              {uiStyle === 'neo-brutalist' ? (
-                <Ionicons name="checkmark" size={18} color={colors.accent} />
-              ) : null}
-            </View>
-          }
-        >
-          <Text style={[styles.settingLabel, { color: colors.text }]}>{t('settings.style.neoBrutalist')}</Text>
-        </GroupRow>
-        <GroupRow
-          testID="settings.option.style.retrofuturistic"
-          onPress={isPro ? () => { HapticService.selection(); setStyle('retrofuturistic'); } : () => promptProUpgrade(t, onOpenPaywall)}
-          accessibilityRole="button"
-          accessibilityLabel={t('settings.style.retrofuturistic')}
-          trailing={
-            <View className="flex-row items-center gap-2">
-              {uiStyle === 'retrofuturistic' ? (
-                <Ionicons name="checkmark" size={18} color={colors.accent} />
-              ) : !isPro ? (
-                <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
-              ) : null}
-            </View>
-          }
-        >
-          <Text style={[styles.settingLabel, { color: colors.text }]}>{t('settings.style.retrofuturistic')}</Text>
-        </GroupRow>
-        <GroupRow
-          testID="settings.option.style.terminal-mono"
-          onPress={
-            RewardEntitlementService.isUnlocked('terminal-mono-theme')
-              ? () => { HapticService.selection(); setStyle('terminal-mono'); }
-              : onOpenRewardCatalog
-          }
-          accessibilityRole="button"
-          accessibilityLabel="Terminal Mono"
-          trailing={
-            <View className="flex-row items-center gap-2">
-              {uiStyle === 'terminal-mono' ? (
-                <Ionicons name="checkmark" size={18} color={colors.accent} />
-              ) : !RewardEntitlementService.isUnlocked('terminal-mono-theme') ? (
-                <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
-              ) : null}
-            </View>
-          }
-        >
-          <Text style={[styles.settingLabel, { color: colors.text }]}>Terminal Mono</Text>
-        </GroupRow>
-        <GroupRow
-          testID="settings.option.style.crt-green"
-          onPress={
-            RewardEntitlementService.isUnlocked('crt-green-theme')
-              ? () => { HapticService.selection(); setStyle('crt-green'); }
-              : onOpenRewardCatalog
-          }
-          accessibilityRole="button"
-          accessibilityLabel="CRT Green"
-          trailing={
-            <View className="flex-row items-center gap-2">
-              {uiStyle === 'crt-green' ? (
-                <Ionicons name="checkmark" size={18} color={colors.accent} />
-              ) : !RewardEntitlementService.isUnlocked('crt-green-theme') ? (
-                <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
-              ) : null}
-            </View>
-          }
-        >
-          <Text style={[styles.settingLabel, { color: colors.text }]}>CRT Green</Text>
-        </GroupRow>
-        <GroupRow
-          testID="settings.option.style.developer-desk"
-          onPress={
-            RewardEntitlementService.isUnlocked('developer-desk-theme')
-              ? () => { HapticService.selection(); setStyle('developer-desk'); }
-              : onOpenRewardCatalog
-          }
-          accessibilityRole="button"
-          accessibilityLabel="Developer Desk"
-          trailing={
-            <View className="flex-row items-center gap-2">
-              {uiStyle === 'developer-desk' ? (
-                <Ionicons name="checkmark" size={18} color={colors.accent} />
-              ) : !RewardEntitlementService.isUnlocked('developer-desk-theme') ? (
-                <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
-              ) : null}
-            </View>
-          }
-        >
-          <Text style={[styles.settingLabel, { color: colors.text }]}>Developer Desk</Text>
-        </GroupRow>
+          {/* Default styles */}
+          <Text
+            testID="settings.heading.style.default"
+            className="text-xs font-semibold uppercase tracking-wide px-4 pt-3 pb-1"
+            style={{ color: colors.textSecondary }}
+          >
+            {t('settings.styleGroups.default')}
+          </Text>
+          {DEFAULT_STYLE_OPTIONS.map((option) => (
+            <GroupRow
+              key={option.name}
+              testID={option.testID}
+              onPress={() => { HapticService.selection(); setStyle(option.name); }}
+              accessibilityRole="button"
+              accessibilityLabel={t(option.labelKey)}
+              trailing={
+                uiStyle === option.name ? (
+                  <Ionicons name="checkmark" size={18} color={colors.accent} />
+                ) : null
+              }
+            >
+              <Text style={[styles.settingLabel, { color: colors.text }]}>{t(option.labelKey)}</Text>
+            </GroupRow>
+          ))}
+
+          {/* Pro styles */}
+          <Text
+            testID="settings.heading.style.pro"
+            className="text-xs font-semibold uppercase tracking-wide px-4 pt-3 pb-1"
+            style={{ color: colors.textSecondary }}
+          >
+            {t('settings.styleGroups.pro')}
+          </Text>
+          {PRO_STYLE_OPTIONS.map((option) => (
+            <GroupRow
+              key={option.name}
+              testID={option.testID}
+              onPress={isPro ? () => { HapticService.selection(); setStyle(option.name); } : () => promptProUpgrade(t, onOpenPaywall)}
+              accessibilityRole="button"
+              accessibilityLabel={t(option.labelKey)}
+              trailing={
+                <View className="flex-row items-center gap-2">
+                  {uiStyle === option.name ? (
+                    <Ionicons name="checkmark" size={18} color={colors.accent} />
+                  ) : !isPro ? (
+                    <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
+                  ) : null}
+                </View>
+              }
+            >
+              <Text style={[styles.settingLabel, { color: colors.text }]}>{t(option.labelKey)}</Text>
+            </GroupRow>
+          ))}
+
+          {/* Referral Rewards styles */}
+          <Text
+            testID="settings.heading.style.referral-rewards"
+            className="text-xs font-semibold uppercase tracking-wide px-4 pt-3 pb-1"
+            style={{ color: colors.textSecondary }}
+          >
+            {t('settings.styleGroups.referralRewards')}
+          </Text>
+          {REFERRAL_STYLE_OPTIONS.map((option) => (
+            <GroupRow
+              key={option.name}
+              testID={option.testID}
+              onPress={
+                RewardEntitlementService.isUnlocked(option.rewardKey)
+                  ? () => { HapticService.selection(); setStyle(option.name); }
+                  : onOpenRewardCatalog
+              }
+              accessibilityRole="button"
+              accessibilityLabel={t(option.labelKey)}
+              trailing={
+                <View className="flex-row items-center gap-2">
+                  {uiStyle === option.name ? (
+                    <Ionicons name="checkmark" size={18} color={colors.accent} />
+                  ) : !RewardEntitlementService.isUnlocked(option.rewardKey) ? (
+                    <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
+                  ) : null}
+                </View>
+              }
+            >
+              <Text style={[styles.settingLabel, { color: colors.text }]}>{t(option.labelKey)}</Text>
+            </GroupRow>
+          ))}
         </View>
         <GroupRow
           trailing={

@@ -177,12 +177,20 @@
     },
     "security": "Seguridad",
     "appearance": "Apariencia",
+    "styleGroups": {
+      "default": "Predeterminado",
+      "pro": "Pro",
+      "referralRewards": "Recompensas de referido"
+    },
     "style": {
       "basic": "Básico",
       "neumorphic": "Neumórfico",
       "neoBrutalist": "Neo-Brutalista",
       "retrofuturistic": "Rétrofuturista",
-      "hint": "Básico y Neo-Brutalista son gratis. Neumórfico y Rétrofuturista requieren GitNotēs Pro."
+      "terminalMono": "Terminal Mono",
+      "crtGreen": "CRT Verde",
+      "developerDesk": "Escritorio Desarrollador",
+      "hint": "Básico y Neo-Brutalista son gratis. Neumórfico y Rétrofuturista requieren GitNotēs Pro. Los temas de referido se desbloquean al compartir GitNotēs."
     },
     "darkMode": "Modo oscuro",
     "accentColor": "Color de acento",

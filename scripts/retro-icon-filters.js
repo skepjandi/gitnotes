@@ -33,27 +33,66 @@ const { process } = require('bitmapped');
 // Palette color arrays for each preset (hex colors)
 const PALETTES = {
   neon: [
-    '#00ffff', '#ff00ff', '#ff66ff', '#66ffff',
-    '#330066', '#0066ff', '#00ff66', '#ffff00',
-    '#ff0066', '#6600ff', '#00ffcc', '#ff6600',
+    '#00ffff',
+    '#ff00ff',
+    '#ff66ff',
+    '#66ffff',
+    '#330066',
+    '#0066ff',
+    '#00ff66',
+    '#ffff00',
+    '#ff0066',
+    '#6600ff',
+    '#00ffcc',
+    '#ff6600',
   ],
   gold: [
-    '#ffcc00', '#ff9900', '#ff6600', '#cc9900',
-    '#ffcc33', '#ffcc66', '#996600', '#cc6600',
-    '#ff9933', '#ffcc99', '#996633', '#cc9966',
+    '#ffcc00',
+    '#ff9900',
+    '#ff6600',
+    '#cc9900',
+    '#ffcc33',
+    '#ffcc66',
+    '#996600',
+    '#cc6600',
+    '#ff9933',
+    '#ffcc99',
+    '#996633',
+    '#cc9966',
   ],
   'terminal-mono': [
-    '#00ff00', '#33ff33', '#66ff66', '#99ff99',
-    '#00cc00', '#33cc33', '#00ff33', '#00cc33',
+    '#00ff00',
+    '#33ff33',
+    '#66ff66',
+    '#99ff99',
+    '#00cc00',
+    '#33cc33',
+    '#00ff33',
+    '#00cc33',
   ],
   'amber-terminal': [
-    '#ffbf00', '#ffaa00', '#ff9500', '#ff8000',
-    '#ffcc33', '#ffd666', '#ffb300', '#ff9900',
-    '#ffad33', '#ffc266', '#cc8800', '#ffbb00',
+    '#ffbf00',
+    '#ffaa00',
+    '#ff9500',
+    '#ff8000',
+    '#ffcc33',
+    '#ffd666',
+    '#ffb300',
+    '#ff9900',
+    '#ffad33',
+    '#ffc266',
+    '#cc8800',
+    '#ffbb00',
   ],
   'monochrome-grid': [
-    '#c0c0c0', '#a0a0a0', '#808080', '#606060',
-    '#404040', '#e0e0e0', '#d0d0d0', '#b0b0b0',
+    '#c0c0c0',
+    '#a0a0a0',
+    '#808080',
+    '#606060',
+    '#404040',
+    '#e0e0e0',
+    '#d0d0d0',
+    '#b0b0b0',
   ],
 };
 
@@ -65,9 +104,13 @@ const PALETTES = {
 function paletteToRgb(hexPalette) {
   return hexPalette.map((hex) => {
     const clean = hex.replace('#', '');
-    const full = clean.length === 3
-      ? clean.split('').map((c) => c + c).join('')
-      : clean;
+    const full =
+      clean.length === 3
+        ? clean
+            .split('')
+            .map((c) => c + c)
+            .join('')
+        : clean;
     return [
       parseInt(full.slice(0, 2), 16),
       parseInt(full.slice(2, 4), 16),
@@ -208,7 +251,9 @@ function applyRetroFilter(imageData, preset) {
 
   // Verify ImageData is available (either global or @napi-rs/canvas)
   if (typeof globalThis.ImageData === 'undefined' && !ImageDataClass) {
-    throw new Error('ImageData is not available. Ensure @napi-rs/canvas is installed or polyfill ImageData globally.');
+    throw new Error(
+      'ImageData is not available. Ensure @napi-rs/canvas is installed or polyfill ImageData globally.',
+    );
   }
 
   // Store original alpha channel for transparent pixel preservation

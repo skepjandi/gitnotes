@@ -14,6 +14,9 @@ const TEST_FILES = [
   'icon.woff2',
   'Makefile',
   'package.json',
+  'test.norg',
+  'tasks.org',
+  'document.pdf',
 ];
 
 jest.mock('@/components/explore/exploreShared', () => {
@@ -131,6 +134,8 @@ describe('FilesSection row navigation', () => {
       { path: 'guide.txt', desc: 'text' },
       { path: 'Makefile', desc: 'extensionless' },
       { path: 'package.json', desc: 'json' },
+      { path: 'test.norg', desc: 'neorg' },
+      { path: 'tasks.org', desc: 'org' },
     ];
 
     it.each(cases)('navigates to ExploreFile for $desc ($path)', async ({ path }) => {
@@ -151,9 +156,10 @@ describe('FilesSection row navigation', () => {
       { path: 'logo.png', desc: 'PNG' },
       { path: 'archive.tar.gz', desc: 'archive' },
       { path: 'icon.woff2', desc: 'font' },
+      { path: 'document.pdf', desc: 'PDF' },
     ];
 
-    it.each(cases)('navigates to ExploreFile for $desc ($path) with binary badge', async ({ path }) => {
+    it.each(cases)('shows binary badge for $desc ($path)', async ({ path }) => {
       expect(isBinaryPath(path)).toBe(true);
       const { getByTestId, getAllByText } = render(
         <FilesSection repo={mockRepo} active={true} onChanged={jest.fn()} status={null} />
@@ -161,9 +167,32 @@ describe('FilesSection row navigation', () => {
       await waitFor(() => expect(getByTestId(`explore.file.${path}`)).toBeTruthy());
       const badges = getAllByText('binary');
       expect(badges.length).toBeGreaterThan(0);
-      fireEvent.press(getByTestId(`explore.file.${path}`));
+    });
+
+    it('PDF navigates to PdfViewer (not ExploreFile) on row tap', async () => {
+      const { getByTestId } = render(
+        <FilesSection repo={mockRepo} active={true} onChanged={jest.fn()} status={null} />
+      );
+      await waitFor(() => expect(getByTestId('explore.file.document.pdf')).toBeTruthy());
+      fireEvent.press(getByTestId('explore.file.document.pdf'));
       expect(mockNavigate).toHaveBeenCalledTimes(1);
-      expect(mockNavigate).toHaveBeenCalledWith('ExploreFile', { repoId: mockRepo.id, path });
+      expect(mockNavigate).toHaveBeenCalledWith('PdfViewer', {
+        owner: 'owner',
+        repo: 'test-repo',
+        branch: 'main',
+        path: 'document.pdf',
+        title: 'document.pdf',
+      });
+    });
+
+    it('non-PDF binary navigates to ExploreFile on row tap', async () => {
+      const { getByTestId } = render(
+        <FilesSection repo={mockRepo} active={true} onChanged={jest.fn()} status={null} />
+      );
+      await waitFor(() => expect(getByTestId('explore.file.screenshot.jpg')).toBeTruthy());
+      fireEvent.press(getByTestId('explore.file.screenshot.jpg'));
+      expect(mockNavigate).toHaveBeenCalledTimes(1);
+      expect(mockNavigate).toHaveBeenCalledWith('ExploreFile', { repoId: mockRepo.id, path: 'screenshot.jpg' });
     });
   });
 

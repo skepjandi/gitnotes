@@ -233,13 +233,49 @@ The canonical route param types are in `src/navigation/types.ts`:
 
 ### ExploreFileScreen
 
-**Purpose:** View and edit a text file from the local working tree. Binary files and LFS pointer files are read-only. Text files are editable as plain text via a multiline editor.
+**Purpose:** View and edit a file from the local working tree.
 
 **Route params:** `{ repoId: string; path: string }`
 
-**Save behavior:** Save writes raw UTF-8 content directly to the working tree without staging, committing, or pushing. The file appears as an unstaged modification in the Git workspace. User reviews, stages, commits, and pushes from the existing Git workspace.
-
 **Navigation:** Tapped from `ExploreScreen` file tree.
+
+**Preview and Edit modes:** Eligible text files show a Preview/Edit toggle in the header. Preview renders the file with a format-appropriate viewer; Edit exposes a plain-text multiline editor.
+
+**Eligible files:** Markdown (`.md`, `.markdown`), Neorg (`.norg`), Org (`.org`), JSON (`.json`), and code files with recognized extensions (TypeScript, JavaScript, Python, Go, Rust, Swift, Java, Kotlin, C, C++, C#, Ruby, PHP, Lua, Shell, CSS, SCSS, LESS, HTML, XML, SVG, SQL, GraphQL, Protobuf, TOML, INI, YAML, Dockerfile, Makefile, `.dockerignore`, `.gitignore`, and others). Files with no recognized extension fall back to plain selectable text.
+
+**Read-only files:**
+- Binary files (images, archives, etc.) — shown with a "Binary file" message, no preview or edit control.
+- LFS pointer files — shown with an "LFS pointer" message, no preview or edit control.
+
+**Supported renderers:**
+- Markdown → `react-native-marked` with frontmatter stripped.
+- Neorg → `NeorgContentParser` + `StructuredRenderer`; wiki-link navigation preserved.
+- Org → `OrgContentParser` + `StructuredRenderer`; wiki-link navigation preserved.
+- JSON → `JsonRenderer` with formatted tree view.
+- Code → regex tokenizer with syntax colors, line numbers, copy action, and theme-aware styling. Files larger than 256 KiB of UTF-8 content bypass tokenization and render as selectable plain text in Preview mode; Edit mode remains available for saving changes.
+- Plain/unknown → selectable `Text` with no tokenization.
+
+**Save behavior:** Save writes raw UTF-8 content directly to the working tree via `WorkingTreeDocumentService.update()` without staging, committing, or pushing. The file appears as an unstaged modification in the Git workspace. User reviews, stages, commits, and pushes from the existing Git workspace. The `WorkingTreeDocumentService` 5 MiB write guard is unchanged.
+
+**No LSP:** This screen does not include a language server, LSP client, autocomplete, diagnostics, hover information, go-to-definition, references, rename, or formatting. The `FileLanguage.language` field is a stable forward reference for a future LSP service descriptor but no LSP behavior is wired.
+
+**Controls:** Back button (top-left), Preview/Edit toggle (top-right, when eligible), Cancel and Save buttons (visible in Edit mode only, top-right). Dirty state triggers a discard confirmation before navigating away. Saving while a branch checkout is in progress is blocked.
+
+---
+
+### FileViewerScreen
+
+**Purpose:** View a file from a remote GitHub repository (read-only). Content is fetched via `GitHubService.getFileContent()` and rendered with the shared `FileContentRenderer`. No editing, staging, or commit operations are available.
+
+**Route params:** `{ owner: string; repo: string; branch?: string; path: string; title?: string; size?: number }`
+
+**Navigation:** A remote file viewer accessible from GitHub browsing flows. Wiki-links inside rendered Neorg/Org content navigate to another `FileViewerScreen` instance. (This is distinct from `ExploreFileScreen` which handles local working-tree files; `ExploreScreen` Files section routes local files to `ExploreFile` and PDFs to `PdfViewer`.)
+
+**Supported renderers (same as `ExploreFileScreen` preview):** Markdown (`react-native-marked`), Neorg (`NeorgContentParser` + `StructuredRenderer` with wiki-link navigation), Org (`OrgContentParser` + `StructuredRenderer` with wiki-link navigation), JSON (`JsonRenderer`), code (regex tokenizer with syntax colors and line numbers), and plain selectable text for unknown or oversized content.
+
+**Read-only:** No Preview/Edit toggle, no save button, no mutation on row tap. Navigating away is instant with no discard prompt.
+
+**No LSP:** No language server, autocomplete, diagnostics, or code intelligence. Same `FileLanguage.language` forward reference as `ExploreFileScreen` with no LSP wiring.
 
 ---
 
@@ -343,14 +379,13 @@ When a non-Pro user taps a Pro-locked style (Neumorphic or Retrofuturistic), `pr
 
 ---
 
-### ImageViewerScreen / FileViewerScreen / PdfViewerScreen / VideoViewerScreen
+### ImageViewerScreen / PdfViewerScreen / VideoViewerScreen
 
 **Purpose:** Full-screen viewer for attachments.
 
 **Supported formats:**
 - Images: JPEG, PNG, GIF, WebP, HEIC
-- Files: generic file preview
-- PDF: multi-page PDF renderer
+- PDF: multi-page PDF renderer (also reached from `ExploreScreen` Files section for PDF files)
 - Video: MP4, MOV (native playback)
 
 ---

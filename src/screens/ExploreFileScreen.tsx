@@ -11,13 +11,15 @@ import { Heading } from '@/components/ui/heading';
 import { GitFsService } from '@/services/git/GitFsService';
 import { isBinaryPath } from '@/components/explore/exploreShared';
 import { useRepoStore } from '@/stores/repoStore';
-import { useTokens } from '@/contexts/ThemeContext';
+import { useTokens, useTheme } from '@/contexts/ThemeContext';
 import type { RootStackParamList } from '@/navigation/types';
 import { parseLfsPointer } from '@/services/git/lfs';
 import { WorkingTreeDocumentService, workingTreeDocument } from '@/services/documents/WorkingTreeDocumentService';
 import { useCheckoutSafety } from '@/contexts/CheckoutSafetyContext';
 import { GitBranchCoordinator } from '@/services/git/GitBranchCoordinator';
 import { subscribeGitContentRefresh } from '@/hooks/useGitRefreshEvent';
+import FileContentRenderer from '@/components/FileContentRenderer';
+import { classifyFile } from '@/utils/fileLanguage';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'ExploreFile'>;
@@ -67,6 +69,17 @@ export default function ExploreFileScreen() {
 
   const isReadOnly = isBinary || isLfsPointer;
 
+  const [mode, setMode] = useState<'preview' | 'edit'>('edit');
+
+  const fileLanguage = useMemo(() => classifyFile(filePath), [filePath]);
+
+  const eligibleForPreview = useMemo(
+    () => !isBinary && !isLfsPointer && fileLanguage.mode !== 'plain',
+    [isBinary, isLfsPointer, fileLanguage.mode],
+  );
+
+  const { isDark } = useTheme();
+
   useEffect(() => {
     if (!storedRepo) return;
     if (isBinary) {
@@ -80,6 +93,7 @@ export default function ExploreFileScreen() {
     setIsDirty(false);
     setSaveError(null);
     setSavedAt(null);
+    setMode('edit');
     (async () => {
       try {
         const workingTreeUri = GitFsService.workingTreeUri({ repoPath: storedRepo.path });
@@ -195,7 +209,22 @@ export default function ExploreFileScreen() {
           </Text>
         </View>
 
-        {!loading && !error && content != null && !isReadOnly && (
+        {!loading && !error && content != null && !isReadOnly && eligibleForPreview && (
+          <Pressable
+            onPress={() => setMode(mode === 'preview' ? 'edit' : 'preview')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={mode === 'preview' ? 'Switch to edit mode' : 'Switch to preview mode'}
+            testID="explore-file.mode-toggle"
+            style={{ marginRight: 12 }}
+          >
+            <Text style={{ color: colors.accent, fontWeight: '600' }}>
+              {mode === 'preview' ? 'Edit' : 'Preview'}
+            </Text>
+          </Pressable>
+        )}
+
+        {!loading && !error && content != null && !isReadOnly && mode === 'edit' && (
           <>
             <Pressable
               onPress={handleCancel}
@@ -265,6 +294,16 @@ export default function ExploreFileScreen() {
             LFS pointer file — content is stored in Git LFS.
           </Text>
         </View>
+      ) : mode === 'preview' && eligibleForPreview ? (
+        <ScrollView className="flex-1" testID="explore-file.preview-content">
+          <FileContentRenderer
+            content={content}
+            path={filePath}
+            classification={fileLanguage}
+            isDark={isDark}
+            colors={colors}
+          />
+        </ScrollView>
       ) : (
         <ScrollView className="flex-1" keyboardDismissMode="interactive">
           <TextInput

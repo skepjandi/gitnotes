@@ -339,7 +339,11 @@ export default function ExploreFileScreen() {
           </Text>
         </View>
       ) : mode === 'preview' && eligibleForPreview ? (
-        <ScrollView className="flex-1" testID="explore-file.preview-content">
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="px-4 pb-10"
+          testID="explore-file.preview-content"
+        >
           <FileContentRenderer
             content={content}
             path={filePath}

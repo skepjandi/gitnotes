@@ -92,6 +92,38 @@
     "moveFileErrorShort": "No se pudo mover el archivo.",
     "createFolderError": "No se pudo crear la carpeta."
   },
+  "noteHistory": {
+    "title": "Historial",
+    "revisions": "Revisiones",
+    "loading": "Cargando...",
+    "empty": "No hay historial disponible",
+    "preview": "Vista previa",
+    "loadingBlob": "Cargando contenido...",
+    "noPreview": "Vista previa no disponible",
+    "commitId": "Commit",
+    "loadMore": "Cargar más",
+    "editDisabled": "Edición desactivada",
+    "accessibilityLabel": "Historial de notas",
+    "dirtyNotice": "Tienes cambios sin guardar. El historial muestra la última versión guardada.",
+    "unavailable": {
+      "default": "Historial no disponible",
+      "NewNote": "Las notas nuevas no tienen historial",
+      "PdfNote": "Las notas PDF no admiten historial",
+      "MissingRepo": "Solo las notas sincronizadas tienen historial",
+      "MissingBranch": "Falta información de la rama",
+      "NoRepositoryFound": "Repositorio no encontrado",
+      "ShallowClone": "Los clones superficiales no pueden cargar historial"
+    },
+    "blobError": {
+      "default": "Error al cargar el contenido",
+      "RefNotFound": "Referencia no encontrada",
+      "ShallowHistory": "El historial superficial no puede cargar el blob",
+      "PathNotFound": "Archivo no encontrado en esta revisión",
+      "BinaryContent": "El contenido binario no se puede previsualizar",
+      "TooLarge": "Archivo demasiado grande para previsualizar",
+      "NativeUnavailable": "Motor Git no disponible"
+    }
+  },
   "notesFilter": {
     "repository": "Repositorio",
     "noteType": "Tipo de nota",

@@ -92,6 +92,38 @@
     "moveFileErrorShort": "ファイルの移動に失敗しました。",
     "createFolderError": "フォルダの作成に失敗しました。"
   },
+  "noteHistory": {
+    "title": "履歴",
+    "revisions": "リビジョン",
+    "loading": "読み込み中...",
+    "empty": "履歴がありません",
+    "preview": "プレビュー",
+    "loadingBlob": "コンテンツを読み込み中...",
+    "noPreview": "プレビューできません",
+    "commitId": "コミット",
+    "loadMore": "もっと読み込む",
+    "editDisabled": "編集無効",
+    "accessibilityLabel": "ノート履歴",
+    "dirtyNotice": "保存されていない変更があります。履歴は最後の保存バージョンを表示します。",
+    "unavailable": {
+      "default": "履歴を使用できません",
+      "NewNote": "新しいノートには履歴がありません",
+      "PdfNote": "PDFノートは履歴をサポートしていません",
+      "MissingRepo": "同期されたノートのみ履歴があります",
+      "MissingBranch": "ブランチ情報がありません",
+      "NoRepositoryFound": "リポジトリが見つかりません",
+      "ShallowClone": "シャロークローンは履歴を読み込めません"
+    },
+    "blobError": {
+      "default": "コンテンツの読み込みに失敗しました",
+      "RefNotFound": "参照が見つかりません",
+      "ShallowHistory": "浅い履歴はBlobを読み込めません",
+      "PathNotFound": "このリビジョンでファイルが見つかりません",
+      "BinaryContent": "バイナリコンテンツはプレビューできません",
+      "TooLarge": "ファイルが大きすぎてプレビューできません",
+      "NativeUnavailable": "Gitエンジンが利用できません"
+    }
+  },
   "notesFilter": {
     "repository": "リポジトリ",
     "noteType": "ノートの種類",

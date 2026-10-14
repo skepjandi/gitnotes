@@ -116,6 +116,38 @@
     "moveFileErrorShort": "Failed to move file.",
     "createFolderError": "Failed to create folder."
   },
+  "noteHistory": {
+    "title": "History",
+    "revisions": "Revisions",
+    "loading": "Loading...",
+    "empty": "No history available",
+    "preview": "Preview",
+    "loadingBlob": "Loading content...",
+    "noPreview": "No preview available",
+    "commitId": "Commit",
+    "loadMore": "Load more",
+    "editDisabled": "Edit disabled",
+    "accessibilityLabel": "Note history",
+    "dirtyNotice": "You have unsaved changes. History shows the last saved version.",
+    "unavailable": {
+      "default": "History unavailable",
+      "NewNote": "New notes have no history",
+      "PdfNote": "PDF notes do not support history",
+      "MissingRepo": "Only synced notes have history",
+      "MissingBranch": "Branch information missing",
+      "NoRepositoryFound": "Repository not found",
+      "ShallowClone": "Shallow clones cannot load history"
+    },
+    "blobError": {
+      "default": "Failed to load content",
+      "RefNotFound": "Reference not found",
+      "ShallowHistory": "Shallow history cannot load blob",
+      "PathNotFound": "File not found in this revision",
+      "BinaryContent": "Binary content cannot be previewed",
+      "TooLarge": "File too large to preview",
+      "NativeUnavailable": "Git engine unavailable"
+    }
+  },
   "notesFilter": {
     "repository": "Repository",
     "noteType": "Note Type",

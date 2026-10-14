@@ -177,12 +177,20 @@
     },
     "security": "Sicherheit",
     "appearance": "Erscheinungsbild",
+    "styleGroups": {
+      "default": "Standard",
+      "pro": "Pro",
+      "referralRewards": "Empfehlungsbelohnungen"
+    },
     "style": {
       "basic": "Einfach",
       "neumorphic": "Neumorphisch",
       "neoBrutalist": "Neo-Brutalistisch",
       "retrofuturistic": "Retrofuturistisch",
-      "hint": "Einfach und Neo-Brutalistisch sind kostenlos. Neumorphisch und Retrofuturistisch erfordern GitNotēs Pro."
+      "terminalMono": "Terminal Mono",
+      "crtGreen": "CRT Grün",
+      "developerDesk": "Entwickler-Schreibtisch",
+      "hint": "Einfach und Neo-Brutalistisch sind kostenlos. Neumorphisch und Retrofuturistisch erfordern GitNotēs Pro. Empfehlungsthemen werden durch Teilen von GitNotēs freigeschaltet."
     },
     "darkMode": "Dunkelmodus",
     "accentColor": "Akzentfarbe",

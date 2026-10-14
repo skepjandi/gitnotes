@@ -92,6 +92,83 @@ GitNotēs uses a **centralized branch model** for clone-mode repositories:
 | `DocumentService.ts` | Core local-first document service. Creates/reads/updates/deletes files with YAML-ish frontmatter (`---` delimiter). All note content is a plain file on disk. |
 | `WorkingTreeDocumentService.ts` | Document operations scoped to the current git working tree. |
 | `DocumentIndex.ts` | SQLite index of document metadata (id, title, folder, tags, timestamps) plus an FTS5 body index. Used for fast listing, folder tree, tag autocomplete, and full-text search. |
+| `NoteHistoryService.ts` | Read-only data service for note Git history. Provides paginated file history and historical blob content without mutating the note store or Git state. Uses `GitEngine.fileHistory()` and `GitEngine.readBlobAtRef()` from the native Git module. |
+
+## Note History (`src/services/note/`)
+
+The `NoteHistoryService` and `useNoteHistory` hook provide read-only Git history browsing for committed clone-mode notes.
+
+### Key types
+
+```typescript
+// Why a note is not eligible for history viewing
+type NoteHistoryUnavailableReason =
+  | 'NewNote'           // Note has no filePath (not yet saved to Git)
+  | 'PdfNote'           // PDF notes are not supported
+  | 'MissingRepo'       // Note has no repo (not a clone-mode note)
+  | 'MissingBranch'     // Note has repo but no branch
+  | 'NoRepositoryFound' // Could not find the repository in saved repos
+  | 'ShallowClone';     // Repository was cloned with depth=1
+
+// UI-facing state for the history view
+type NoteHistoryState =
+  | { status: 'idle' }
+  | { status: 'unavailable'; reason: NoteHistoryUnavailableReason }
+  | { status: 'loading' }
+  | { status: 'ready'; entries: FileHistoryEntry[]; shallow: boolean; hasMore: boolean }
+  | { status: 'empty'; shallow: boolean }
+  | { status: 'error'; message: string };
+```
+
+### Key functions
+
+```typescript
+// Check if a note is eligible for history viewing
+function getNoteHistoryEligibility(note: Note): NoteHistoryUnavailableReason | null
+
+// Resolve Git identity for a note's history (throws if not eligible)
+async function resolveNoteHistoryIdentity(note: Note): Promise<NoteHistoryIdentity>
+
+// Load paginated file history
+async function loadNoteFileHistory(
+  identity: NoteHistoryIdentity,
+  page: { limit: number; skip: number }
+): Promise<{ entries: FileHistoryEntry[]; shallow: boolean; hasMore: boolean }>
+
+// Load blob content at a specific commit
+async function loadNoteBlobAtCommit(
+  identity: NoteHistoryIdentity,
+  commitId: string
+): Promise<BlobReadOutcome>
+```
+
+### BlobReadOutcome
+
+```typescript
+type BlobReadSuccess = {
+  kind: 'Content';
+  content: string;  // decoded UTF-8 text
+  oid: string;
+  mimeType: string;
+  truncated: boolean;
+};
+
+type BlobReadFailure = {
+  kind: 'Error';
+  errorKind: 'RefNotFound' | 'ShallowHistory' | 'PathNotFound' | 'BinaryContent' | 'TooLarge' | 'NativeUnavailable';
+  message: string;
+};
+
+type BlobReadOutcome = BlobReadSuccess | BlobReadFailure;
+```
+
+### Behavior constraints
+
+- **Committed history only:** Dirty editor content is never sent as history
+- **Ephemeral blob state:** Closing/unmounting releases blob memory
+- **No mutation:** Does not call checkout, reset, revert, or any ref mutation
+- **Branch/file scoped:** Uses the note's recorded/active branch and current `filePath`
+- **Pagination:** Deduplicates commits by ID, preserves newest-first order
 
 ## Sync (`src/services/`)
 

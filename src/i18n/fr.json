@@ -280,7 +280,6 @@
     "useApi": "Utiliser l'API",
     "clone": "Cloner",
     "cloneModeDescription": "Clone (arborescence de travail locale)",
-
     "cloneWriteThroughHint": "Enregistre et pousse immédiatement en ligne. Les modifications hors ligne se mettent en file d'attente et sont poussées automatiquement à votre retour.",
     "download": "Télécharger",
     "syncFrequently": "Synchroniser fréquemment",
@@ -350,7 +349,6 @@
     "lfsDoneTitle": "Téléchargements LFS terminés",
     "lfsDoneBody": "{{count}} fichier(s) téléchargé(s) pour {{name}}.",
     "lfsFailedTitle": "Certains téléchargements LFS ont échoué",
-
     "switch": "Changer",
     "unpushedCommitsTitle": "Commits non envoyés",
     "unpushedCommitsBody": "{{name}} sur la branche \"{{branch}}\" a des commits locaux non envoyés. Veuillez envoyer vos modifications.",
@@ -389,10 +387,6 @@
     "clear": "Effacer",
     "clearAllSuccess": "Toutes les notes ont été effacées.",
     "clearAllFailed": "Échec de l’effacement des notes.",
-    "dailyQuoteSource": {
-      "label": "Afficher les Sources",
-      "description": "Afficher le livre/l'œuvre d'où provient la citation"
-    },
     "dailyQuotePersonalization": {
       "label": "Personnalisation par l'IA",
       "description": "Personnaliser les citations en fonction de vos notes"
@@ -561,7 +555,6 @@
       "backgroundSync": "La synchronisation en arrière-plan s'exécute même lorsque l'application n'est pas active, garantissant que vos notes restent à jour.",
       "floatingGitButton": "Touchez pour stage, commit ou push. Maintenez enfoncé pour synchroniser rapidement tous les dépôts.",
       "cloneMode": "Le mode clone synchronise via un arbre de travail git local. Nécessite plus de stockage mais fonctionne entièrement hors ligne avec support LFS.",
-
       "lfsFiles": "Les fichiers volumineux suivis par Git LFS sont téléchargés à la demande. Téléchargez les fichiers en attente pour les voir hors ligne.",
       "templatesRepo": "Connectez un dépôt GitHub pour stocker et synchroniser vos modèles de notes personnalisés.",
       "clearData": "Supprime définitivement toutes les notes, tâches et toiles de cet appareil. Vos fichiers sur GitHub ne sont pas affectés.",

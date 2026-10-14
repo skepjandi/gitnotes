@@ -389,10 +389,6 @@
     "clear": "지우기",
     "clearAllSuccess": "모든 노트가 지워졌습니다.",
     "clearAllFailed": "노트를 지우지 못했습니다.",
-    "dailyQuoteSource": {
-      "label": "출처 표시",
-      "description": "명언의 출처 책/작품 표시"
-    },
     "dailyQuotePersonalization": {
       "label": "AI 개인화",
       "description": "노트에 따라 명언 개인화"

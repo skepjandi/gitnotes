@@ -77,9 +77,10 @@ import { AppIconService, type AppIconName } from '../services/AppIconService';
 import RewardCatalogModal from '../components/settings/RewardCatalogModal';
 import { RewardEntitlementService } from '../services/RewardEntitlementService';
 import {
+  isAppIconOptionUnlocked,
+  PRO_APP_ICON_OPTIONS,
   REFERRAL_APP_ICON_OPTIONS,
   isReferralAppIconUnlocked,
-  type ReferralAppIconOption,
 } from '../components/settings/referralAppIcons';
 
 // Mirrors GitFsService's MAX_CLONE_RETRIES so a failing repo can't loop the outer flow.
@@ -97,8 +98,14 @@ function resolveBackendUrl(): string {
   return base.replace(/\/api\/v1\/?$/, '');
 }
 
-function getReferralIconAsset(option: ReferralAppIconOption['assetSlug']) {
+function getAppIconAsset(option: 'neon' | 'grayscale' | 'gold' | 'terminal-mono' | 'amber-terminal' | 'monochrome-grid') {
   switch (option) {
+    case 'neon':
+      return require('../../assets/generated/alternate/neon/icon.png');
+    case 'grayscale':
+      return require('../../assets/generated/alternate/grayscale/icon.png');
+    case 'gold':
+      return require('../../assets/generated/alternate/gold/icon.png');
     case 'terminal-mono':
       return require('../../assets/generated/alternate/terminal-mono/icon.png');
     case 'amber-terminal':
@@ -1735,48 +1742,46 @@ export default function SettingsScreen() {
               {t('settings.appIcon.default', { defaultValue: 'Default' })}
             </Text>
           </GroupRow>
-          <GroupRow
-            testID="settings.button.app-icon.neon"
-            disabled={appIconLoading}
-            onPress={() => { void handleAppIconSelect('Neon'); }}
-            leading={
-              <Image
-                source={require('../../assets/generated/alternate/neon/icon.png')}
-                style={{ width: 40, height: 40, borderRadius: 8 }}
-              />
-            }
-            trailing={appIcon === 'Neon' ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
-          >
-            <Text style={{ color: appIcon === 'Neon' ? colors.primary : colors.text, fontSize: 16 }}>Neon</Text>
-          </GroupRow>
-          <GroupRow
-            testID="settings.button.app-icon.grayscale"
-            disabled={appIconLoading}
-            onPress={() => { void handleAppIconSelect('Grayscale'); }}
-            leading={
-              <Image
-                source={require('../../assets/generated/alternate/grayscale/icon.png')}
-                style={{ width: 40, height: 40, borderRadius: 8 }}
-              />
-            }
-            trailing={appIcon === 'Grayscale' ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
-          >
-            <Text style={{ color: appIcon === 'Grayscale' ? colors.primary : colors.text, fontSize: 16 }}>Grayscale</Text>
-          </GroupRow>
-          <GroupRow
-            testID="settings.button.app-icon.gold"
-            disabled={appIconLoading}
-            onPress={() => { void handleAppIconSelect('Gold'); }}
-            leading={
-              <Image
-                source={require('../../assets/generated/alternate/gold/icon.png')}
-                style={{ width: 40, height: 40, borderRadius: 8 }}
-              />
-            }
-            trailing={appIcon === 'Gold' ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
-          >
-              <Text style={{ color: appIcon === 'Gold' ? colors.primary : colors.text, fontSize: 16 }}>Gold</Text>
-            </GroupRow>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 16, marginBottom: 8 }}>
+            Pro Icons
+          </Text>
+          {PRO_APP_ICON_OPTIONS.map((option) => {
+            const unlocked = !isProLoading && isAppIconOptionUnlocked(option, isPro, referralProgress);
+            return (
+              <GroupRow
+                key={option.name}
+                testID={`settings.button.app-icon.${option.assetSlug}`}
+                disabled={appIconLoading || isProLoading}
+                onPress={
+                  isProLoading
+                    ? undefined
+                    : unlocked
+                      ? () => { void handleAppIconSelect(option.name); }
+                      : openPaywall
+                }
+                leading={
+                  <Image
+                    source={getAppIconAsset(option.assetSlug)}
+                    style={{ width: 40, height: 40, borderRadius: 8 }}
+                  />
+                }
+                trailing={
+                  unlocked && appIcon === option.name
+                    ? <Ionicons name="checkmark" size={20} color={colors.primary} />
+                    : !unlocked && !isProLoading
+                      ? <Ionicons name="lock-closed" size={18} color={colors.textSecondary} />
+                      : null
+                }
+              >
+                <Text style={{ color: unlocked && appIcon === option.name ? colors.primary : colors.text, fontSize: 16 }}>
+                  {option.label}
+                </Text>
+                {!unlocked && !isProLoading && (
+                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Requires Pro</Text>
+                )}
+              </GroupRow>
+            );
+          })}
           {REFERRAL_APP_ICON_OPTIONS.length > 0 && (
             <>
               <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 16, marginBottom: 8 }}>
@@ -1792,7 +1797,7 @@ export default function SettingsScreen() {
                     onPress={unlocked ? () => { void handleAppIconSelect(option.name); } : undefined}
                     leading={
                       <Image
-                        source={getReferralIconAsset(option.assetSlug)}
+                        source={getAppIconAsset(option.assetSlug)}
                         style={{ width: 40, height: 40, borderRadius: 8 }}
                       />
                     }

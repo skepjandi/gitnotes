@@ -1,5 +1,7 @@
 import {
+  isAppIconOptionUnlocked,
   isReferralAppIconUnlocked,
+  PRO_APP_ICON_OPTIONS,
   REFERRAL_APP_ICON_OPTIONS,
 } from '../../../src/components/settings/referralAppIcons';
 
@@ -17,5 +19,13 @@ describe('referral app icon options', () => {
     expect(isReferralAppIconUnlocked(REFERRAL_APP_ICON_OPTIONS[0], 1)).toBe(true);
     expect(isReferralAppIconUnlocked(REFERRAL_APP_ICON_OPTIONS[1], 4)).toBe(false);
     expect(isReferralAppIconUnlocked(REFERRAL_APP_ICON_OPTIONS[2], 15)).toBe(true);
+  });
+
+  it('requires Pro for standard alternate icons', () => {
+    expect(PRO_APP_ICON_OPTIONS).toHaveLength(3);
+    expect(isAppIconOptionUnlocked(PRO_APP_ICON_OPTIONS[0], false, 20)).toBe(false);
+    expect(isAppIconOptionUnlocked(PRO_APP_ICON_OPTIONS[0], true, 0)).toBe(true);
+    expect(isAppIconOptionUnlocked(REFERRAL_APP_ICON_OPTIONS[0], false, 0)).toBe(false);
+    expect(isAppIconOptionUnlocked(REFERRAL_APP_ICON_OPTIONS[0], false, 1)).toBe(true);
   });
 });

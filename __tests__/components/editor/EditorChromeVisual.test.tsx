@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { render, screen, fireEvent } from '@testing-library/react-native';
 
 // ── Token context mock ───────────────────────────────────────────────────────────
 
@@ -27,8 +27,8 @@ jest.mock('@/components/ui', () => {
     Button: ({ label, testID }: { label?: string; testID?: string }) => (
       <View testID={testID}><Text>{label}</Text></View>
     ),
-    IconButton: ({ testID, size }: { testID?: string; size?: string }) => (
-      <View testID={testID}><Text>{size}</Text></View>
+    IconButton: ({ testID, size, onPress }: { testID?: string; size?: string; onPress?: () => void }) => (
+      <View testID={testID} onTouchEnd={onPress}><Text>{size}</Text></View>
     ),
     Input: (props: { value?: string; testID?: string }) => (
       <View testID={props.testID}><Text>{props.value}</Text></View>
@@ -142,6 +142,95 @@ describe('EditorToolbar', () => {
     expect(screen.getByTestId('note-editor.toolbar.canvas-modal')).toBeTruthy();
     expect(screen.getByTestId('note-editor.toolbar.insert-image')).toBeTruthy();
     expect(screen.getByTestId('note-editor.toolbar.canvas-picker')).toBeTruthy();
+  });
+
+  it('renders history button when canViewHistory is true', () => {
+    const onOpenHistory = jest.fn();
+    render(
+      <EditorToolbar
+        canUndo={false}
+        canRedo={false}
+        onUndo={jest.fn()}
+        onRedo={jest.fn()}
+        onVoiceInput={jest.fn()}
+        onInsertCanvas={jest.fn()}
+        onInsertImage={jest.fn()}
+        onLinkCanvas={jest.fn()}
+        canViewHistory={true}
+        onOpenHistory={onOpenHistory}
+      />,
+    );
+
+    expect(screen.getByTestId('note-editor.toolbar.history')).toBeTruthy();
+  });
+
+  it('does not render history button when canViewHistory is false', () => {
+    render(
+      <EditorToolbar
+        canUndo={false}
+        canRedo={false}
+        onUndo={jest.fn()}
+        onRedo={jest.fn()}
+        onVoiceInput={jest.fn()}
+        onInsertCanvas={jest.fn()}
+        onInsertImage={jest.fn()}
+        onLinkCanvas={jest.fn()}
+        canViewHistory={false}
+        onOpenHistory={jest.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId('note-editor.toolbar.history')).toBeNull();
+  });
+
+  it('history button calls onOpenHistory when pressed', () => {
+    const onOpenHistory = jest.fn();
+    render(
+      <EditorToolbar
+        canUndo={false}
+        canRedo={false}
+        onUndo={jest.fn()}
+        onRedo={jest.fn()}
+        onVoiceInput={jest.fn()}
+        onInsertCanvas={jest.fn()}
+        onInsertImage={jest.fn()}
+        onLinkCanvas={jest.fn()}
+        canViewHistory={true}
+        onOpenHistory={onOpenHistory}
+      />,
+    );
+
+    const historyBtn = screen.getByTestId('note-editor.toolbar.history');
+    fireEvent.press(historyBtn);
+    expect(onOpenHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it('history button does not trigger undo/redo/voice/canvas actions', () => {
+    const onOpenHistory = jest.fn();
+    const onUndo = jest.fn();
+    const onRedo = jest.fn();
+    const onVoiceInput = jest.fn();
+    render(
+      <EditorToolbar
+        canUndo={true}
+        canRedo={true}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        onVoiceInput={onVoiceInput}
+        onInsertCanvas={jest.fn()}
+        onInsertImage={jest.fn()}
+        onLinkCanvas={jest.fn()}
+        canViewHistory={true}
+        onOpenHistory={onOpenHistory}
+      />,
+    );
+
+    const historyBtn = screen.getByTestId('note-editor.toolbar.history');
+    fireEvent.press(historyBtn);
+    expect(onOpenHistory).toHaveBeenCalledTimes(1);
+    expect(onUndo).not.toHaveBeenCalled();
+    expect(onRedo).not.toHaveBeenCalled();
+    expect(onVoiceInput).not.toHaveBeenCalled();
   });
 });
 

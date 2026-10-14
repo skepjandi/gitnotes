@@ -43,6 +43,10 @@ interface NoteViewerProps {
   isQuestionerNote?: boolean;
   isGrading?: boolean;
   onGradeAnswers?: () => void;
+  /** Called to open the history modal for an eligible note */
+  onOpenHistory?: () => void;
+  /** Whether the note is eligible for history (has repo, branch, filePath, and is not PDF) */
+  canViewHistory?: boolean;
 }
 
 export function NoteViewer({
@@ -78,6 +82,8 @@ export function NoteViewer({
   isQuestionerNote,
   isGrading,
   onGradeAnswers,
+  onOpenHistory,
+  canViewHistory,
 }: NoteViewerProps) {
   const { colors } = useTheme();
   const isPdfNote = noteFormat === 'pdf';
@@ -128,6 +134,20 @@ export function NoteViewer({
             accessibilityLabel="Edit"
           >
             <Ionicons name="pencil" size={18} color={colors.accent} />
+          </IconButton>
+        ) : null}
+
+        {canViewHistory && onOpenHistory ? (
+          <IconButton
+            size="sm"
+            testID="note-viewer.button.history"
+            onPress={() => {
+              HapticService.light();
+              onOpenHistory();
+            }}
+            accessibilityLabel="History"
+          >
+            <Ionicons name="git-commit-outline" size={18} color={colors.accent} />
           </IconButton>
         ) : null}
       </View>

@@ -23,12 +23,16 @@ import { EditorToolbar } from '../components/editor/EditorToolbar';
 import { NoteEditorForm } from '../components/editor/NoteEditorForm';
 import { NotePreviewPane } from '../components/editor/NotePreviewPane';
 import { NoteViewer } from '../components/editor/NoteViewer';
+import { NoteHistoryModal } from '../components/editor/NoteHistoryModal';
 import { useNoteEditorDocument } from '../components/editor/useNoteEditorDocument';
 import { useNoteEditorPreview } from '../components/editor/useNoteEditorPreview';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { useTranslation } from 'react-i18next';
 import { useSafeBack } from '../hooks/useSafeBack';
 import { subscribeGitContentRefresh } from '../hooks/useGitRefreshEvent';
+import { useNoteHistory } from '../hooks/useNoteHistory';
+import { isNoteEligibleForHistory } from '../services/note/NoteHistoryService';
+import type { Note } from '../models/Note';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'NoteEditor'>;
 type NoteEditorRouteProp = RouteProp<RootStackParamList, 'NoteEditor'>;
@@ -65,6 +69,7 @@ function NoteEditorScreenInner() {
   const [showVoiceModal, setShowVoiceModal] = React.useState(false);
   const [showCanvasPicker, setShowCanvasPicker] = React.useState(false);
   const [showFolderDialog, setShowFolderDialog] = React.useState(false);
+  const [showHistory, setShowHistory] = React.useState(false);
 
   const document = useNoteEditorDocument({
     noteId,
@@ -105,6 +110,17 @@ function NoteEditorScreenInner() {
   });
   const isPdfNote = document.noteFormat === 'pdf';
 
+  // Build the stored note for history eligibility check and hook
+  const storedNote: Note | null = noteId ? getNoteById(noteId) ?? null : null;
+  const canViewHistory = storedNote ? isNoteEligibleForHistory(storedNote) : false;
+
+  // History hook - only active when modal is open
+  const historyNote: Note | null = storedNote && canViewHistory ? storedNote : null;
+  const history = useNoteHistory({
+    note: showHistory ? historyNote : null,
+    isDirty: document.hasChanges,
+  });
+
   // ── NOT FOUND (deep link to a noteId that isn't on this device) ──
   if (document.notFound) {
     return (
@@ -135,22 +151,23 @@ function NoteEditorScreenInner() {
   // ── PREVIEW MODE ──────────────────────────────────────────────
   if (!document.isEditing) {
     return (
+      <>
         <NoteViewer
           noteId={noteId!}
           title={document.title}
           noteFormat={document.noteFormat}
           canEdit={!isPdfNote}
           canSpeak={!isPdfNote && !!preview.speakableContent}
-        isSpeaking={preview.isSpeaking}
-        tocEntries={preview.tocEntries}
-        showToc={preview.showToc}
-        onBack={safeBack}
-        onToggleToc={() => preview.setShowToc(true)}
-        onToggleSpeak={preview.handleToggleSpeak}
-        onEdit={() => document.setIsEditing(true)}
-        onCloseToc={() => preview.setShowToc(false)}
-        onTocPress={preview.handleTocPress}
-        onNavigateToNote={(id) => navigation.navigate('NoteEditor', { noteId: id })}
+          isSpeaking={preview.isSpeaking}
+          tocEntries={preview.tocEntries}
+          showToc={preview.showToc}
+          onBack={safeBack}
+          onToggleToc={() => preview.setShowToc(true)}
+          onToggleSpeak={preview.handleToggleSpeak}
+          onEdit={() => document.setIsEditing(true)}
+          onCloseToc={() => preview.setShowToc(false)}
+          onTocPress={preview.handleTocPress}
+          onNavigateToNote={(id) => navigation.navigate('NoteEditor', { noteId: id })}
           previewContent={preview.previewContent}
           parsedStructuredContent={preview.parsedStructuredContent}
           markdownStyles={preview.markdownStyles}
@@ -165,7 +182,16 @@ function NoteEditorScreenInner() {
           previewScrollRef={preview.previewScrollRef}
           onPreviewScroll={preview.handlePreviewScroll}
           onPreviewContentSizeChange={preview.handlePreviewContentSizeChange}
+          canViewHistory={canViewHistory}
+          onOpenHistory={() => setShowHistory(true)}
         />
+
+        <NoteHistoryModal
+          visible={showHistory}
+          history={history}
+          onClose={() => setShowHistory(false)}
+        />
+      </>
     );
   }
 
@@ -188,6 +214,8 @@ function NoteEditorScreenInner() {
           onInsertCanvas={() => navigation.navigate('CanvasEditor', {})}
           onInsertImage={document.handlePickImage}
           onLinkCanvas={() => setShowCanvasPicker(true)}
+          canViewHistory={canViewHistory}
+          onOpenHistory={() => setShowHistory(true)}
         />
 
         {sideBySide ? (
@@ -282,6 +310,12 @@ function NoteEditorScreenInner() {
         onSelect={document.handleFolderSelect}
         onClose={() => setShowFolderDialog(false)}
         additionalFolders={document.repoFolders}
+      />
+
+      <NoteHistoryModal
+        visible={showHistory}
+        history={history}
+        onClose={() => setShowHistory(false)}
       />
     </SafeAreaView>
   );

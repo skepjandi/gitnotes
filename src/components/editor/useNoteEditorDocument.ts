@@ -633,6 +633,7 @@ export function useNoteEditorDocument({
     notFound,
     canUndo,
     canRedo,
+    hasChanges,
     repoFolders,
     selectedFolderId,
     canvasJsonRefs,

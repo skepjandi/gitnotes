@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -186,7 +186,7 @@ export function FilesSection({ repo, active, chromeTopInset = 0, branchInvalidat
         </Pressable>
       );
     },
-    [data, navigation, repo.id, repo.path, repo.branch, toggleDir],
+    [colors, data, navigation, repo.id, repo.path, repo.branch, toggleDir],
   );
 
   const listContentContainerStyle = useMemo(
@@ -226,6 +226,7 @@ export function FilesSection({ repo, active, chromeTopInset = 0, branchInvalidat
     <FlatList
       className="flex-1"
       data={rows}
+      extraData={colors}
       keyExtractor={(item) => `${item.kind}:${item.path}`}
       renderItem={renderItem}
       contentContainerStyle={listContentContainerStyle}

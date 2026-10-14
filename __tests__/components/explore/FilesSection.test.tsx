@@ -81,7 +81,7 @@ jest.mock('@react-navigation/native', () => ({
   useFocusEffect: jest.fn((cb: () => void) => cb()),
 }));
 
-const mockColors = {
+let mockColors = {
   background: '#ffffff', card: '#f0f0f0', border: '#cccccc',
   text: '#000000', textSecondary: '#666666', accent: '#007AFF',
   success: '#34C759', error: '#FF3B30', warning: '#FF9500',
@@ -123,6 +123,12 @@ class TestErrorBoundary extends React.Component<
 describe('FilesSection row navigation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockColors = {
+      background: '#ffffff', card: '#f0f0f0', border: '#cccccc',
+      text: '#000000', textSecondary: '#666666', accent: '#007AFF',
+      success: '#34C759', error: '#FF3B30', warning: '#FF9500',
+      surface: '#e5e5ea', surfaceSecondary: '#e5e5ea',
+    };
     (GitFsService.isCloned as jest.Mock).mockResolvedValue(true);
     (GitEngine.statuses as jest.Mock).mockResolvedValue([]);
   });
@@ -267,5 +273,24 @@ describe('FilesSection row navigation', () => {
     expect(message).toBeTruthy();
     const state = await findByTestId('explore.files.not-cloned');
     expect(state.props.style.paddingTop).toBe(128);
+  });
+
+  it('updates file row colors when the theme palette changes', async () => {
+    const { getByTestId, rerender } = render(
+      <FilesSection repo={mockRepo} active={true} onChanged={jest.fn()} status={null} />,
+    );
+
+    await waitFor(() => expect(getByTestId('explore.file.readme.md')).toBeTruthy());
+    expect(getByTestId('explore.file.readme.md').props.style.backgroundColor).toBe('#f0f0f0');
+
+    mockColors = {
+      ...mockColors,
+      card: '#1c1c1e',
+      border: '#3a3a3c',
+      text: '#ffffff',
+    };
+    rerender(<FilesSection repo={mockRepo} active={true} onChanged={jest.fn()} status={null} />);
+
+    expect(getByTestId('explore.file.readme.md').props.style.backgroundColor).toBe('#1c1c1e');
   });
 });

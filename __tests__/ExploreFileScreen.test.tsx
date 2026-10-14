@@ -221,6 +221,7 @@ describe('ExploreFileScreen', () => {
         { timeout: 3000 },
       );
       expect(preview).toBeTruthy();
+      expect(preview.props.contentContainerClassName).toBe('px-4 pb-10');
     });
 
     it('calls writer with exact new value when save is pressed after entering Edit', async () => {

@@ -10,6 +10,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-10-14
 
+### fix(files): restore Git file preview padding and theme updates
+
+**What:** Files opened from the Git tab rendered preview content flush against the left edge, and the Git file list could keep light-theme colors after switching themes until it was refreshed.
+
+**Fix:** Match the local file preview inset to the shared file viewer and invalidate file-list rows when the theme palette changes.
+
 ### fix(daily-quote): disable daily quote by default and remove source-visibility toggle
 
 **What:** New installs had the Daily Quote feature enabled by default, and a Show Sources toggle existed in Settings.

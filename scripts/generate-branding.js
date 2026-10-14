@@ -17,13 +17,16 @@
  *   adaptive-icon.png   1024×1024  Android adaptive icon FOREGROUND
  *   monochrome-icon.png 1024×1024  Android themed icon foreground mask
  *
- * Four palette variants:
- *   base        — EXACT byte-for-byte copy of top-level defaults (icon.png,
- *                  adaptive-icon.png, monochrome-icon.png).  DO NOT pass through
- *                  recolorBuffer — hueShift=0 still causes rounding differences.
- *   neon        — cyan / electric-purple hue rotation (+45°)
- *   grayscale   — neutral luminance mask
- *   gold        — amber / warm-hue rotation (+180°)
+ * Seven palette variants:
+ *   base              — EXACT byte-for-byte copy of top-level defaults (icon.png,
+ *                        adaptive-icon.png, monochrome-icon.png).  DO NOT pass through
+ *                        recolorBuffer — hueShift=0 still causes rounding differences.
+ *   grayscale         — neutral luminance mask (HSV recolor)
+ *   neon              — retro pixel-art filter with cyan/violet arcade palette
+ *   gold              — retro pixel-art filter with amber/cream palette + scanlines
+ *   terminal-mono     — retro pixel-art filter with green terminal palette
+ *   amber-terminal    — retro pixel-art filter with orange phosphor palette + scanlines
+ *   monochrome-grid   — retro pixel-art filter with cool gray palette + grid texture
  *
  * The artwork is auto-cropped to its alpha bounding box, scaled to a target
  * fraction of the canvas (safe padding), and composited centered on a
@@ -50,6 +53,13 @@ const ALTERNATE_DIR = path.join(OUT_DIR, 'alternate');
 const RENDER_PREVIEW_SIZE = 2048;
 const KERNEL = sharp.kernel.lanczos3;
 
+// Retro filter integration
+const {
+  FILTER_PRESETS,
+  createImageData: makeRetroImageData,
+  applyRetroFilter,
+} = require('./retro-icon-filters');
+
 const TARGETS = [
   { name: 'icon.png', size: 1024, fraction: 0.82 },
   { name: 'adaptive-icon.png', size: 1024, fraction: 0.5 },
@@ -60,11 +70,24 @@ const TARGETS = [
 
 const VARIANT_TARGET_NAMES = ['icon.png', 'adaptive-icon.png', 'monochrome-icon.png'];
 
+// Retro preset key mapping: generator variant key -> FILTER_PRESETS key
+const RETRO_PRESET_MAP = {
+  neon: 'neon',
+  gold: 'gold',
+  'terminal-mono': 'terminal-mono',
+  'amber-terminal': 'amber-terminal',
+  'monochrome-grid': 'monochrome-grid',
+};
+
 const VARIANTS = {
   base: { hueShift: 0, saturationScale: 1.0, isGrayscale: false, isBase: true },
-  neon: { hueShift: 45, saturationScale: 1.4, isGrayscale: false },
   grayscale: { hueShift: 0, saturationScale: 0, isGrayscale: true },
-  gold: { hueShift: 180, saturationScale: 1.25, isGrayscale: false },
+  // Retro-filtered variants: isRetro=true skips recolorBuffer and applies applyRetroFilter
+  neon: { isRetro: true, retroPreset: 'neon' },
+  gold: { isRetro: true, retroPreset: 'gold' },
+  'terminal-mono': { isRetro: true, retroPreset: 'terminal-mono' },
+  'amber-terminal': { isRetro: true, retroPreset: 'amber-terminal' },
+  'monochrome-grid': { isRetro: true, retroPreset: 'monochrome-grid' },
 };
 
 function srgbToLinear(c) {
@@ -219,7 +242,21 @@ async function generateTarget(svgBuffer, target, variant) {
   const height = Math.max(1, Math.round(bbox.height * scale));
 
   let artwork;
-  if (variant) {
+  if (variant && variant.isRetro) {
+    const retroPreset = FILTER_PRESETS[variant.retroPreset];
+    const retroImageData = makeRetroImageData(croppedWidth, croppedHeight);
+    for (let i = 0; i < croppedRaw.length; i++) {
+      retroImageData.data[i] = croppedRaw[i];
+    }
+    const filtered = applyRetroFilter(retroImageData, retroPreset);
+    artwork = await sharp(Buffer.from(filtered.data), {
+      raw: { width: croppedWidth, height: croppedHeight, channels: 4 },
+    })
+      .resize(width, height, { fit: 'fill', kernel: sharp.kernel.nearest })
+      .ensureAlpha()
+      .png()
+      .toBuffer();
+  } else if (variant) {
     const recolored = recolorBuffer(croppedRaw, croppedWidth, croppedHeight, variant);
     artwork = await sharp(recolored, {
       raw: { width: croppedWidth, height: croppedHeight, channels: 4 },

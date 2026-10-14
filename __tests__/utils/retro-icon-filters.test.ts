@@ -233,7 +233,7 @@ describe('FILTER_PRESETS', () => {
 
   test('neon preset has arcade palette colors', () => {
     const neon = FILTER_PRESETS['neon'];
-    expect(neon.blockSize).toBe(48);
+    expect(neon.blockSize).toBe(8);
     expect(neon.palette.length).toBeGreaterThanOrEqual(4);
     // Signature colors: electric blue and cyan
     expect(colorInPalette(0, 198, 255, neon.palette)).toBe(true); // #00c6ff electric blue
@@ -242,7 +242,7 @@ describe('FILTER_PRESETS', () => {
 
   test('gold preset has golden/ochre palette', () => {
     const gold = FILTER_PRESETS['gold'];
-    expect(gold.blockSize).toBe(36);
+    expect(gold.blockSize).toBe(8);
     expect(gold.palette.length).toBeGreaterThanOrEqual(4);
     // Signature colors: golden-ochre and yellow
     expect(colorInPalette(201, 162, 0, gold.palette)).toBe(true); // #c9a200 golden-ochre midtone
@@ -251,7 +251,7 @@ describe('FILTER_PRESETS', () => {
 
   test('terminal-mono preset has green terminal palette', () => {
     const terminal = FILTER_PRESETS['terminal-mono'];
-    expect(terminal.blockSize).toBe(32);
+    expect(terminal.blockSize).toBe(8);
     expect(terminal.palette.length).toBeGreaterThanOrEqual(4);
     // Signature colors: phosphor green and bright green
     expect(colorInPalette(0, 138, 52, terminal.palette)).toBe(true); // #008a34 phosphor green
@@ -260,7 +260,7 @@ describe('FILTER_PRESETS', () => {
 
   test('amber-terminal preset has orange phosphor palette', () => {
     const amber = FILTER_PRESETS['amber-terminal'];
-    expect(amber.blockSize).toBe(32);
+    expect(amber.blockSize).toBe(8);
     expect(amber.palette.length).toBeGreaterThanOrEqual(4);
     // Signature colors: orange and amber
     expect(colorInPalette(190, 72, 0, amber.palette)).toBe(true); // #be4800 orange
@@ -269,7 +269,7 @@ describe('FILTER_PRESETS', () => {
 
   test('monochrome-grid preset has cool gray/blueprint palette', () => {
     const mono = FILTER_PRESETS['monochrome-grid'];
-    expect(mono.blockSize).toBe(40);
+    expect(mono.blockSize).toBe(8);
     expect(mono.palette.length).toBeGreaterThanOrEqual(4);
     // Signature colors: cool grays
     expect(colorInPalette(85, 102, 118, mono.palette)).toBe(true); // #556676 cool gray
@@ -286,5 +286,56 @@ describe('FILTER_PRESETS', () => {
     for (const key of ['neon', 'gold', 'terminal-mono', 'amber-terminal', 'monochrome-grid']) {
       expect(FILTER_PRESETS[key]).toHaveProperty('texture');
     }
+  });
+
+  test('all retro presets have blockSize small enough to preserve thin logo band', () => {
+    // The logo SVG has an innermost thin band ~29px tall at 2048px cropped render.
+    // blockSize must be <= 8 so the band spans multiple blocks and is preserved.
+    // A blockSize >= 16 would average the thin band away entirely.
+    const MAX_BLOCKSIZE_FOR_THIN_BAND = 8;
+    for (const key of ['neon', 'gold', 'terminal-mono', 'amber-terminal', 'monochrome-grid']) {
+      expect(FILTER_PRESETS[key].blockSize).toBeLessThanOrEqual(MAX_BLOCKSIZE_FOR_THIN_BAND);
+    }
+  });
+
+  test('applyRetroFilter preserves a thin horizontal band (regression for logo middle section)', () => {
+    // Simulate a source image with three horizontal bands:
+    // top band (tall), middle band (thin ~4px at 64px total height), bottom band (tall)
+    const height = 64;
+    const width = 64;
+    const middleBandTop = 28;
+    const middleBandBottom = 36;
+    const source = createImageData(width, height, [128, 128, 128, 255]);
+
+    // Color the middle band distinctly (red)
+    for (let y = middleBandTop; y < middleBandBottom; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        source.data[idx] = 255;     // R
+        source.data[idx + 1] = 0;   // G
+        source.data[idx + 2] = 0;   // B
+      }
+    }
+
+    const result = applyRetroFilter(source, {
+      ...FILTER_PRESETS['neon'],
+      palette: paletteToRgb(['#808080', '#ff0000', '#000000', '#ffffff']),
+      dithering: 'none',
+    });
+
+    let middleBandRedPixels = 0;
+    let middleBandTotalPixels = 0;
+    for (let y = middleBandTop; y < middleBandBottom; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        if (source.data[idx + 3] > 0) {
+          middleBandTotalPixels++;
+          if (result.data[idx] > result.data[idx + 1] + 50 && result.data[idx] > result.data[idx + 2] + 50) {
+            middleBandRedPixels++;
+          }
+        }
+      }
+    }
+    expect(middleBandRedPixels).toBeGreaterThan(0);
   });
 });

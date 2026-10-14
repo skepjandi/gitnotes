@@ -140,37 +140,39 @@ function applyGrid(data, width, height, gridSize, intensity) {
 }
 
 // FILTER_PRESETS with distinct block sizes, palettes, dithering, and textures
+// blockSize=8 preserves thin logo features (innermost band ~29px at 2048px crop)
+// Large block sizes erase thin bands via bitmapped block averaging
 const FILTER_PRESETS = {
   neon: {
-    blockSize: 48,
+    blockSize: 8,
     palette: paletteToRgb(PALETTES.neon),
     dithering: 'bayer',
     texture: 'none',
     distanceAlgorithm: 'oklab',
   },
   gold: {
-    blockSize: 36,
+    blockSize: 8,
     palette: paletteToRgb(PALETTES.gold),
     dithering: 'atkinson',
     texture: 'scanlines',
     distanceAlgorithm: 'oklab',
   },
   'terminal-mono': {
-    blockSize: 32,
+    blockSize: 8,
     palette: paletteToRgb(PALETTES['terminal-mono']),
     dithering: 'none', // nearest palette mapping
     texture: 'none',
     distanceAlgorithm: 'euclidean',
   },
   'amber-terminal': {
-    blockSize: 32,
+    blockSize: 8,
     palette: paletteToRgb(PALETTES['amber-terminal']),
     dithering: 'atkinson',
     texture: 'scanlines',
     distanceAlgorithm: 'oklab',
   },
   'monochrome-grid': {
-    blockSize: 40,
+    blockSize: 8,
     palette: paletteToRgb(PALETTES['monochrome-grid']),
     dithering: 'bayer',
     texture: 'grid',

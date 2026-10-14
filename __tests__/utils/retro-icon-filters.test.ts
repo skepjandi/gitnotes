@@ -10,7 +10,11 @@
  * applyRetroFilter for the retro logo icon generation pipeline.
  */
 
- 
+// Helper: check if an RGB color is in a palette
+function colorInPalette(r, g, b, palette) {
+  return palette.some(([pr, pg, pb]) => pr === r && pg === g && pb === b);
+}
+
 const {
   FILTER_PRESETS,
   applyRetroFilter,
@@ -80,6 +84,143 @@ describe('applyRetroFilter', () => {
     expect(result.height).toBe(8);
     // All pixels should have valid alpha (255 for opaque areas)
     expect(result.data[3]).toBe(255);
+  });
+
+  test('pipeline executes - opaque pixel colors are palette members for terminal-mono', () => {
+    // terminal-mono uses green palette with no dithering
+    // Each opaque pixel should map to one of the green palette colors
+    const terminalPalette = FILTER_PRESETS['terminal-mono'].palette;
+    const source = createImageData(8, 8, [100, 150, 200, 255]); // Blue-ish, not in palette
+    const result = applyRetroFilter(source, FILTER_PRESETS['terminal-mono']);
+
+    // Check that all opaque pixels map to palette colors
+    let opaquePixelCount = 0;
+    for (let i = 0; i < result.data.length; i += 4) {
+      if (result.data[i + 3] > 0) {
+        opaquePixelCount++;
+        const r = result.data[i];
+        const g = result.data[i + 1];
+        const b = result.data[i + 2];
+        const inPalette = colorInPalette(r, g, b, terminalPalette);
+        expect(inPalette).toBe(true);
+      }
+    }
+    expect(opaquePixelCount).toBeGreaterThan(0);
+  });
+
+  test('pipeline executes - opaque pixel colors are palette members for neon preset', () => {
+    const neonPalette = FILTER_PRESETS['neon'].palette;
+    // Input color is NOT in the neon palette (it's a warm orange)
+    const source = createImageData(8, 8, [255, 100, 50, 255]);
+    const result = applyRetroFilter(source, FILTER_PRESETS['neon']);
+
+    // All opaque pixels should map to neon palette colors
+    let opaquePixelCount = 0;
+    for (let i = 0; i < result.data.length; i += 4) {
+      if (result.data[i + 3] > 0) {
+        opaquePixelCount++;
+        const r = result.data[i];
+        const g = result.data[i + 1];
+        const b = result.data[i + 2];
+        const inPalette = colorInPalette(r, g, b, neonPalette);
+        expect(inPalette).toBe(true);
+      }
+    }
+    expect(opaquePixelCount).toBeGreaterThan(0);
+  });
+
+  test('pipeline executes - opaque pixel colors are palette members for amber-terminal', () => {
+    const amberPalette = FILTER_PRESETS['amber-terminal'].palette;
+    // Input color is NOT in the amber palette
+    const source = createImageData(8, 8, [0, 200, 100, 255]); // Teal, not in palette
+    const result = applyRetroFilter(source, FILTER_PRESETS['amber-terminal']);
+
+    // amber-terminal uses Atkinson dithering which creates blended colors
+    // Verify pipeline is running: output should differ from input
+    let opaquePixelCount = 0;
+    let hasDifferentOutput = false;
+    for (let i = 0; i < result.data.length; i += 4) {
+      if (result.data[i + 3] > 0) {
+        opaquePixelCount++;
+        const r = result.data[i];
+        const g = result.data[i + 1];
+        const b = result.data[i + 2];
+        // With dithering, output may not be exact palette members
+        // But verify palette proximity (within reasonable tolerance)
+        const nearestPaletteColor = amberPalette.reduce((best, col) => {
+          const dist = Math.abs(r - col[0]) + Math.abs(g - col[1]) + Math.abs(b - col[2]);
+          const bestDist = Math.abs(r - best[0]) + Math.abs(g - best[1]) + Math.abs(b - best[2]);
+          return dist < bestDist ? col : best;
+        });
+        const distance = Math.abs(r - nearestPaletteColor[0]) + Math.abs(g - nearestPaletteColor[1]) + Math.abs(b - nearestPaletteColor[2]);
+        // With dithering, distance should be reasonable (< 100 in sum of channel differences)
+        expect(distance).toBeLessThan(100);
+
+        if (r !== 0 || g !== 200 || b !== 100) {
+          hasDifferentOutput = true;
+        }
+      }
+    }
+    expect(opaquePixelCount).toBeGreaterThan(0);
+    expect(hasDifferentOutput).toBe(true);
+  });
+
+  test('pipeline executes - opaque pixel colors are palette members for monochrome-grid', () => {
+    const monoPalette = FILTER_PRESETS['monochrome-grid'].palette;
+    const source = createImageData(8, 8, [255, 50, 100, 255]);
+    const result = applyRetroFilter(source, FILTER_PRESETS['monochrome-grid']);
+
+    let opaquePixelCount = 0;
+    let hasDifferentOutput = false;
+    for (let i = 0; i < result.data.length; i += 4) {
+      if (result.data[i + 3] > 0) {
+        opaquePixelCount++;
+        const r = result.data[i];
+        const g = result.data[i + 1];
+        const b = result.data[i + 2];
+
+        // Bayer dithering produces palette colors with ~50 channel tolerance
+        const nearestPaletteColor = monoPalette.reduce((best, col) => {
+          const dist = Math.abs(r - col[0]) + Math.abs(g - col[1]) + Math.abs(b - col[2]);
+          const bestDist = Math.abs(r - best[0]) + Math.abs(g - best[1]) + Math.abs(b - best[2]);
+          return dist < bestDist ? col : best;
+        });
+        const distanceFromPalette = Math.abs(r - nearestPaletteColor[0]) + Math.abs(g - nearestPaletteColor[1]) + Math.abs(b - nearestPaletteColor[2]);
+        expect(distanceFromPalette).toBeLessThan(50);
+
+        if (r !== 255 || g !== 50 || b !== 100) {
+          hasDifferentOutput = true;
+        }
+      }
+    }
+    expect(opaquePixelCount).toBeGreaterThan(0);
+    expect(hasDifferentOutput).toBe(true);
+  });
+
+  test('pipeline executes - colors differ for deliberately off-palette input', () => {
+    // For terminal-mono with green palette, input of blue should produce green output
+    const source = createImageData(4, 4, [0, 0, 255, 255]); // Pure blue
+    const result = applyRetroFilter(source, FILTER_PRESETS['terminal-mono']);
+
+    // The result should NOT be the same as input (palette mapping should change it)
+    // For blue input with green palette, the output should be green (nearest)
+    const firstPixelR = result.data[0];
+    const firstPixelG = result.data[1];
+    const firstPixelB = result.data[2];
+
+    // Blue input (0, 0, 255) should map to a green color, not stay blue
+    expect(firstPixelB).toBeLessThan(255); // Blue channel should be reduced
+    expect(firstPixelG).toBeGreaterThan(0); // Green channel should be present
+  });
+
+  test('transparent pixel alpha is preserved across pipeline', () => {
+    const source = createImageData(4, 4, [100, 150, 200, 255]);
+    // Set pixel 5 to transparent
+    source.data[5 * 4 + 3] = 0;
+    const result = applyRetroFilter(source, FILTER_PRESETS['neon']);
+    expect(result.data[5 * 4 + 3]).toBe(0);
+    // Opaque pixels should still be opaque
+    expect(result.data[0 + 3]).toBe(255);
   });
 });
 

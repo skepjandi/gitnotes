@@ -13,7 +13,22 @@
  * - applyRetroFilter: Apply pixelation, palette mapping, dithering, and texture
  */
 
-const { process, parseHex } = require('bitmapped');
+// Initialize @napi-rs/canvas ImageData as global so bitmapped can use it in Node.js
+let canvasCreate;
+let ImageDataClass;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const canvasModule = require('@napi-rs/canvas');
+  ImageDataClass = canvasModule.ImageData;
+  canvasCreate = canvasModule.createCanvas;
+  if (typeof globalThis.ImageData === 'undefined') {
+    globalThis.ImageData = ImageDataClass;
+  }
+} catch {
+  // @napi-rs/canvas not available, will rely on global ImageData or fail loudly
+}
+
+const { process } = require('bitmapped');
 
 // Palette color arrays for each preset (hex colors)
 const PALETTES = {
@@ -186,9 +201,15 @@ const FILTER_PRESETS = {
  * @param {{width: number, height: number, data: Uint8ClampedArray}} imageData - Source ImageData
  * @param {{blockSize: number, palette: number[][], dithering: string, texture: string, distanceAlgorithm: string}} preset - Filter preset
  * @returns {{width: number, height: number, data: Uint8ClampedArray}} Processed ImageData
+ * @throws {Error} If bitmapped processing fails or ImageData is not available
  */
 function applyRetroFilter(imageData, preset) {
   const { width, height, data: originalData } = imageData;
+
+  // Verify ImageData is available (either global or @napi-rs/canvas)
+  if (typeof globalThis.ImageData === 'undefined' && !ImageDataClass) {
+    throw new Error('ImageData is not available. Ensure @napi-rs/canvas is installed or polyfill ImageData globally.');
+  }
 
   // Store original alpha channel for transparent pixel preservation
   const originalAlpha = new Uint8ClampedArray(originalData.length);
@@ -206,45 +227,49 @@ function applyRetroFilter(imageData, preset) {
     processingData[i + 3] = originalData[i + 3] > 0 ? 255 : 0;
   }
 
-  const processingImageData = { width, height, data: processingData };
+  // Create proper ImageData using @napi-rs/canvas if available, otherwise use global
+  let processingImageData;
+  if (canvasCreate && ImageDataClass) {
+    // Use @napi-rs/canvas to create proper ImageData
+    const canvas = canvasCreate(width, height);
+    const ctx = canvas.getContext('2d');
+    processingImageData = ctx.createImageData(width, height);
+    processingImageData.data.set(processingData);
+  } else {
+    // Fall back to plain object (should work if globalThis.ImageData was polyfilled)
+    processingImageData = { width, height, data: processingData };
+  }
 
   // Apply bitmapped processing with palette
   const bitmappedPalette = rgbToBitmappedPalette(preset.palette);
 
-  let processedImageData;
-  try {
-    const result = process(processingImageData, {
-      blockSize: preset.blockSize,
-      palette: bitmappedPalette,
-      dithering: preset.dithering,
-      distanceAlgorithm: preset.distanceAlgorithm,
-    });
-    processedImageData = result.imageData;
-  } catch {
-    // Fallback: if bitmapped fails, return original data with alpha restored
-    const fallback = new Uint8ClampedArray(originalData.length);
-    for (let i = 0; i < originalData.length; i += 4) {
-      fallback[i] = originalData[i];
-      fallback[i + 1] = originalData[i + 1];
-      fallback[i + 2] = originalData[i + 2];
-      fallback[i + 3] = originalAlpha[i + 3];
-    }
-    return { width, height, data: fallback };
-  }
+  const result = process(processingImageData, {
+    blockSize: preset.blockSize,
+    palette: bitmappedPalette,
+    dithering: preset.dithering,
+    distanceAlgorithm: preset.distanceAlgorithm,
+  });
+
+  // Extract result data - use the data property from the result ImageData
+  const resultData = result.imageData.data;
 
   // Restore original alpha channel (preserve transparent pixels)
-  for (let i = 0; i < processedImageData.data.length; i += 4) {
-    processedImageData.data[i + 3] = originalAlpha[i + 3];
+  const outputData = new Uint8ClampedArray(originalData.length);
+  for (let i = 0; i < resultData.length; i += 4) {
+    outputData[i] = resultData[i];
+    outputData[i + 1] = resultData[i + 1];
+    outputData[i + 2] = resultData[i + 2];
+    outputData[i + 3] = originalAlpha[i + 3];
   }
 
   // Apply deterministic texture overlay (only on opaque pixels)
   if (preset.texture === 'scanlines') {
-    applyScanlines(processedImageData.data, width, height, 0.15);
+    applyScanlines(outputData, width, height, 0.15);
   } else if (preset.texture === 'grid') {
-    applyGrid(processedImageData.data, width, height, 4, 0.2);
+    applyGrid(outputData, width, height, 4, 0.2);
   }
 
-  return processedImageData;
+  return { width, height, data: outputData };
 }
 
 module.exports = {

@@ -33,7 +33,7 @@ const { process } = require('bitmapped');
 // Palette color arrays for each preset (hex colors)
 const PALETTES = {
   neon: ['#0a1c5a', '#00c6ff', '#4afff0', '#ff2ad6'],
-  gold: ['#5c2d00', '#b86900', '#f5b700', '#ffe069'],
+  gold: ['#6b4a00', '#c9a200', '#f5b700', '#ffe069'],
   'terminal-mono': ['#003014', '#008a34', '#16ff5a', '#beff91'],
   'amber-terminal': ['#541c00', '#be4800', '#ff8a00', '#ffd65c'],
   'monochrome-grid': ['#232d37', '#556676', '#9baab8', '#e1e8ee'],
@@ -140,37 +140,39 @@ function applyGrid(data, width, height, gridSize, intensity) {
 }
 
 // FILTER_PRESETS with distinct block sizes, palettes, dithering, and textures
+// blockSize=8 preserves thin logo features (innermost band ~29px at 2048px crop)
+// Large block sizes erase thin bands via bitmapped block averaging
 const FILTER_PRESETS = {
   neon: {
-    blockSize: 48,
+    blockSize: 8,
     palette: paletteToRgb(PALETTES.neon),
     dithering: 'bayer',
     texture: 'none',
     distanceAlgorithm: 'oklab',
   },
   gold: {
-    blockSize: 36,
+    blockSize: 8,
     palette: paletteToRgb(PALETTES.gold),
     dithering: 'atkinson',
     texture: 'scanlines',
     distanceAlgorithm: 'oklab',
   },
   'terminal-mono': {
-    blockSize: 32,
+    blockSize: 8,
     palette: paletteToRgb(PALETTES['terminal-mono']),
     dithering: 'none', // nearest palette mapping
     texture: 'none',
     distanceAlgorithm: 'euclidean',
   },
   'amber-terminal': {
-    blockSize: 32,
+    blockSize: 8,
     palette: paletteToRgb(PALETTES['amber-terminal']),
     dithering: 'atkinson',
     texture: 'scanlines',
     distanceAlgorithm: 'oklab',
   },
   'monochrome-grid': {
-    blockSize: 40,
+    blockSize: 8,
     palette: paletteToRgb(PALETTES['monochrome-grid']),
     dithering: 'bayer',
     texture: 'grid',

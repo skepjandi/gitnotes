@@ -4,9 +4,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::api::types::{
-    Author, BranchInfo, CommitInfo, ConflictBlobs, ConflictEntry, CredentialSource, FileDiff,
-    FileStatus, GeneratedKey, HunkSelection, ProgressEvent, PullResult, PushIntegrateResult,
-    PushResult, RemoteInfo, RepairReport, RepoInfo, RepoStatus,
+    Author, BlobReadResult, BranchInfo, CommitInfo, ConflictBlobs, ConflictEntry, CredentialSource,
+    FileDiff, FileHistoryResult, FileStatus, GeneratedKey, HunkSelection, ProgressEvent,
+    PullResult, PushIntegrateResult, PushResult, RemoteInfo, RepairReport, RepoInfo, RepoStatus,
 };
 use crate::engine::{self, android_ca, EngineError};
 
@@ -318,6 +318,39 @@ pub fn commit_diff(path: String, commit_id: String) -> Result<Vec<FileDiff>, Bri
     Ok(engine::ops::commit_diff(
         std::path::Path::new(&path),
         &commit_id,
+    )?)
+}
+
+/// File-scoped commit history: only commits touching `file_path` from `ref`.
+#[uniffi::export]
+pub fn file_history(
+    path: String,
+    rev: String,
+    file_path: String,
+    limit: u32,
+    skip: u32,
+) -> Result<FileHistoryResult, BridgeError> {
+    Ok(engine::ops::file_history(
+        std::path::Path::new(&path),
+        &rev,
+        &file_path,
+        limit,
+        skip,
+    )?)
+}
+
+/// Read the blob at `file_path` for `ref` (commit/tag/branch). Returns typed
+/// content or an explicit error (missing/binary/shallow/too-large).
+#[uniffi::export]
+pub fn read_blob_at_ref(
+    path: String,
+    rev: String,
+    file_path: String,
+) -> Result<BlobReadResult, BridgeError> {
+    Ok(engine::ops::read_blob_at_ref(
+        std::path::Path::new(&path),
+        &rev,
+        &file_path,
     )?)
 }
 

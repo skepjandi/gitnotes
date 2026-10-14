@@ -92,6 +92,38 @@
     "moveFileErrorShort": "Verschieben der Datei fehlgeschlagen.",
     "createFolderError": "Erstellen des Ordners fehlgeschlagen."
   },
+  "noteHistory": {
+    "title": "Verlauf",
+    "revisions": "Revisionen",
+    "loading": "Laden...",
+    "empty": "Kein Verlauf verfügbar",
+    "preview": "Vorschau",
+    "loadingBlob": "Inhalt wird geladen...",
+    "noPreview": "Vorschau nicht verfügbar",
+    "commitId": "Commit",
+    "loadMore": "Mehr laden",
+    "editDisabled": "Bearbeiten deaktiviert",
+    "accessibilityLabel": "Notizenverlauf",
+    "dirtyNotice": "Du hast ungespeicherte Änderungen. Der Verlauf zeigt die letzte gespeicherte Version.",
+    "unavailable": {
+      "default": "Verlauf nicht verfügbar",
+      "NewNote": "Neue Notizen haben keinen Verlauf",
+      "PdfNote": "PDF-Notizen unterstützen keinen Verlauf",
+      "MissingRepo": "Nur synchronisierte Notizen haben einen Verlauf",
+      "MissingBranch": "Branch-Informationen fehlen",
+      "NoRepositoryFound": "Repository nicht gefunden",
+      "ShallowClone": "Flache Klone können keinen Verlauf laden"
+    },
+    "blobError": {
+      "default": "Fehler beim Laden des Inhalts",
+      "RefNotFound": "Referenz nicht gefunden",
+      "ShallowHistory": "Der flache Verlauf kann das Blob nicht laden",
+      "PathNotFound": "Datei in dieser Revision nicht gefunden",
+      "BinaryContent": "Binärer Inhalt kann nicht in der Vorschau angezeigt werden",
+      "TooLarge": "Datei zu groß für die Vorschau",
+      "NativeUnavailable": "Git-Engine nicht verfügbar"
+    }
+  },
   "notesFilter": {
     "repository": "Repository",
     "noteType": "Notiztyp",

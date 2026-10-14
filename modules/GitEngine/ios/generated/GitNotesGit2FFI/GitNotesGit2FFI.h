@@ -355,6 +355,11 @@ RustBuffer uniffi_gitnotes_git2_fn_func_engine_name(RustCallStatus *_Nonnull out
 void uniffi_gitnotes_git2_fn_func_fetch_repo_with_progress(RustBuffer path, RustBuffer remote_name, RustBuffer repo_id, RustBuffer credential_source, uint64_t listener, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_FN_FUNC_FILE_HISTORY
+#define UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_FN_FUNC_FILE_HISTORY
+RustBuffer uniffi_gitnotes_git2_fn_func_file_history(RustBuffer path, RustBuffer rev, RustBuffer file_path, uint32_t limit, uint32_t skip, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_FN_FUNC_GENERATE_SSH_KEY
 #define UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_FN_FUNC_GENERATE_SSH_KEY
 RustBuffer uniffi_gitnotes_git2_fn_func_generate_ssh_key(RustBuffer passphrase, RustCallStatus *_Nonnull out_status
@@ -418,6 +423,11 @@ RustBuffer uniffi_gitnotes_git2_fn_func_push_repo(RustBuffer path, RustBuffer re
 #ifndef UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_FN_FUNC_PUSH_REPO_WITH_INTEGRATE
 #define UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_FN_FUNC_PUSH_REPO_WITH_INTEGRATE
 RustBuffer uniffi_gitnotes_git2_fn_func_push_repo_with_integrate(RustBuffer path, RustBuffer remote_name, RustBuffer repo_id, RustBuffer credential_source, uint64_t listener, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_FN_FUNC_READ_BLOB_AT_REF
+#define UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_FN_FUNC_READ_BLOB_AT_REF
+RustBuffer uniffi_gitnotes_git2_fn_func_read_blob_at_ref(RustBuffer path, RustBuffer rev, RustBuffer file_path, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_FN_FUNC_RECENT_COMMITS
@@ -871,6 +881,12 @@ uint16_t uniffi_gitnotes_git2_checksum_func_fetch_repo_with_progress(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_CHECKSUM_FUNC_FILE_HISTORY
+#define UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_CHECKSUM_FUNC_FILE_HISTORY
+uint16_t uniffi_gitnotes_git2_checksum_func_file_history(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_CHECKSUM_FUNC_GENERATE_SSH_KEY
 #define UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_CHECKSUM_FUNC_GENERATE_SSH_KEY
 uint16_t uniffi_gitnotes_git2_checksum_func_generate_ssh_key(void
@@ -946,6 +962,12 @@ uint16_t uniffi_gitnotes_git2_checksum_func_push_repo(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_CHECKSUM_FUNC_PUSH_REPO_WITH_INTEGRATE
 #define UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_CHECKSUM_FUNC_PUSH_REPO_WITH_INTEGRATE
 uint16_t uniffi_gitnotes_git2_checksum_func_push_repo_with_integrate(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_CHECKSUM_FUNC_READ_BLOB_AT_REF
+#define UNIFFI_FFIDEF_UNIFFI_GITNOTES_GIT2_CHECKSUM_FUNC_READ_BLOB_AT_REF
+uint16_t uniffi_gitnotes_git2_checksum_func_read_blob_at_ref(void
     
 );
 #endif

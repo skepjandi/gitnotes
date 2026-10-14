@@ -173,6 +173,48 @@ private func commitDict(_ commit: CommitInfo) -> [String: Any] {
   ]
 }
 
+private func fileHistoryEntryDict(_ entry: FileHistoryEntry) -> [String: Any] {
+  [
+    "id": entry.id,
+    "shortId": entry.shortId,
+    "message": entry.message,
+    "summary": entry.summary,
+    "authorName": entry.authorName,
+    "authorEmail": entry.authorEmail,
+    "authorTime": entry.authorTime,
+    "committerTime": entry.committerTime,
+    "parentCount": entry.parentCount,
+    "parents": entry.parents,
+  ]
+}
+
+private func fileHistoryResultDict(_ result: FileHistoryResult) -> [String: Any] {
+  [
+    "entries": result.entries.map(fileHistoryEntryDict),
+    "shallow": result.shallow,
+  ]
+}
+
+private func blobReadResultDict(_ result: BlobReadResult) -> [String: Any] {
+  switch result {
+  case .content(let oid, let content, let truncated, let mimeType):
+    // Expo TurboModules bridge Swift Data -> JS Uint8Array directly.
+    // TextDecoder.decode() in the JS facade expects Uint8Array.
+    return [
+      "kind": "content",
+      "oid": oid,
+      "content": content,
+      "truncated": truncated,
+      "mimeType": mimeType,
+    ]
+  case .error(let err):
+    return [
+      "kind": "error",
+      "code": String(describing: err.kind),
+    ]
+  }
+}
+
 private func conflictDict(_ conflict: ConflictEntry) -> [String: Any] {
   [
     "path": conflict.path,
@@ -478,6 +520,18 @@ public class GitEngineModule: Module {
 
     AsyncFunction("commitDiff") { (path: String, commitId: String) -> [[String: Any]] in
       try commitDiff(path: GitEngineModule.fsPath(path), commitId: commitId).map(fileDiffDict)
+    }.runOnQueue(engineQueue)
+
+    AsyncFunction("fileHistory") { (path: String, rev: String, filePath: String, limit: UInt32, skip: UInt32) -> [String: Any] in
+      fileHistoryResultDict(
+        try fileHistory(path: GitEngineModule.fsPath(path), rev: rev, filePath: filePath, limit: limit, skip: skip)
+      )
+    }.runOnQueue(engineQueue)
+
+    AsyncFunction("readBlobAtRef") { (path: String, rev: String, filePath: String) -> [String: Any] in
+      blobReadResultDict(
+        try readBlobAtRef(path: GitEngineModule.fsPath(path), rev: rev, filePath: filePath)
+      )
     }.runOnQueue(engineQueue)
 
     AsyncFunction("checkoutCommit") { (path: String, commitId: String) in

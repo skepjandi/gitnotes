@@ -1,4 +1,3 @@
-import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -14,6 +13,8 @@ interface EditorToolbarProps {
   onInsertCanvas: () => void;
   onInsertImage: () => void;
   onLinkCanvas: () => void;
+  onOpenHistory?: () => void;
+  canViewHistory?: boolean;
 }
 
 export function EditorToolbar({
@@ -25,6 +26,8 @@ export function EditorToolbar({
   onInsertCanvas,
   onInsertImage,
   onLinkCanvas,
+  onOpenHistory,
+  canViewHistory,
 }: EditorToolbarProps) {
   const { colors } = useTheme();
   const { spacing } = useTokens();
@@ -55,6 +58,14 @@ export function EditorToolbar({
       <IconButton size="md" testID="note-editor.toolbar.canvas-picker" onPress={onLinkCanvas} accessibilityLabel="Link existing canvas">
         <Ionicons name="easel-outline" size={20} color={colors.primary} />
       </IconButton>
+      {canViewHistory && onOpenHistory ? (
+        <>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <IconButton size="md" testID="note-editor.toolbar.history" onPress={onOpenHistory} accessibilityLabel="History">
+            <Ionicons name="git-commit-outline" size={20} color={colors.primary} />
+          </IconButton>
+        </>
+      ) : null}
     </View>
   );
 }

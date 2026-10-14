@@ -5,6 +5,10 @@ import type { GitProgressEvent } from './src/GitEngine.types';
 
 export type {
   Author,
+  BlobReadResult,
+  BlobReadErrorKind,
+  BlobReadError,
+  BlobContent,
   BranchInfo,
   CommitInfo,
   ConflictBlobs,
@@ -13,6 +17,8 @@ export type {
   DiffLine,
   DiffLineOrigin,
   FileDiff,
+  FileHistoryEntry,
+  FileHistoryResult,
   FileStatus,
   FileStatusKind,
   GeneratedKey,

@@ -121,8 +121,36 @@ The canonical route param types are in `src/navigation/types.ts`:
 - `TagInput` — tag editor
 - `BacklinksSection` — notes that link to this note
 - `FloatingAIButton` — AI assist trigger
+- `NoteHistoryModal` — read-only Git history browser (bottom sheet)
 
 **States:** Editing, Preview, Split (edit + preview side-by-side)
+
+**History Feature:**
+
+The `NoteHistoryModal` is accessible from both Preview mode (`NoteViewer`) and Edit mode (`EditorToolbar`). It displays a read-only view of the note's committed Git history without mutating HEAD, the working tree, or the sync queue.
+
+**Entry points:**
+- **Preview mode:** History icon button in `NoteViewer` header (visible only for eligible notes)
+- **Edit mode:** History button in `EditorToolbar` (visible only for eligible notes)
+
+**Eligibility:** A note is eligible for history viewing if it:
+- Has a `filePath` (saved to Git, not a new note)
+- Has a `repo` (clone-mode note)
+- Has a `branch` (branch information available)
+- Is not a PDF note
+
+**Behavior:**
+- Shows only commits affecting the note's current `filePath` on the active/recorded branch, newest first
+- Displays a horizontal gesture slider with revision cards for browsing
+- Selecting a revision loads and displays the exact file content at that commit (read-only, selectable text)
+- Edit is disabled while viewing history; Close remains enabled
+- A non-blocking notice appears when the editor has unsaved changes
+- Pagination/load-more for histories beyond the initial window
+- Closing the modal preserves all editor state (content, branch, HEAD, unsaved changes)
+
+**Ineligible notes:** New notes, local-only notes, PDF/binary notes, and notes without repository/branch identity show no history button.
+
+**No restoration:** The history feature is read-only. It does not implement restore, revert, checkout, diff editing, or any mutation of Git state.
 
 ---
 

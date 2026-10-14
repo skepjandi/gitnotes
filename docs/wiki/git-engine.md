@@ -169,6 +169,76 @@ Returns recent commits (default limit: 50).
 
 ---
 
+### `GitEngine.fileHistory(repoPath: string, ref: string, filePath: string, limit?: number, skip?: number): Promise<FileHistoryResult>`
+
+Returns paginated commit history for a specific file path. Only returns commits that affect the given file.
+
+**Parameters:**
+- `repoPath` — local repository path
+- `ref` — branch, tag, or commit SHA to query
+- `filePath` — repo-relative path of the file
+- `limit` — maximum number of entries to return (default: 50)
+- `skip` — number of entries to skip for pagination (default: 0)
+
+**Returns:**
+```typescript
+interface FileHistoryEntry {
+  id: string;           // full commit SHA
+  shortId: string;       // abbreviated commit SHA
+  message: string;       // full commit message
+  summary: string;       // first line of commit message
+  authorName: string;
+  authorEmail: string;
+  authorTime: number;   // Unix timestamp
+  committerTime: number;
+  parentCount: number;
+  parents: string[];     // parent commit SHAs
+}
+
+interface FileHistoryResult {
+  entries: FileHistoryEntry[];
+  shallow: boolean;      // true if clone was shallow (depth=1)
+}
+```
+
+**No mutation:** This operation reads commit history without checking out or modifying any refs. HEAD and the working tree remain unchanged.
+
+**Shallow clones:** If `shallow: true` is returned, the repository was cloned with `--depth=1` and history beyond the shallow tip is unavailable.
+
+---
+
+### `GitEngine.readBlobAtRef(repoPath: string, ref: string, filePath: string): Promise<BlobReadResult>`
+
+Reads the content of a file at a specific commit (or branch/tag ref).
+
+**Parameters:**
+- `repoPath` — local repository path
+- `ref` — branch, tag, or commit SHA
+- `filePath` — repo-relative path of the file
+
+**Returns:**
+```typescript
+type BlobReadResult =
+  | { kind: 'Content'; oid: string; content: Uint8Array; truncated: boolean; mimeType: string }
+  | { kind: 'Error'; error: { kind: BlobReadErrorKind; message: string } };
+
+type BlobReadErrorKind =
+  | 'RefNotFound'      // ref/commit does not exist
+  | 'ShallowHistory'    // shallow clone cannot read historical blobs
+  | 'PathNotFound'      // file did not exist at this commit
+  | 'BinaryContent'     // file is binary, not UTF-8 text
+  | 'TooLarge'          // file exceeds configured blob size limit
+  | 'NativeUnavailable'; // GitEngine native module not available
+```
+
+**Content decoding:** The `content` field is raw UTF-8 bytes (`Uint8Array`). The JS facade (`GitEngine.ts`) decodes this to a string using `TextDecoder`.
+
+**No mutation:** This operation reads the blob without checking out or modifying any refs.
+
+**Binary detection:** Files containing null bytes are classified as binary and rejected with `BinaryContent`. The `mimeType` field indicates the detected MIME type.
+
+---
+
 ### `GitEngine.commitDiff(repoPath: string, commitId: string): Promise<FileDiff[]>`
 
 Per-file diff of one commit against its first parent (`git show`-style).

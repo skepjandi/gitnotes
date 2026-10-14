@@ -92,6 +92,38 @@
     "moveFileErrorShort": "Échec du déplacement du fichier.",
     "createFolderError": "Échec de la création du dossier."
   },
+  "noteHistory": {
+    "title": "Historique",
+    "revisions": "Révisions",
+    "loading": "Chargement...",
+    "empty": "Aucun historique disponible",
+    "preview": "Aperçu",
+    "loadingBlob": "Chargement du contenu...",
+    "noPreview": "Aperçu non disponible",
+    "commitId": "Commit",
+    "loadMore": "Charger plus",
+    "editDisabled": "Édition désactivée",
+    "accessibilityLabel": "Historique des notes",
+    "dirtyNotice": "Vous avez des modifications non enregistrées. L'historique affiche la dernière version enregistrée.",
+    "unavailable": {
+      "default": "Historique non disponible",
+      "NewNote": "Les nouvelles notes n'ont pas d'historique",
+      "PdfNote": "Les notes PDF ne prennent pas en charge l'historique",
+      "MissingRepo": "Seules les notes synchronisées ont un historique",
+      "MissingBranch": "Informations de branche manquantes",
+      "NoRepositoryFound": "Dépôt introuvable",
+      "ShallowClone": "Les clones superficiels ne peuvent pas charger l'historique"
+    },
+    "blobError": {
+      "default": "Échec du chargement du contenu",
+      "RefNotFound": "Référence introuvable",
+      "ShallowHistory": "L'historique superficiel ne peut pas charger le blob",
+      "PathNotFound": "Fichier introuvable dans cette révision",
+      "BinaryContent": "Le contenu binaire ne peut pas être prévisualisé",
+      "TooLarge": "Fichier trop volumineux pour être prévisualisé",
+      "NativeUnavailable": "Moteur Git non disponible"
+    }
+  },
   "notesFilter": {
     "repository": "Dépôt",
     "noteType": "Type de note",

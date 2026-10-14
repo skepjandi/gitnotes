@@ -367,6 +367,14 @@ class GitEngineModule : Module() {
       engineOp { commitDiff(fsPath(path), commitId).map(::fileDiffDict) }
     }
 
+    AsyncFunction("fileHistory") Coroutine { path: String, rev: String, filePath: String, limit: Int, skip: Int ->
+      engineOp { fileHistoryResultDict(fileHistory(fsPath(path), rev, filePath, limit.toUInt(), skip.toUInt())) }
+    }
+
+    AsyncFunction("readBlobAtRef") Coroutine { path: String, rev: String, filePath: String ->
+      engineOp { blobReadResultDict(readBlobAtRef(fsPath(path), rev, filePath)) }
+    }
+
     AsyncFunction("checkoutCommit") Coroutine { path: String, commitId: String ->
       engineOp { checkoutCommit(fsPath(path), commitId) }
     }

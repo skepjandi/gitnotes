@@ -1,5 +1,5 @@
 /**
- * Tests for the four-way UI style selector in SettingsContent.
+ * Tests for the grouped UI style selector in SettingsContent.
  *
  * Entitlement model:
  *   Basic (flat)          — free for all users
@@ -8,7 +8,7 @@
  *   Retrofuturistic       — Pro only (paywall for free users)
  *
  * Structure:
- *   Rendering — verifies all four options render and are accessible
+ *   Rendering — verifies all seven options render and are accessible
  *   Accessibility — verifies role=button and lock icons
  *   Paywall flow — verifies premium options trigger paywall for free users
  *   Dark mode — verifies dark mode toggle is unaffected
@@ -471,6 +471,38 @@ describe('SettingsContent style selector [four-way selector]', () => {
         fireEvent.press(getByTestId('settings.option.style.retrofuturistic'));
       });
       expect(mockAlertCalls.length).toBe(1);
+    });
+  });
+
+  describe('Group headings — three localized subsection headers render when expanded', () => {
+    it('renders Default, Pro, and Referral Rewards headings for Pro users', async () => {
+      const props = makeProps({ isPro: true });
+      const rendered = baseRender(<SettingsContent {...props} />);
+      await act(async () => {
+        fireEvent.press(rendered.getByTestId('settings.section.themes'));
+      });
+      expect(rendered.getByTestId('settings.heading.style.default')).toBeTruthy();
+      expect(rendered.getByTestId('settings.heading.style.pro')).toBeTruthy();
+      expect(rendered.getByTestId('settings.heading.style.referral-rewards')).toBeTruthy();
+    });
+
+    it('renders Default, Pro, and Referral Rewards headings for free users', async () => {
+      const props = makeProps({ isPro: false });
+      const rendered = baseRender(<SettingsContent {...props} />);
+      await act(async () => {
+        fireEvent.press(rendered.getByTestId('settings.section.themes'));
+      });
+      expect(rendered.getByTestId('settings.heading.style.default')).toBeTruthy();
+      expect(rendered.getByTestId('settings.heading.style.pro')).toBeTruthy();
+      expect(rendered.getByTestId('settings.heading.style.referral-rewards')).toBeTruthy();
+    });
+
+    it('all three group headings are absent when themes section is collapsed', async () => {
+      const props = makeProps({ isPro: true });
+      const rendered = baseRender(<SettingsContent {...props} />);
+      expect(rendered.queryByTestId('settings.heading.style.default')).toBeNull();
+      expect(rendered.queryByTestId('settings.heading.style.pro')).toBeNull();
+      expect(rendered.queryByTestId('settings.heading.style.referral-rewards')).toBeNull();
     });
   });
 

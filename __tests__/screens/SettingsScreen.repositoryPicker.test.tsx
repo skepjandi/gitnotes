@@ -105,8 +105,6 @@ jest.mock('@/stores/aiStore', () => ({
     toggleGithubTools: jest.fn(),
     dailyQuotePersonalizationEnabled: false,
     toggleDailyQuotePersonalization: jest.fn(),
-    dailyQuoteSourceVisible: false,
-    toggleDailyQuoteSourceVisible: jest.fn(),
     setActionMode: jest.fn(),
     updateProvider: jest.fn(),
   })),

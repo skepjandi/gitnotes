@@ -148,8 +148,6 @@ onRemoveAccount: (id: string, login: string) => void;
   onToggleGithubTools: () => void;
   dailyQuotePersonalizationEnabled: boolean;
   onToggleDailyQuotePersonalization: () => void;
-  dailyQuoteSourceVisible: boolean;
-  onToggleDailyQuoteSourceVisible: () => void;
   isBiometricLockEnabled: boolean;
   isBiometricAvailable: boolean;
   biometricKind: BiometricKind;
@@ -266,8 +264,6 @@ export function SettingsContent(props: SettingsContentProps) {
     onToggleGithubTools,
     dailyQuotePersonalizationEnabled,
     onToggleDailyQuotePersonalization,
-    dailyQuoteSourceVisible,
-    onToggleDailyQuoteSourceVisible,
     isBiometricLockEnabled,
     isBiometricAvailable,
     biometricKind,
@@ -1467,34 +1463,6 @@ export function SettingsContent(props: SettingsContentProps) {
             </Text>
             <Text style={[styles.settingValue, { color: colors.textSecondary, fontSize: 12, marginTop: 2 }]}>
               {t('settings.aiPersonalization.description', { defaultValue: 'Personalize quotes based on your notes' })}
-            </Text>
-          </View>
-        </GroupRow>
-        <GroupRow
-          testID={isPro ? 'settings.row.daily-quote-show-sources' : 'settings.row.ai-locked-show-sources'}
-          onPress={isPro ? undefined : () => promptProUpgrade(t, onOpenPaywall)}
-          trailing={
-            isPro ? (
-              <View className="flex-row items-center gap-2">
-                <Toggle
-                  testID="settings.toggle.daily-quote-show-sources"
-                  value={isAIEnabled ? (dailyQuoteEnabled ? dailyQuoteSourceVisible : false) : false}
-                  onValueChange={onToggleDailyQuoteSourceVisible}
-                  disabled={!isAIEnabled || !dailyQuoteEnabled}
-                />
-                <HintIcon hintKey="hints.settings.dailyQuoteShowSources" testID="hint.daily-quote-show-sources" />
-              </View>
-            ) : (
-              <Ionicons name="lock-closed" size={18} color={colors.textSecondary} />
-            )
-          }
-        >
-          <View>
-            <Text style={[styles.settingLabel, { color: colors.text }]}>
-              {t('settings.dailyQuoteSource.label', { defaultValue: 'Show Sources' })}
-            </Text>
-            <Text style={[styles.settingValue, { color: colors.textSecondary, fontSize: 12, marginTop: 2 }]}>
-              {t('settings.dailyQuoteSource.description', { defaultValue: 'Show the book/work the quote is from' })}
             </Text>
           </View>
         </GroupRow>

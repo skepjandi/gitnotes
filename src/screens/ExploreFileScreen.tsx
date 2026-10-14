@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
@@ -190,7 +190,7 @@ export default function ExploreFileScreen() {
   return (
     <SafeAreaView edges={['top']} className="flex-1" style={{ flex: 1, backgroundColor: colors.background }} testID="explore-file.root">
       <View
-        className="flex-row items-center gap-2 px-4 py-3"
+        className="flex-row items-center gap-2 px-4 py-2.5"
         style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
       >
         <Pressable
@@ -221,8 +221,12 @@ export default function ExploreFileScreen() {
             style={({ pressed }) => [
               styles.headerAction,
               {
-                backgroundColor: colors.accent + '14',
-                borderColor: colors.accent + '44',
+                backgroundColor: mode === 'edit'
+                  ? colors.accent + '1a'
+                  : colors.accent + '12',
+                borderColor: mode === 'edit'
+                  ? colors.accent + '66'
+                  : colors.accent + '33',
                 opacity: pressed ? 0.72 : 1,
               },
             ]}
@@ -391,14 +395,14 @@ export default function ExploreFileScreen() {
 
 const styles = {
   headerAction: {
-    minHeight: 38,
-    paddingHorizontal: 10,
-    borderRadius: 10,
+    minHeight: 34,
+    paddingHorizontal: 8,
+    borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     flexDirection: 'row' as const,
-    gap: 5,
+    gap: 4,
   },
 };
 

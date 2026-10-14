@@ -23,6 +23,28 @@ Terminal, and Monochrome Grid are referral icons.
 - Generate iOS icon, Android adaptive foreground, and Android monochrome assets
   for every alternate variant.
 
+### Filter stack
+
+The generator will expose deterministic, composable filters instead of one
+hard-coded recolor operation:
+
+- **Pixel graphics**: downsample to a small logical canvas, then nearest-neighbor
+  upscale to create hard-edged pixel blocks.
+- **Posterize/palette quantization**: map each pixel to the nearest color in a
+  deliberately small semantic palette.
+- **Ordered dithering**: use a fixed Bayer matrix at palette boundaries to add
+  controlled retro texture without random noise.
+- **CRT scanlines**: modulate alternating pixel rows for phosphor-era variants.
+- **Grid/halftone texture**: add a subtle repeating screen pattern where the
+  variant calls for visible technical structure.
+- **Glow/bloom**: apply a restrained colored halo before pixelation so neon and
+  phosphor variants have depth without becoming blurred gradients.
+
+Filters run in a documented order: render and crop the logo, add optional glow,
+reduce to the logical pixel canvas, quantize with optional dithering, apply
+optional scanline/grid texture, then nearest-neighbor upscale and generate the
+native outputs.
+
 ### Variant treatments
 
 The output names and entitlement mapping stay stable, while the filter recipes
@@ -30,12 +52,12 @@ become visually distinct:
 
 | Variant | Treatment |
 | --- | --- |
-| Neon | Fine pixel grid, high-contrast cyan/electric-violet palette |
-| Grayscale | Coarse monochrome bitmap grid with ordered dithering |
-| Gold | Warm amber/cream palette with CRT scanline texture |
-| Terminal Mono | Chunky green terminal palette with hard pixel edges |
-| Amber Terminal | Orange phosphor palette with scanlines and restrained glow |
-| Monochrome Grid | Cool gray palette with visible ordered grid/dither |
+| Neon | Pixel graphics + posterize + cyan/electric-violet palette + restrained glow |
+| Grayscale | Coarse pixel graphics + monochrome posterize + ordered dithering |
+| Gold | Pixel graphics + warm amber/cream palette + CRT scanlines |
+| Terminal Mono | Chunky pixel graphics + green palette + hard edges |
+| Amber Terminal | Pixel graphics + orange phosphor palette + scanlines + glow |
+| Monochrome Grid | Pixel graphics + cool gray palette + grid texture + dithering |
 
 The logo geometry remains recognizable in all variants. The differences come
 from grid size, palette quantization, and texture, not from adding unrelated

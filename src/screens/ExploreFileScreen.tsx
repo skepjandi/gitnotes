@@ -69,9 +69,11 @@ export default function ExploreFileScreen() {
 
   const isReadOnly = isBinary || isLfsPointer;
 
-  const [mode, setMode] = useState<'preview' | 'edit'>('edit');
-
   const fileLanguage = useMemo(() => classifyFile(filePath), [filePath]);
+
+  const [mode, setMode] = useState<'preview' | 'edit'>(
+    () => fileLanguage.mode === 'plain' ? 'edit' : 'preview',
+  );
 
   const eligibleForPreview = useMemo(
     () => !isBinary && !isLfsPointer && fileLanguage.mode !== 'plain',
@@ -93,7 +95,7 @@ export default function ExploreFileScreen() {
     setIsDirty(false);
     setSaveError(null);
     setSavedAt(null);
-    setMode('edit');
+    setMode(fileLanguage.mode === 'plain' ? 'edit' : 'preview');
     (async () => {
       try {
         const workingTreeUri = GitFsService.workingTreeUri({ repoPath: storedRepo.path });
@@ -117,7 +119,7 @@ export default function ExploreFileScreen() {
     return () => {
       cancelled = true;
     };
-  }, [storedRepo, filePath, isBinary]);
+  }, [storedRepo, filePath, isBinary, fileLanguage.mode]);
 
   const handleSave = useCallback(async () => {
     if (isSaving || isCheckingOut || !isDirty || !storedRepo) return;

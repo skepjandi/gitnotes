@@ -211,22 +211,27 @@ describe('ExploreFileScreen', () => {
   });
 
   describe('happy path', () => {
-    it('renders editor with correct initial content', async () => {
+    it('renders preview content for a markdown file by default', async () => {
       setupRoute('repo-1', 'notes/hello.md');
 
       const { getByTestId } = render(<ExploreFileScreen />);
 
-      const editor = await waitFor(
-        () => getByTestId('explore-file.editor'),
+      const preview = await waitFor(
+        () => getByTestId('explore-file.preview-content'),
         { timeout: 3000 },
       );
-      expect(editor).toBeTruthy();
+      expect(preview).toBeTruthy();
     });
 
-    it('calls writer with exact new value when save is pressed', async () => {
+    it('calls writer with exact new value when save is pressed after entering Edit', async () => {
       setupRoute('repo-1', 'notes/hello.md');
 
       const { getByTestId } = render(<ExploreFileScreen />);
+
+      // File loads in preview mode — enter Edit via toggle
+      await waitFor(() => getByTestId('explore-file.preview-content'), { timeout: 3000 });
+      const toggle = getByTestId('explore-file.mode-toggle');
+      await act(async () => { fireEvent.press(toggle); });
 
       const editor = await waitFor(
         () => getByTestId('explore-file.editor'),
@@ -252,6 +257,10 @@ describe('ExploreFileScreen', () => {
       setupRoute('repo-1', 'notes/hello.md');
 
       const { getByTestId } = render(<ExploreFileScreen />);
+
+      // Enter Edit mode
+      await waitFor(() => getByTestId('explore-file.preview-content'), { timeout: 3000 });
+      await act(async () => { fireEvent.press(getByTestId('explore-file.mode-toggle')); });
 
       const editor = await waitFor(
         () => getByTestId('explore-file.editor'),
@@ -317,6 +326,10 @@ describe('ExploreFileScreen', () => {
 
       const { getByTestId } = render(<ExploreFileScreen />);
 
+      // Enter Edit mode for eligible file
+      await waitFor(() => getByTestId('explore-file.preview-content'), { timeout: 3000 });
+      await act(async () => { fireEvent.press(getByTestId('explore-file.mode-toggle')); });
+
       const editor = await waitFor(
         () => getByTestId('explore-file.editor'),
         { timeout: 3000 },
@@ -344,6 +357,10 @@ describe('ExploreFileScreen', () => {
       mockServiceUpdate.mockRejectedValue(new Error('write failed'));
 
       const { getByTestId } = render(<ExploreFileScreen />);
+
+      // Enter Edit mode for eligible file
+      await waitFor(() => getByTestId('explore-file.preview-content'), { timeout: 3000 });
+      await act(async () => { fireEvent.press(getByTestId('explore-file.mode-toggle')); });
 
       const editor = await waitFor(
         () => getByTestId('explore-file.editor'),
@@ -403,6 +420,10 @@ describe('ExploreFileScreen', () => {
 
       const { getByTestId } = render(<ExploreFileScreen />);
 
+      // Enter Edit mode for eligible file
+      await waitFor(() => getByTestId('explore-file.preview-content'), { timeout: 3000 });
+      await act(async () => { fireEvent.press(getByTestId('explore-file.mode-toggle')); });
+
       const editor = await waitFor(
         () => getByTestId('explore-file.editor'),
         { timeout: 3000 },
@@ -448,6 +469,10 @@ describe('ExploreFileScreen', () => {
 
       const { getByTestId } = render(<ExploreFileScreen />);
 
+      // Enter Edit mode for eligible file
+      await waitFor(() => getByTestId('explore-file.preview-content'), { timeout: 3000 });
+      await act(async () => { fireEvent.press(getByTestId('explore-file.mode-toggle')); });
+
       const editor = await waitFor(
         () => getByTestId('explore-file.editor'),
         { timeout: 3000 },
@@ -466,8 +491,48 @@ describe('ExploreFileScreen', () => {
   });
 
   describe('preview/edit mode', () => {
-    it('defaults to edit mode showing the TextInput editor', async () => {
+    it('defaults to preview mode for a markdown file', async () => {
       setupRoute('repo-1', 'notes/hello.md');
+
+      const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
+
+      const preview = await waitFor(
+        () => getByTestId('explore-file.preview-content'),
+        { timeout: 3000 },
+      );
+      expect(preview).toBeTruthy();
+      // Editor should not appear without explicit toggle
+      expect(queryByTestId('explore-file.editor')).toBeNull();
+    });
+
+    it('defaults to preview mode for a JSON file', async () => {
+      setupRoute('repo-1', 'notes/hello.json');
+
+      const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
+
+      const preview = await waitFor(
+        () => getByTestId('explore-file.preview-content'),
+        { timeout: 3000 },
+      );
+      expect(preview).toBeTruthy();
+      expect(queryByTestId('explore-file.editor')).toBeNull();
+    });
+
+    it('defaults to preview mode for a code file', async () => {
+      setupRoute('repo-1', 'notes/hello.ts');
+
+      const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
+
+      const preview = await waitFor(
+        () => getByTestId('explore-file.preview-content'),
+        { timeout: 3000 },
+      );
+      expect(preview).toBeTruthy();
+      expect(queryByTestId('explore-file.editor')).toBeNull();
+    });
+
+    it('defaults to edit mode for a plain text file', async () => {
+      setupRoute('repo-1', 'notes/hello.txt');
 
       const { getByTestId } = render(<ExploreFileScreen />);
 
@@ -554,17 +619,26 @@ describe('ExploreFileScreen', () => {
       expect(toggle).toBeNull();
     });
 
-    it('toggling to preview shows FileContentRenderer', async () => {
+    it('entering Preview shows FileContentRenderer', async () => {
       setupRoute('repo-1', 'notes/hello.md');
 
       const { getByTestId } = render(<ExploreFileScreen />);
+
+      await waitFor(
+        () => getByTestId('explore-file.preview-content'),
+        { timeout: 3000 },
+      );
+
+      const toggle = getByTestId('explore-file.mode-toggle');
+      await act(async () => {
+        fireEvent.press(toggle);
+      });
 
       await waitFor(
         () => getByTestId('explore-file.editor'),
         { timeout: 3000 },
       );
 
-      const toggle = getByTestId('explore-file.mode-toggle');
       await act(async () => {
         fireEvent.press(toggle);
       });
@@ -576,48 +650,38 @@ describe('ExploreFileScreen', () => {
       expect(preview).toBeTruthy();
     });
 
-    it('toggling back to edit restores the TextInput editor', async () => {
+    it('entering Edit and returning to Preview restores the rendered content', async () => {
       setupRoute('repo-1', 'notes/hello.md');
 
       const { getByTestId } = render(<ExploreFileScreen />);
-
-      await waitFor(
-        () => getByTestId('explore-file.editor'),
-        { timeout: 3000 },
-      );
-
-      const toggle = getByTestId('explore-file.mode-toggle');
-      await act(async () => {
-        fireEvent.press(toggle);
-      });
 
       await waitFor(
         () => getByTestId('explore-file.preview-content'),
         { timeout: 3000 },
       );
 
+      const toggle = getByTestId('explore-file.mode-toggle');
       await act(async () => {
         fireEvent.press(toggle);
       });
 
-      const restoredEditor = await waitFor(
-        () => getByTestId('explore-file.editor'),
+      expect(await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 })).toBeTruthy();
+
+      await act(async () => {
+        fireEvent.press(toggle);
+      });
+
+      const preview = await waitFor(
+        () => getByTestId('explore-file.preview-content'),
         { timeout: 3000 },
       );
-      expect(restoredEditor).toBeTruthy();
+      expect(preview).toBeTruthy();
     });
 
     it('save and cancel buttons are absent in preview mode', async () => {
       setupRoute('repo-1', 'notes/hello.md');
 
       const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
-
-      await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 });
-
-      const toggle = getByTestId('explore-file.mode-toggle');
-      await act(async () => {
-        fireEvent.press(toggle);
-      });
 
       await waitFor(
         () => getByTestId('explore-file.preview-content'),
@@ -633,6 +697,11 @@ describe('ExploreFileScreen', () => {
 
       const { getByTestId } = render(<ExploreFileScreen />);
 
+      await waitFor(() => getByTestId('explore-file.preview-content'), { timeout: 3000 });
+
+      const toggle = getByTestId('explore-file.mode-toggle');
+      await act(async () => { fireEvent.press(toggle); });
+
       await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 });
 
       expect(getByTestId('explore-file.save')).toBeTruthy();
@@ -644,15 +713,18 @@ describe('ExploreFileScreen', () => {
 
       const { getByTestId } = render(<ExploreFileScreen />);
 
-      const editor = await waitFor(
-        () => getByTestId('explore-file.editor'),
+      await waitFor(
+        () => getByTestId('explore-file.preview-content'),
         { timeout: 3000 },
       );
 
+      const toggle = getByTestId('explore-file.mode-toggle');
+      await act(async () => { fireEvent.press(toggle); });
+
+      const editor = await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 });
       const textInput = editor as unknown as TextInput;
       fireEvent(textInput, 'changeText', 'Dirty content');
 
-      const toggle = getByTestId('explore-file.mode-toggle');
       await act(async () => {
         fireEvent.press(toggle);
       });
@@ -679,13 +751,6 @@ describe('ExploreFileScreen', () => {
 
       const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
 
-      await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 });
-
-      const toggle = getByTestId('explore-file.mode-toggle');
-      await act(async () => {
-        fireEvent.press(toggle);
-      });
-
       await waitFor(
         () => getByTestId('explore-file.preview-content'),
         { timeout: 3000 },
@@ -699,13 +764,6 @@ describe('ExploreFileScreen', () => {
       setupRoute('repo-1', 'notes/hello.json');
 
       const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
-
-      await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 });
-
-      const toggle = getByTestId('explore-file.mode-toggle');
-      await act(async () => {
-        fireEvent.press(toggle);
-      });
 
       await waitFor(
         () => getByTestId('explore-file.preview-content'),
@@ -721,13 +779,6 @@ describe('ExploreFileScreen', () => {
 
       const { getByTestId, queryByTestId } = render(<ExploreFileScreen />);
 
-      await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 });
-
-      const toggle = getByTestId('explore-file.mode-toggle');
-      await act(async () => {
-        fireEvent.press(toggle);
-      });
-
       await waitFor(
         () => getByTestId('explore-file.preview-content'),
         { timeout: 3000 },
@@ -742,7 +793,8 @@ describe('ExploreFileScreen', () => {
 
       const { getByTestId } = render(<ExploreFileScreen />);
 
-      await waitFor(() => getByTestId('explore-file.editor'), { timeout: 3000 });
+      // File loads in preview by default — toggle should say "Edit"
+      await waitFor(() => getByTestId('explore-file.preview-content'), { timeout: 3000 });
 
       const toggle = getByTestId('explore-file.mode-toggle');
       expect(toggle).toBeTruthy();
@@ -752,7 +804,7 @@ describe('ExploreFileScreen', () => {
       });
 
       await waitFor(
-        () => getByTestId('explore-file.preview-content'),
+        () => getByTestId('explore-file.editor'),
         { timeout: 3000 },
       );
 

@@ -392,9 +392,11 @@ When a non-Pro user taps a Pro-locked style (Neumorphic or Retrofuturistic), `pr
 
 ### BiometricLockScreen
 
-**Purpose:** App lock screen shown when app returns from background.
+**Purpose:** App lock screen shown on startup when the persisted lock is enabled or when the app returns from background after the configured timeout.
 
 **Trigger:** `BiometricLockContext` — enabled in settings.
+
+**Authentication:** The first biometric attempt starts automatically when the locked overlay appears and biometrics are available. The Unlock button remains available to retry after cancellation or failure.
 
 ---
 

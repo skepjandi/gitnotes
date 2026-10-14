@@ -58,7 +58,16 @@ const {
   FILTER_PRESETS,
   createImageData: makeRetroImageData,
   applyRetroFilter,
+  preserveSourceFills,
 } = require('./retro-icon-filters');
+
+// Logo source fills from assets/logo.svg — exact RGB values from SVG path elements
+// outer: #5b7eec (rgb 91,126,236), middle: #0442e6 (rgb 4,66,230), inner: #071399 (rgb 7,19,153)
+const LOGO_SOURCE_FILLS = [
+  { sourceRgb: [91, 126, 236], targetPaletteIndex: 2 }, // outer -> palette[2] (bright)
+  { sourceRgb: [4, 66, 230], targetPaletteIndex: 1 }, // middle -> palette[1] (mid)
+  { sourceRgb: [7, 19, 153], targetPaletteIndex: 0 }, // inner -> palette[0] (dark)
+];
 
 const TARGETS = [
   { name: 'icon.png', size: 1024, fraction: 0.82 },
@@ -234,6 +243,8 @@ async function generateTarget(svgBuffer, target, variant) {
     for (let i = 0; i < croppedRaw.length; i++) {
       retroImageData.data[i] = croppedRaw[i];
     }
+    // Map source fills to explicit palette slots before bitmapped processing
+    preserveSourceFills(retroImageData, retroPreset.palette, LOGO_SOURCE_FILLS);
     const filtered = applyRetroFilter(retroImageData, retroPreset);
     artwork = await sharp(Buffer.from(filtered.data), {
       raw: { width: croppedWidth, height: croppedHeight, channels: 4 },

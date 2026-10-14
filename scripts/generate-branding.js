@@ -70,15 +70,6 @@ const TARGETS = [
 
 const VARIANT_TARGET_NAMES = ['icon.png', 'adaptive-icon.png', 'monochrome-icon.png'];
 
-// Retro preset key mapping: generator variant key -> FILTER_PRESETS key
-const RETRO_PRESET_MAP = {
-  neon: 'neon',
-  gold: 'gold',
-  'terminal-mono': 'terminal-mono',
-  'amber-terminal': 'amber-terminal',
-  'monochrome-grid': 'monochrome-grid',
-};
-
 const VARIANTS = {
   base: { hueShift: 0, saturationScale: 1.0, isGrayscale: false, isBase: true },
   grayscale: { hueShift: 0, saturationScale: 0, isGrayscale: true },
@@ -89,11 +80,6 @@ const VARIANTS = {
   'amber-terminal': { isRetro: true, retroPreset: 'amber-terminal' },
   'monochrome-grid': { isRetro: true, retroPreset: 'monochrome-grid' },
 };
-
-function srgbToLinear(c) {
-  const x = c / 255;
-  return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
-}
 
 function linearToSrgb(c) {
   return Math.round(
@@ -109,8 +95,8 @@ function rgbToHsv(r, g, b) {
   const min = Math.min(rn, gn, bn);
   const delta = max - min;
   let h = 0;
-  let s = max === 0 ? 0 : delta / max;
-  let v = max;
+  const s = max === 0 ? 0 : delta / max;
+  const v = max;
   if (delta !== 0) {
     if (max === rn) h = 60 * (((gn - bn) / delta) % 6);
     else if (max === gn) h = 60 * ((bn - rn) / delta + 2);

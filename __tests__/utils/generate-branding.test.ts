@@ -17,11 +17,6 @@
 'use strict';
 
 // Inline the corrected functions (mirrors scripts/generate-branding.js after fix)
-function srgbToLinear(c) {
-  const x = c / 255;
-  return x <= 0.04045 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
-}
-
 function linearToSrgb(c) {
   return Math.round(
     c <= 0.0031308 ? c * 12.92 * 255 : (1.055 * Math.pow(c, 1 / 2.4) - 0.055) * 255,
@@ -252,7 +247,6 @@ describe('variant registry — all seven variants are registered', () => {
   test('variant registry has exactly seven entries', () => {
     const path = require('path');
     const ROOT = path.resolve(__dirname, '../..');
-    const genScript = require(path.join(ROOT, 'scripts/generate-branding.js'));
     // VARIANTS is not directly exported, so we verify via generated output dirs
     const altDir = path.join(ROOT, 'assets', 'generated', 'alternate');
     const actualVariants = require('fs').readdirSync(altDir).filter(f =>

@@ -204,7 +204,6 @@ describe('applyRetroFilter', () => {
 
     // The result should NOT be the same as input (palette mapping should change it)
     // For blue input with green palette, the output should be green (nearest)
-    const firstPixelR = result.data[0];
     const firstPixelG = result.data[1];
     const firstPixelB = result.data[2];
 

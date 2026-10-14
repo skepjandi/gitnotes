@@ -235,30 +235,45 @@ describe('FILTER_PRESETS', () => {
     const neon = FILTER_PRESETS['neon'];
     expect(neon.blockSize).toBe(48);
     expect(neon.palette.length).toBeGreaterThanOrEqual(4);
+    // Signature colors: electric blue and cyan
+    expect(colorInPalette(0, 198, 255, neon.palette)).toBe(true); // #00c6ff electric blue
+    expect(colorInPalette(74, 255, 240, neon.palette)).toBe(true); // #4afff0 cyan
   });
 
   test('gold preset has amber/cream/brown palette', () => {
     const gold = FILTER_PRESETS['gold'];
     expect(gold.blockSize).toBe(36);
     expect(gold.palette.length).toBeGreaterThanOrEqual(4);
+    // Signature colors: amber and yellow
+    expect(colorInPalette(184, 105, 0, gold.palette)).toBe(true); // #b86900 amber
+    expect(colorInPalette(245, 183, 0, gold.palette)).toBe(true); // #f5b700 yellow
   });
 
   test('terminal-mono preset has green terminal palette', () => {
     const terminal = FILTER_PRESETS['terminal-mono'];
     expect(terminal.blockSize).toBe(32);
     expect(terminal.palette.length).toBeGreaterThanOrEqual(4);
+    // Signature colors: phosphor green and bright green
+    expect(colorInPalette(0, 138, 52, terminal.palette)).toBe(true); // #008a34 phosphor green
+    expect(colorInPalette(22, 255, 90, terminal.palette)).toBe(true); // #16ff5a bright green
   });
 
   test('amber-terminal preset has orange phosphor palette', () => {
     const amber = FILTER_PRESETS['amber-terminal'];
     expect(amber.blockSize).toBe(32);
     expect(amber.palette.length).toBeGreaterThanOrEqual(4);
+    // Signature colors: orange and amber
+    expect(colorInPalette(190, 72, 0, amber.palette)).toBe(true); // #be4800 orange
+    expect(colorInPalette(255, 138, 0, amber.palette)).toBe(true); // #ff8a00 amber
   });
 
   test('monochrome-grid preset has cool gray/blueprint palette', () => {
     const mono = FILTER_PRESETS['monochrome-grid'];
     expect(mono.blockSize).toBe(40);
     expect(mono.palette.length).toBeGreaterThanOrEqual(4);
+    // Signature colors: cool grays
+    expect(colorInPalette(85, 102, 118, mono.palette)).toBe(true); // #556676 cool gray
+    expect(colorInPalette(155, 170, 184, mono.palette)).toBe(true); // #9baab8 light cool gray
   });
 
   test('all presets have dithering property', () => {

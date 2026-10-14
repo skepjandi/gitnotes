@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,19 @@ export function BiometricLockScreen() {
   const { isLocked, authenticate, isBiometricAvailable, biometricKind } = useBiometricLock();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+
+  const hasAutoAuthenticatedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isLocked) {
+      hasAutoAuthenticatedRef.current = false;
+      return;
+    }
+    if (!isBiometricAvailable || hasAutoAuthenticatedRef.current) return;
+
+    hasAutoAuthenticatedRef.current = true;
+    void authenticate();
+  }, [authenticate, isBiometricAvailable, isLocked]);
 
   const handleUnlock = useCallback(() => {
     void authenticate();

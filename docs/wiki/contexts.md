@@ -109,20 +109,26 @@ App
 
 ## BiometricLockContext
 
-**Purpose:** Manages biometric/PIN lock state and lock screen display.
+**Purpose:** Manages the optional biometric lock state, biometric availability metadata, and unlock prompt.
 
 **Provides:**
 ```typescript
 {
+  isLockEnabled: boolean;
+  setIsLockEnabled: (enabled: boolean) => Promise<boolean>;
+  lockTimeout: LockTimeout;
+  setLockTimeout: (timeout: LockTimeout) => void;
   isLocked: boolean;
-  lockEnabled: boolean;
-  lock: () => void;
-  unlock: () => Promise<boolean>;
-  setLockEnabled: (enabled: boolean) => void;
+  isBiometricAvailable: boolean;
+  biometricKind: BiometricKind;
+  biometricLabel: string;
+  authenticate: () => Promise<boolean>;
 }
 ```
 
-**Consumed by:** `AppNavigator` (renders `BiometricLockScreen` when locked)
+**Behavior:** Persisted lock settings restore `isLocked` during provider initialization. `BiometricLockScreen` automatically starts one biometric attempt for each lock session when biometrics are available; its Unlock button remains available for retry after cancellation or failure.
+
+**Consumed by:** `BiometricLockScreen` (rendered as an app-level overlay by `App.tsx`)
 
 ---
 

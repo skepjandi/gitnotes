@@ -10,6 +10,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-10-14
 
+### fix(settings): separate Quick Setup from Accounts rows
+
+**What:** Quick Setup was visually grouped with the account connection controls in Settings.
+
+**Fix:** Render Quick Setup as its own section directly beneath Accounts while preserving its navigation behavior.
+
 ### fix(files): restore Git file preview padding and theme updates
 
 **What:** Files opened from the Git tab rendered preview content flush against the left edge, and the Git file list could keep light-theme colors after switching themes until it was refreshed.

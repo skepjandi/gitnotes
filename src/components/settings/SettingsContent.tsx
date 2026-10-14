@@ -694,17 +694,6 @@ export function SettingsContent(props: SettingsContentProps) {
       </Group>
 
       <Group title={t('accounts.title')}>
-        <GroupRow
-          testID="settings.button.quick-setup"
-          onPress={onQuickSetup}
-          leading={<Ionicons name="rocket-outline" size={20} color={colors.primary} />}
-          trailing={<Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />}
-        >
-          <Text style={[styles.settingLabel, { color: colors.primary }]}>
-            {t('settings.quickSetup')}
-          </Text>
-        </GroupRow>
-
         {accountSummaries.length === 0 ? (
           <>
             {/* PAT-based Connect Host */}
@@ -1032,6 +1021,19 @@ export function SettingsContent(props: SettingsContentProps) {
         >
           <Text style={[styles.settingLabel, { color: colors.primary }]}>
             {t('settings.installGithubApp')}
+          </Text>
+        </GroupRow>
+      </Group>
+
+      <Group title={t('settings.quickSetup')}>
+        <GroupRow
+          testID="settings.button.quick-setup"
+          onPress={onQuickSetup}
+          leading={<Ionicons name="rocket-outline" size={20} color={colors.primary} />}
+          trailing={<Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />}
+        >
+          <Text style={[styles.settingLabel, { color: colors.primary }]}>
+            {t('settings.quickSetup')}
           </Text>
         </GroupRow>
       </Group>

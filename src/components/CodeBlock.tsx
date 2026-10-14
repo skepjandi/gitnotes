@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as Clipboard from 'expo-clipboard';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { getThemeColors, tokenize } from '../utils/syntaxHighlight';
+import { getThemeColors, isOversized, tokenize } from '../utils/syntaxHighlight';
 
 interface CodeBlockProps {
   code: string;
@@ -12,12 +12,19 @@ interface CodeBlockProps {
 
 const FEEDBACK_DURATION_MS = 2000;
 
+function getLineCount(code: string): number {
+  const lines = code.split(/\r?\n/);
+  return lines.length;
+}
+
 export function CodeBlock({ code, language, isDark }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const themeColors = useMemo(() => getThemeColors(isDark), [isDark]);
   const tokens = useMemo(() => tokenize(code, language ?? ''), [code, language]);
+  const lineCount = useMemo(() => getLineCount(code), [code]);
+  const oversized = useMemo(() => isOversized(code), [code]);
 
   useEffect(() => {
     return () => {
@@ -41,13 +48,73 @@ export function CodeBlock({ code, language, isDark }: CodeBlockProps) {
     }, FEEDBACK_DURATION_MS);
   };
 
+  const plainTextColor = themeColors.plain;
+
+  const renderCode = () => {
+    if (oversized) {
+      return (
+        <Text selectable style={[styles.codeText, { color: plainTextColor }]}>
+          {code}
+        </Text>
+      );
+    }
+
+    return (
+      <Text selectable style={[styles.codeText, { color: plainTextColor }]}>
+        {tokens.map((token, index) => (
+          <Text key={`${token.type}-${index}-${token.text}`} style={{ color: themeColors[token.type] }} testID="code-block-token">
+            {token.text}
+          </Text>
+        ))}
+      </Text>
+    );
+  };
+
+  const renderLineNumbers = () => {
+    const lines = code.split(/\r?\n/);
+    if (!lines.some(line => line.length > 0)) {
+      return null;
+    }
+
+    const lineNumberWidth = String(lineCount).length * 10 + 16;
+    const lineElements: React.ReactNode[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      lineElements.push(
+        <Text
+          key={i}
+          style={[
+            styles.lineNumberText,
+            { color: plainTextColor, width: lineNumberWidth },
+          ]}
+          testID={i === 0 ? 'code-block-line-number-1' : undefined}
+        >
+          {i + 1}
+        </Text>,
+      );
+      if (i < lines.length - 1) {
+        lineElements.push(
+          <Text key={`nl-${i}`} style={{ color: plainTextColor }}>
+            {'\n'}
+          </Text>,
+        );
+      }
+    }
+
+    return <View style={[styles.lineNumbers, { width: lineNumberWidth }]}>{lineElements}</View>;
+  };
+
   return (
     <View style={[styles.container, isDark ? styles.containerDark : styles.containerLight]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           {language ? (
             <Text style={[styles.languageLabel, { color: isDark ? '#cbd5e1' : '#475569' }]}>
-              {language.toUpperCase()}
+              {oversized ? `${language.toUpperCase()} (LARGE FILE)` : language.toUpperCase()}
+            </Text>
+          ) : oversized ? (
+            <Text style={[styles.languageLabel, { color: isDark ? '#cbd5e1' : '#475569' }]}>
+              LARGE FILE
             </Text>
           ) : null}
         </View>
@@ -58,13 +125,8 @@ export function CodeBlock({ code, language, isDark }: CodeBlockProps) {
       </View>
 
       <ScrollView horizontal style={styles.scrollView} contentContainerStyle={styles.scrollContent} testID="code-block-scroll-view">
-        <Text selectable style={[styles.codeText, { color: themeColors.plain }]}>
-          {tokens.map((token, index) => (
-            <Text key={`${token.type}-${index}-${token.text}`} style={{ color: themeColors[token.type] }} testID="code-block-token">
-              {token.text}
-            </Text>
-          ))}
-        </Text>
+        {renderLineNumbers()}
+        <View style={styles.codeContainer}>{renderCode()}</View>
       </ScrollView>
     </View>
   );
@@ -116,10 +178,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 12,
     paddingTop: 4,
+    flexDirection: 'row',
+  },
+  codeContainer: {
+    flexDirection: 'row',
   },
   codeText: {
     fontFamily: 'Menlo',
     fontSize: 13,
     lineHeight: 20,
+  },
+  lineNumbers: {
+    flexDirection: 'column',
+    paddingRight: 12,
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(128, 128, 128, 0.2)',
+    marginRight: 12,
+  },
+  lineNumberText: {
+    fontFamily: 'Menlo',
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'right',
   },
 });

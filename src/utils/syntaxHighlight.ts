@@ -5,6 +5,13 @@ export type Token = {
   type: TokenType;
 };
 
+export const MAX_TOKENIZE_BYTES = 256 * 1024;
+
+export function isOversized(content: string): boolean {
+  const encoded = new TextEncoder().encode(content);
+  return encoded.length > MAX_TOKENIZE_BYTES;
+}
+
 type LanguageConfig = {
   keywords: Set<string>;
   functionMatchers: RegExp[];
@@ -103,10 +110,17 @@ function buildConfig(language: string): LanguageConfig | null {
       };
     case 'bash':
     case 'sh':
-    case 'shell':
+    case 'shell': {
+      // (?:#!.*\n)? eats the shebang first so the negative-lookahead
+      // below checks the correct position (after any shebang + whitespace).
+      // Keywords are excluded so they fall through to the keyword step.
+      const shellFnRe = new RegExp(
+        String.raw`^(?:#!.*\n)?\s*(?!(?:if|then|else|fi|for|while|do|done|case|esac|function\b))([A-Za-z_][\w-]*)`,
+        'my',
+      );
       return {
         keywords: BASH_KEYWORDS,
-        functionMatchers: [/^(?:#!.*\n)?\s*([A-Za-z_][\w-]*)/my],
+        functionMatchers: [shellFnRe],
         commentMatchers: [/#.*$/my],
         stringMatchers: [/'(?:\\.|[^'\\])*'/y, /"(?:\\.|[^"\\])*"/y],
         numberMatcher: COMMON_NUMBER,
@@ -114,6 +128,7 @@ function buildConfig(language: string): LanguageConfig | null {
         punctuationMatcher: COMMON_PUNCTUATION,
         identifierMatcher: COMMON_IDENTIFIER,
       };
+    }
     case 'json':
       return {
         keywords: JSON_KEYWORDS,
@@ -181,6 +196,22 @@ function buildConfig(language: string): LanguageConfig | null {
         punctuationMatcher: COMMON_PUNCTUATION,
         identifierMatcher: COMMON_IDENTIFIER,
       };
+    // Graceful degradation — languages listed in fileLanguage.ts TOKENIZER_EXT_MAP
+    // but without dedicated configs fall through to plain-text rendering.
+    case 'ruby':
+    case 'rust': {
+      const noOpMatchers: RegExp[] = [];
+      return {
+        keywords: new Set<string>(),
+        functionMatchers: noOpMatchers,
+        commentMatchers: noOpMatchers,
+        stringMatchers: noOpMatchers,
+        numberMatcher: COMMON_NUMBER,
+        operatorMatcher: COMMON_OPERATOR,
+        punctuationMatcher: COMMON_PUNCTUATION,
+        identifierMatcher: COMMON_IDENTIFIER,
+      };
+    }
     default:
       return null;
   }
@@ -344,13 +375,18 @@ function tokenizeByRegex(code: string, config: LanguageConfig): Token[] {
 }
 
 export function tokenize(code: string, language: string): Token[] {
+  if (isOversized(code)) {
+    return code.length > 0 ? [{ text: code, type: 'plain' }] : [];
+  }
+
   const config = buildConfig(language);
 
   if (!config) {
     return code.length > 0 ? [{ text: code, type: 'plain' }] : [];
   }
 
-  if (language.trim().toLowerCase() === 'yaml' || language.trim().toLowerCase() === 'yml') {
+  const normalizedLang = language.trim().toLowerCase();
+  if (normalizedLang === 'yaml' || normalizedLang === 'yml') {
     return tokenizeYAML(code, config);
   }
 

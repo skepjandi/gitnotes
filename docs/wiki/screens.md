@@ -298,16 +298,22 @@ The canonical route param types are in `src/navigation/types.ts`:
 
 **Appearance (UI Style) selector:**
 
-`SettingsContent.tsx` exposes a four-way UI style picker under the Appearance section. Users choose one of:
+`SettingsContent.tsx` exposes a grouped UI style picker under the Appearance section. Theme rows are data-driven via `src/components/settings/styleOptions.ts`, which mirrors the pattern established by `referralAppIcons.ts`. The three localized subsection headers are `settings.styleGroups.default`, `settings.styleGroups.pro`, and `settings.styleGroups.referralRewards`.
 
-| Option | Style key | Access |
-|--------|-----------|--------|
-| Basic | `flat` | Free |
-| Neumorphic | `neumorphic` | Pro only (locked with paywall) |
-| Neo-Brutalist | `neo-brutalist` | Free (no paywall) |
-| Retrofuturistic | `retrofuturistic` | Pro only (locked with paywall) |
+Group structure and entitlement model:
 
-When a non-Pro user taps a Pro-locked style (Neumorphic or Retrofuturistic), `promptProUpgrade()` is called which opens the paywall. A lock icon is shown next to each Pro option when `isPro === false`. The selected style is persisted to `@gitnotes:style` via `ThemeContext.setStyle()`.
+| Group | Options | Access |
+|-------|---------|--------|
+| Default | Basic (`flat`), Neo-Brutalist (`neo-brutalist`) | Free for all users |
+| Pro | Neumorphic (`neumorphic`), Retrofuturistic (`retrofuturistic`) | Pro only (paywall for free users) |
+| Referral Rewards | Terminal Mono (`terminal-mono`), CRT Green (`crt-green`), Developer Desk (`developer-desk`) | Server-authoritative unlock via `RewardEntitlementService.isUnlocked(rewardKey)` — see `REFERRAL_REWARD_CATALOG` in `src/types/worker.ts` for milestone mapping (milestones 3, 10, 20 respectively) |
+
+Behavior:
+- Default styles call `setStyle()` directly on press.
+- Pro styles call `promptProUpgrade()` when `isPro === false` (paywall); call `setStyle()` when Pro.
+- Referral styles call `onOpenRewardCatalog` when `RewardEntitlementService.isUnlocked(rewardKey)` is false; call `setStyle()` when the server confirms unlock. Pro status alone does not bypass referral gating.
+- A lock icon is shown on Pro and Referral options when their respective entitlement is not satisfied.
+- The selected style is persisted to `@gitnotes:style` via `ThemeContext.setStyle()`.
 
 ---
 

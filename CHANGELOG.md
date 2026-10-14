@@ -16,6 +16,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **Fix:** Changed the fresh-install default for `dailyQuoteEnabled` from `true` to `false`. Removed the Show Sources settings row and its toggle action while preserving `dailyQuoteSourceVisible` in the persisted state for backwards compatibility. `DailyQuoteCard` now always shows `quote.source` when present. Removed `dailyQuoteSource` translation entries from all locale files.
 
+### fix(security): start biometric authentication automatically
+
+**What:** Users with biometric lock enabled had to press Unlock before the first authentication prompt appeared when opening the app.
+
+**Fix:** Start one biometric attempt when the locked overlay appears, while retaining the Unlock button for retry after cancellation or failure. Updated the context and screen documentation to describe the actual lock behavior.
+
 ## 2026-10-13
 
 ### feat(referral): add development progress override

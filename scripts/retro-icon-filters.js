@@ -33,7 +33,7 @@ const { process } = require('bitmapped');
 // Palette color arrays for each preset (hex colors)
 const PALETTES = {
   neon: ['#0a1c5a', '#00c6ff', '#4afff0', '#ff2ad6'],
-  gold: ['#6b4a00', '#c9a200', '#f5b700', '#ffe069'],
+  gold: ['#996300', '#e5b900', '#ffd447', '#fff3a6'],
   'terminal-mono': ['#003014', '#008a34', '#16ff5a', '#beff91'],
   'amber-terminal': ['#541c00', '#be4800', '#ff8a00', '#ffd65c'],
   'monochrome-grid': ['#232d37', '#556676', '#9baab8', '#e1e8ee'],
@@ -87,6 +87,50 @@ function createImageData(width, height, fill = [0, 0, 0, 0]) {
     data[i + 3] = fill[3] ?? 255;
   }
   return { width, height, data };
+}
+
+/**
+ * Map source fill colors to explicit palette slots before bitmapped processing.
+ *
+ * The logo SVG has three distinct fill colors (outer, middle, inner). Without
+ * pre-mapping, palette quantization causes block averaging to collapse middle
+ * and inner into the same palette slot. This helper preserves three visually
+ * distinct regions by assigning each source fill to a dedicated palette index.
+ *
+ * @param {{width: number, height: number, data: Uint8ClampedArray}} imageData - Source ImageData (modified in place)
+ * @param {number[][]} palette - Array of [r, g, b] palette colors
+ * @param {Array<{sourceRgb: number[], targetPaletteIndex: number}>} sourceFillMapping -
+ *   Array of {sourceRgb: [r,g,b], targetPaletteIndex: N} mappings.
+ *   sourceRgb must be an exact match; targetPaletteIndex is the palette slot to use.
+ * @returns {{width: number, height: number, data: Uint8ClampedArray}} The same imageData object (modified in place)
+ */
+function preserveSourceFills(imageData, palette, sourceFillMapping) {
+  const { data } = imageData;
+  // Build a fast lookup: "r,g,b" -> palette index
+  const lookup = new Map();
+  for (const mapping of sourceFillMapping) {
+    const key = mapping.sourceRgb.join(',');
+    lookup.set(key, mapping.targetPaletteIndex);
+  }
+
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) {
+      // Transparent pixel — leave untouched
+      continue;
+    }
+    const key = `${data[i]},${data[i + 1]},${data[i + 2]}`;
+    const paletteIndex = lookup.get(key);
+    if (paletteIndex !== undefined) {
+      // Exact source fill match — replace with target palette color
+      const [r, g, b] = palette[paletteIndex];
+      data[i] = r;
+      data[i + 1] = g;
+      data[i + 2] = b;
+      // Alpha unchanged (opaque stays opaque)
+    }
+    // Non-matching opaque pixels — leave untouched, bitmapped will handle them
+  }
+  return imageData;
 }
 
 /**
@@ -267,4 +311,5 @@ module.exports = {
   paletteToRgb,
   createImageData,
   applyRetroFilter,
+  preserveSourceFills,
 };

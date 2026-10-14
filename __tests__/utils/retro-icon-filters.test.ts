@@ -20,6 +20,7 @@ const {
   applyRetroFilter,
   createImageData,
   paletteToRgb,
+  preserveSourceFills,
 } = require('../../scripts/retro-icon-filters');
 
 describe('paletteToRgb', () => {
@@ -223,6 +224,168 @@ describe('applyRetroFilter', () => {
   });
 });
 
+describe('preserveSourceFills', () => {
+  // Gold palette (from FILTER_PRESETS.gold)
+  const goldPalette = paletteToRgb(['#996300', '#e5b900', '#ffd447', '#fff3a6']);
+  // Source fills from logo.svg
+  const outerFill = [91, 126, 236];   // #5b7eec outer
+  const middleFill = [4, 66, 230];    // #0442e6 middle
+  const innerFill = [7, 19, 153];     // #071399 inner
+  const mapping = [
+    { sourceRgb: outerFill, targetPaletteIndex: 2 },  // outer -> palette[2] bright
+    { sourceRgb: middleFill, targetPaletteIndex: 1 }, // middle -> palette[1] mid
+    { sourceRgb: innerFill, targetPaletteIndex: 0 },  // inner -> palette[0] dark
+  ];
+
+  test('three source fills map to three distinct palette colors', () => {
+    // 1x1 images for each source fill
+    const outerImg = createImageData(1, 1, [...outerFill, 255]);
+    const middleImg = createImageData(1, 1, [...middleFill, 255]);
+    const innerImg = createImageData(1, 1, [...innerFill, 255]);
+
+    preserveSourceFills(outerImg, goldPalette, mapping);
+    preserveSourceFills(middleImg, goldPalette, mapping);
+    preserveSourceFills(innerImg, goldPalette, mapping);
+
+    // Each should map to a distinct palette color
+    const outerRgb = [outerImg.data[0], outerImg.data[1], outerImg.data[2]];
+    const middleRgb = [middleImg.data[0], middleImg.data[1], middleImg.data[2]];
+    const innerRgb = [innerImg.data[0], innerImg.data[1], innerImg.data[2]];
+
+    // Verify mapped to expected palette slots
+    expect(outerRgb).toEqual(goldPalette[2]); // palette[2] = #ffd447
+    expect(middleRgb).toEqual(goldPalette[1]); // palette[1] = #e5b900
+    expect(innerRgb).toEqual(goldPalette[0]);  // palette[0] = #996300
+
+    // Three regions must be visually distinct
+    expect(outerRgb).not.toEqual(middleRgb);
+    expect(middleRgb).not.toEqual(innerRgb);
+    expect(outerRgb).not.toEqual(innerRgb);
+  });
+
+  test('transparent pixels are left untouched', () => {
+    const img = createImageData(2, 2, [...outerFill, 255]);
+    img.data[7] = 0; // Make second pixel transparent
+
+    preserveSourceFills(img, goldPalette, mapping);
+
+    // First pixel (opaque) should be mapped
+    expect([img.data[0], img.data[1], img.data[2]]).toEqual(goldPalette[2]);
+    // Second pixel (transparent) should be untouched (alpha = 0)
+    expect(img.data[7]).toBe(0);
+  });
+
+  test('non-matching opaque pixels are left untouched', () => {
+    const img = createImageData(1, 1, [200, 100, 50, 255]); // Not a source fill
+
+    preserveSourceFills(img, goldPalette, mapping);
+
+    // Should be unchanged
+    expect([img.data[0], img.data[1], img.data[2]]).toEqual([200, 100, 50]);
+  });
+
+  test('filter is deterministic - same input produces same output', () => {
+    const img1 = createImageData(4, 4, [...outerFill, 255]);
+    const img2 = createImageData(4, 4, [...outerFill, 255]);
+
+    preserveSourceFills(img1, goldPalette, mapping);
+    preserveSourceFills(img2, goldPalette, mapping);
+
+    expect(Array.from(img1.data)).toEqual(Array.from(img2.data));
+  });
+
+  test('alpha channel is preserved for opaque pixels', () => {
+    const img = createImageData(1, 1, [...outerFill, 255]);
+
+    preserveSourceFills(img, goldPalette, mapping);
+
+    expect(img.data[3]).toBe(255);
+  });
+
+  test('works with neon palette - three fills map to three distinct colors', () => {
+    const neonPalette = paletteToRgb(['#0a1c5a', '#00c6ff', '#4afff0', '#ff2ad6']);
+    const neonMapping = [
+      { sourceRgb: outerFill, targetPaletteIndex: 2 },
+      { sourceRgb: middleFill, targetPaletteIndex: 1 },
+      { sourceRgb: innerFill, targetPaletteIndex: 0 },
+    ];
+
+    const outerImg = createImageData(1, 1, [...outerFill, 255]);
+    const middleImg = createImageData(1, 1, [...middleFill, 255]);
+    const innerImg = createImageData(1, 1, [...innerFill, 255]);
+
+    preserveSourceFills(outerImg, neonPalette, neonMapping);
+    preserveSourceFills(middleImg, neonPalette, neonMapping);
+    preserveSourceFills(innerImg, neonPalette, neonMapping);
+
+    const outerRgb = [outerImg.data[0], outerImg.data[1], outerImg.data[2]];
+    const middleRgb = [middleImg.data[0], middleImg.data[1], middleImg.data[2]];
+    const innerRgb = [innerImg.data[0], innerImg.data[1], innerImg.data[2]];
+
+    // Three regions must be visually distinct for neon too
+    expect(outerRgb).not.toEqual(middleRgb);
+    expect(middleRgb).not.toEqual(innerRgb);
+    expect(outerRgb).not.toEqual(innerRgb);
+
+    // Mapped to expected slots
+    expect(outerRgb).toEqual(neonPalette[2]); // #4afff0 cyan
+    expect(middleRgb).toEqual(neonPalette[1]); // #00c6ff blue
+    expect(innerRgb).toEqual(neonPalette[0]);  // #0a1c5a dark blue
+  });
+
+  test('after pre-mapping, applyRetroFilter produces three distinct regions for gold', () => {
+    // Use a larger image (16x16) so blockSize=8 allows distinct blocks per band.
+    // Three horizontal bands: top=outer, middle=middle, bottom=inner.
+    const width = 16;
+    const height = 16;
+    const img = createImageData(width, height, [0, 0, 0, 0]);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        if (y < 6) {
+          // Top band - outer fill
+          img.data[idx] = outerFill[0];
+          img.data[idx + 1] = outerFill[1];
+          img.data[idx + 2] = outerFill[2];
+        } else if (y < 10) {
+          // Middle band - middle fill
+          img.data[idx] = middleFill[0];
+          img.data[idx + 1] = middleFill[1];
+          img.data[idx + 2] = middleFill[2];
+        } else {
+          // Bottom band - inner fill
+          img.data[idx] = innerFill[0];
+          img.data[idx + 1] = innerFill[1];
+          img.data[idx + 2] = innerFill[2];
+        }
+        img.data[idx + 3] = 255;
+      }
+    }
+
+    // Pre-map then apply retro filter (with no dithering for clarity)
+    preserveSourceFills(img, goldPalette, mapping);
+    const result = applyRetroFilter(img, {
+      ...FILTER_PRESETS['gold'],
+      dithering: 'none',
+    });
+
+    // Sample the center pixel of each band
+    const getCenterOfBand = (rowY) => {
+      const idx = (rowY * width + 8) * 4;
+      return [result.data[idx], result.data[idx + 1], result.data[idx + 2]];
+    };
+
+    const outerColor = getCenterOfBand(3);  // middle of top band
+    const middleColor = getCenterOfBand(8); // middle of middle band
+    const innerColor = getCenterOfBand(13); // middle of bottom band
+
+    // All three bands should be distinct
+    expect(outerColor).not.toEqual(middleColor);
+    expect(middleColor).not.toEqual(innerColor);
+    expect(outerColor).not.toEqual(innerColor);
+  });
+});
+
 describe('FILTER_PRESETS', () => {
   test('every non-reference preset has a logical pixel size and palette', () => {
     for (const key of ['neon', 'gold', 'terminal-mono', 'amber-terminal', 'monochrome-grid']) {
@@ -245,8 +408,8 @@ describe('FILTER_PRESETS', () => {
     expect(gold.blockSize).toBe(8);
     expect(gold.palette.length).toBeGreaterThanOrEqual(4);
     // Signature colors: golden-ochre and yellow
-    expect(colorInPalette(201, 162, 0, gold.palette)).toBe(true); // #c9a200 golden-ochre midtone
-    expect(colorInPalette(245, 183, 0, gold.palette)).toBe(true); // #f5b700 yellow primary
+    expect(colorInPalette(229, 185, 0, gold.palette)).toBe(true); // #e5b900 bright yellow-gold midtone
+    expect(colorInPalette(255, 212, 71, gold.palette)).toBe(true); // #ffd447 bright golden primary
   });
 
   test('terminal-mono preset has green terminal palette', () => {

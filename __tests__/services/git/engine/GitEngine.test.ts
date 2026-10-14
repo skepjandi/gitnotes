@@ -7,6 +7,10 @@ jest.mock('expo-modules-core', () => ({
     pushWithIntegrate: jest.fn(),
     getCredential: jest.fn(),
     setCredential: jest.fn(),
+    fileHistory: jest.fn(),
+    readBlobAtRef: jest.fn(),
+    checkout: jest.fn(),
+    resetSoft: jest.fn(),
   })),
 }));
 
@@ -51,6 +55,10 @@ const nativeModule = (requireNativeModule as jest.Mock).mock.results[0].value as
   pushWithIntegrate: jest.Mock;
   getCredential: jest.Mock;
   setCredential: jest.Mock;
+  fileHistory: jest.Mock;
+  readBlobAtRef: jest.Mock;
+  checkout: jest.Mock;
+  resetSoft: jest.Mock;
 };
 
 describe('GitEngine Android build guidance', () => {
@@ -619,5 +627,349 @@ describe('GitEngine.pushWithIntegrate auth fallback chain', () => {
 
     expect(result.ok).toBe(false);
     expect(nativeModule.pushWithIntegrate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('GitEngine.fileHistory', () => {
+  beforeEach(() => {
+    nativeModule.fileHistory.mockReset();
+    nativeModule.checkout.mockReset();
+    nativeModule.resetSoft.mockReset();
+  });
+
+  it('returns FileHistoryResult with entries for happy path', async () => {
+    const mockResult = {
+      entries: [
+        {
+          id: 'abc1234def5678',
+          shortId: 'abc1234',
+          message: 'Update notes/example.md',
+          summary: 'Update notes/example.md',
+          authorName: 'Test User',
+          authorEmail: 'test@example.com',
+          authorTime: 1700000000,
+          committerTime: 1700000000,
+          parentCount: 1,
+          parents: ['parent123'],
+        },
+      ],
+      shallow: false,
+    };
+    nativeModule.fileHistory.mockResolvedValue(mockResult);
+
+    const result = await GitEngine.fileHistory('/repo', 'main', 'notes/example.md', 50, 0);
+
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].id).toBe('abc1234def5678');
+    expect(result.entries[0].shortId).toBe('abc1234');
+    expect(result.shallow).toBe(false);
+    expect(nativeModule.fileHistory).toHaveBeenCalledWith('/repo', 'main', 'notes/example.md', 50, 0);
+  });
+
+  it('returns empty entries when file has no history', async () => {
+    nativeModule.fileHistory.mockResolvedValue({ entries: [], shallow: false });
+
+    const result = await GitEngine.fileHistory('/repo', 'main', 'nonexistent.md', 50, 0);
+
+    expect(result.entries).toHaveLength(0);
+    expect(result.shallow).toBe(false);
+  });
+
+  it('returns shallow flag when history may be truncated', async () => {
+    nativeModule.fileHistory.mockResolvedValue({
+      entries: [],
+      shallow: true,
+    });
+
+    const result = await GitEngine.fileHistory('/repo', 'main', 'notes/example.md', 50, 0);
+
+    expect(result.shallow).toBe(true);
+  });
+});
+
+describe('GitEngine.readBlobAtRef', () => {
+  beforeEach(() => {
+    nativeModule.readBlobAtRef.mockReset();
+    nativeModule.checkout.mockReset();
+    nativeModule.resetSoft.mockReset();
+  });
+
+  it('returns decoded content string on happy path', async () => {
+    const encoder = new TextEncoder();
+    const contentBytes = encoder.encode('# Hello World\n');
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'Content',
+      oid: 'blob123oid',
+      content: contentBytes,
+      truncated: false,
+      mimeType: 'text/markdown',
+    });
+
+    const result = await GitEngine.readBlobAtRef('/repo', 'abc123', 'notes/example.md');
+
+    expect(result.kind).toBe('Content');
+    if (result.kind === 'Content') {
+      expect(result.content).toBe('# Hello World\n');
+      expect(result.oid).toBe('blob123oid');
+      expect(result.mimeType).toBe('text/markdown');
+      expect(result.truncated).toBe(false);
+    }
+    expect(nativeModule.readBlobAtRef).toHaveBeenCalledWith('/repo', 'abc123', 'notes/example.md');
+  });
+
+  it('returns RefNotFound error when ref does not exist', async () => {
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'Error',
+      error: { kind: 'RefNotFound', message: 'ref not found: nonexistent' },
+    });
+
+    const result = await GitEngine.readBlobAtRef('/repo', 'nonexistent', 'notes/example.md');
+
+    expect(result.kind).toBe('Error');
+    if (result.kind === 'Error') {
+      expect(result.errorKind).toBe('RefNotFound');
+      expect(result.message).toBe('ref not found: nonexistent');
+    }
+  });
+
+  it('returns PathNotFound error when file does not exist at ref', async () => {
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'Error',
+      error: { kind: 'PathNotFound', message: "path 'notes/nonexistent.md' not found at ref 'main'" },
+    });
+
+    const result = await GitEngine.readBlobAtRef('/repo', 'main', 'notes/nonexistent.md');
+
+    expect(result.kind).toBe('Error');
+    if (result.kind === 'Error') {
+      expect(result.errorKind).toBe('PathNotFound');
+    }
+  });
+
+  it('returns ShallowHistory error for shallow clones', async () => {
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'Error',
+      error: {
+        kind: 'ShallowHistory',
+        message: "ref 'main' is a shallow commit (history truncated by git clone --depth)",
+      },
+    });
+
+    const result = await GitEngine.readBlobAtRef('/repo', 'main', 'notes/example.md');
+
+    expect(result.kind).toBe('Error');
+    if (result.kind === 'Error') {
+      expect(result.errorKind).toBe('ShallowHistory');
+    }
+  });
+
+  it('returns BinaryContent error for binary files', async () => {
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'Error',
+      error: { kind: 'BinaryContent', message: "file 'image.png' at ref 'main' is binary" },
+    });
+
+    const result = await GitEngine.readBlobAtRef('/repo', 'main', 'image.png');
+
+    expect(result.kind).toBe('Error');
+    if (result.kind === 'Error') {
+      expect(result.errorKind).toBe('BinaryContent');
+    }
+  });
+
+  it('returns TooLarge error when blob exceeds size limit', async () => {
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'Error',
+      error: {
+        kind: 'TooLarge',
+        message: 'blob at notes/large.md at ref main is 15728640 bytes (limit: 10485760 bytes)',
+      },
+    });
+
+    const result = await GitEngine.readBlobAtRef('/repo', 'main', 'notes/large.md');
+
+    expect(result.kind).toBe('Error');
+    if (result.kind === 'Error') {
+      expect(result.errorKind).toBe('TooLarge');
+    }
+  });
+
+  it('rejects path traversal attempt with PathNotFound', async () => {
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'Error',
+      error: {
+        kind: 'PathNotFound',
+        message: "invalid file path: '../etc/passwd'",
+      },
+    });
+
+    const result = await GitEngine.readBlobAtRef('/repo', 'main', '../etc/passwd');
+
+    expect(result.kind).toBe('Error');
+    if (result.kind === 'Error') {
+      expect(result.errorKind).toBe('PathNotFound');
+    }
+  });
+
+  it('rejects absolute path with PathNotFound', async () => {
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'Error',
+      error: {
+        kind: 'PathNotFound',
+        message: "invalid file path: '/etc/passwd'",
+      },
+    });
+
+    const result = await GitEngine.readBlobAtRef('/repo', 'main', '/etc/passwd');
+
+    expect(result.kind).toBe('Error');
+    if (result.kind === 'Error') {
+      expect(result.errorKind).toBe('PathNotFound');
+    }
+  });
+
+  it('rejects empty ref with RefNotFound', async () => {
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'Error',
+      error: { kind: 'RefNotFound', message: 'ref not found: ' },
+    });
+
+    const result = await GitEngine.readBlobAtRef('/repo', '', 'notes/example.md');
+
+    expect(result.kind).toBe('Error');
+    if (result.kind === 'Error') {
+      expect(result.errorKind).toBe('RefNotFound');
+    }
+  });
+
+  it('does not call checkout or resetSoft when blob is read', async () => {
+    const encoder = new TextEncoder();
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'Content',
+      oid: 'blob123oid',
+      content: encoder.encode('# Hello\n'),
+      truncated: false,
+      mimeType: 'text/markdown',
+    });
+
+    await GitEngine.readBlobAtRef('/repo', 'main', 'notes/example.md');
+
+    expect(nativeModule.checkout).not.toHaveBeenCalled();
+    expect(nativeModule.resetSoft).not.toHaveBeenCalled();
+  });
+
+  it('decodes Uint8Array content correctly (production contract)', async () => {
+    const markdown = '# Hëllo Wörld\n🎉';
+    const encoder = new TextEncoder();
+    const contentBytes = encoder.encode(markdown);
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'Content',
+      oid: 'abc123oid',
+      content: contentBytes,
+      truncated: false,
+      mimeType: 'text/markdown',
+    });
+
+    const result = await GitEngine.readBlobAtRef('/repo', 'main', 'notes/test.md');
+
+    expect(result.kind).toBe('Content');
+    if (result.kind === 'Content') {
+      expect(result.content).toBe(markdown);
+    }
+  });
+
+  it('throws when native returns base64 string instead of Uint8Array', async () => {
+    const contentBytes = new TextEncoder().encode('# Hëllo');
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'Content',
+      oid: 'abc123oid',
+      content: Buffer.from(contentBytes).toString('base64'),
+      truncated: false,
+      mimeType: 'text/markdown',
+    });
+
+    await expect(
+      GitEngine.readBlobAtRef('/repo', 'main', 'notes/test.md'),
+    ).rejects.toMatchObject({ message: expect.stringContaining('') });
+  });
+});
+
+describe('GitEngine.fileHistory pagination', () => {
+  beforeEach(() => {
+    nativeModule.fileHistory.mockReset();
+    nativeModule.checkout.mockReset();
+    nativeModule.resetSoft.mockReset();
+  });
+
+  it('passes skip and limit to native module', async () => {
+    nativeModule.fileHistory.mockResolvedValue({ entries: [], shallow: false });
+
+    await GitEngine.fileHistory('/repo', 'main', 'notes/example.md', 20, 5);
+
+    expect(nativeModule.fileHistory).toHaveBeenCalledWith('/repo', 'main', 'notes/example.md', 20, 5);
+  });
+
+  it('returns entries from native result with correct field mapping', async () => {
+    const mockEntries = [
+      {
+        id: 'abc0000000001',
+        shortId: 'abc0000',
+        message: 'Update notes/example.md',
+        summary: 'Update notes/example.md',
+        authorName: 'Alice',
+        authorEmail: 'alice@example.com',
+        authorTime: 1710000000,
+        committerTime: 1710000000,
+        parentCount: 1,
+        parents: ['abc0000000000'],
+      },
+    ];
+    nativeModule.fileHistory.mockResolvedValue({ entries: mockEntries, shallow: false });
+
+    const result = await GitEngine.fileHistory('/repo', 'main', 'notes/example.md', 50, 0);
+
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].id).toBe('abc0000000001');
+    expect(result.entries[0].authorName).toBe('Alice');
+    expect(result.shallow).toBe(false);
+  });
+
+  it('handles skip beyond available entries gracefully', async () => {
+    nativeModule.fileHistory.mockResolvedValue({ entries: [], shallow: false });
+
+    const result = await GitEngine.fileHistory('/repo', 'main', 'notes/example.md', 50, 999);
+
+    expect(result.entries).toHaveLength(0);
+    expect(nativeModule.fileHistory).toHaveBeenCalledWith('/repo', 'main', 'notes/example.md', 50, 999);
+  });
+
+  it('does not call checkout or resetSoft when history is retrieved', async () => {
+    nativeModule.fileHistory.mockResolvedValue({ entries: [], shallow: false });
+
+    await GitEngine.fileHistory('/repo', 'main', 'notes/example.md', 50, 0);
+
+    expect(nativeModule.checkout).not.toHaveBeenCalled();
+    expect(nativeModule.resetSoft).not.toHaveBeenCalled();
+  });
+
+  it('treats limit=0 as limit=1 (max guard)', async () => {
+    const mockEntry = {
+      id: 'abc0000000001',
+      shortId: 'abc0000',
+      message: 'Update notes/example.md',
+      summary: 'Update notes/example.md',
+      authorName: 'Alice',
+      authorEmail: 'alice@example.com',
+      authorTime: 1710000000,
+      committerTime: 1710000000,
+      parentCount: 1,
+      parents: ['abc0000000000'],
+    };
+    nativeModule.fileHistory.mockResolvedValue({ entries: [mockEntry], shallow: false });
+
+    const result = await GitEngine.fileHistory('/repo', 'main', 'notes/example.md', 0, 0);
+
+    expect(nativeModule.fileHistory).toHaveBeenCalledWith('/repo', 'main', 'notes/example.md', 0, 0);
+    expect(result.entries).toHaveLength(1);
   });
 });

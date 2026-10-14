@@ -7,6 +7,48 @@ export type GitProgressKind =
   | 'Rebase'
   | 'Merge';
 
+export type BlobReadErrorKind =
+  | 'RefNotFound'
+  | 'ShallowHistory'
+  | 'PathNotFound'
+  | 'BinaryContent'
+  | 'TooLarge'
+  | 'NativeUnavailable';
+
+export interface BlobReadError {
+  kind: BlobReadErrorKind;
+  message: string;
+}
+
+export interface BlobContent {
+  oid: string;
+  content: Uint8Array;
+  truncated: boolean;
+  mimeType: string;
+}
+
+export type BlobReadResult =
+  | { kind: 'Content'; oid: string; content: Uint8Array; truncated: boolean; mimeType: string }
+  | { kind: 'Error'; error: BlobReadError };
+
+export interface FileHistoryEntry {
+  id: string;
+  shortId: string;
+  message: string;
+  summary: string;
+  authorName: string;
+  authorEmail: string;
+  authorTime: number;
+  committerTime: number;
+  parentCount: number;
+  parents: string[];
+}
+
+export interface FileHistoryResult {
+  entries: FileHistoryEntry[];
+  shallow: boolean;
+}
+
 export interface GitProgressEvent {
   kind: GitProgressKind;
   text: string;
@@ -244,6 +286,8 @@ export interface GitEngineModule {
   commit(path: string, message: string, authorName: string, authorEmail: string): Promise<CommitInfo>;
   recentCommits(path: string, skip: number, limit: number): Promise<CommitInfo[]>;
   commitDiff(path: string, commitId: string): Promise<FileDiff[]>;
+  fileHistory(path: string, rev: string, filePath: string, limit: number, skip: number): Promise<FileHistoryResult>;
+  readBlobAtRef(path: string, rev: string, filePath: string): Promise<BlobReadResult>;
   checkoutCommit(path: string, commitId: string): Promise<void>;
   resetSoft(path: string, commitId: string): Promise<void>;
   revertCommit(path: string, commitId: string, authorName: string, authorEmail: string): Promise<CommitInfo>;

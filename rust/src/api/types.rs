@@ -376,3 +376,80 @@ pub struct ProgressEvent {
     /// 0-100 percent of the transfer/indexing phase.
     pub percent: u32,
 }
+
+/// Maximum blob size for `read_blob_at_ref` (10 MB).
+pub const BLOB_SIZE_LIMIT: usize = 10 * 1024 * 1024;
+
+/// Kind of error when reading a blob at a ref.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, uniffi::Enum)]
+pub enum BlobReadErrorKind {
+    /// The given ref (branch/tag/commit) does not exist.
+    RefNotFound,
+    /// The ref exists but is a shallow commit (history truncated by `git clone --depth`).
+    ShallowHistory,
+    /// The file path does not exist at the given ref.
+    PathNotFound,
+    /// The file at the ref is binary (content contains a null byte).
+    BinaryContent,
+    /// The file exceeds the configured size limit.
+    TooLarge { size: u64, limit: u64 },
+    /// Native module unavailable.
+    NativeUnavailable,
+}
+
+/// Error when reading a blob at a ref.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, uniffi::Record)]
+pub struct BlobReadError {
+    pub kind: BlobReadErrorKind,
+    /// Human-readable message.
+    pub message: String,
+}
+
+/// Content of a blob at a ref, or an explicit error.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, uniffi::Enum)]
+pub enum BlobReadResult {
+    /// Blob content was read successfully.
+    Content {
+        /// Git object id of the blob.
+        oid: String,
+        /// Raw bytes of the blob.
+        content: Vec<u8>,
+        /// True when the content was truncated to `BLOB_SIZE_LIMIT`.
+        truncated: bool,
+        /// Detected MIME type based on content (e.g. `text/plain`, `application/octet-stream`).
+        mime_type: String,
+    },
+    /// Reading the blob failed with a typed error.
+    Error(BlobReadError),
+}
+
+/// A commit as it appears in file history (path-specific commits).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, uniffi::Record)]
+pub struct FileHistoryEntry {
+    /// Full 40-char hex object id.
+    pub id: String,
+    /// Short (7-char) hex id.
+    pub short_id: String,
+    /// Full commit message (may contain newlines).
+    pub message: String,
+    /// First paragraph of the message.
+    pub summary: String,
+    pub author_name: String,
+    pub author_email: String,
+    /// Author timestamp, unix seconds.
+    pub author_time: i64,
+    /// Committer timestamp, unix seconds.
+    pub committer_time: i64,
+    /// Number of parents (0 = root).
+    pub parent_count: u32,
+    /// Parent commit ids.
+    pub parents: Vec<String>,
+}
+
+/// Result of `file_history`, including a flag when the history may be shallow.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, uniffi::Record)]
+pub struct FileHistoryResult {
+    pub entries: Vec<FileHistoryEntry>,
+    /// True when the history may be shallow (e.g., `git clone --depth` was used).
+    pub shallow: bool,
+}

@@ -133,7 +133,7 @@ pub fn pull_repo(
         let tracking_ref = match repo.find_reference(&tracking) {
             Ok(reference) => reference,
             Err(e) if e.code() == git2::ErrorCode::NotFound => {
-                let Some(upstream_branch) = configured_merge_branch(&repo, &branch) else {
+                let Some(upstream_branch) = configured_merge_branch(&repo, branch) else {
                     return Ok(PullResult {
                         kind: PullKind::NoUpstream,
                         message: format!("no upstream tracking ref {}", tracking),

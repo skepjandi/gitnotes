@@ -27,6 +27,10 @@ import {
   getRegisteredCredentialKind,
   type CredentialKindForNative,
 } from '../NativeCredentialBridge';
+import type {
+  BlobReadResult,
+  FileHistoryResult,
+} from '../../../../modules/GitEngine/src/GitEngine.types';
 
 // Shape of the native module surface. Named (not `typeof GitEngineModule`) so the
 // generic below is the full interface, not the flow-narrowed `null` initializer type.
@@ -53,6 +57,8 @@ type NativeGitEngineModule = {
   commit(path: string, message: string, authorName: string, authorEmail: string): Promise<CommitInfo>;
   recentCommits(path: string, skip: number, limit: number): Promise<CommitInfo[]>;
   commitDiff(path: string, commitId: string): Promise<FileDiff[]>;
+  fileHistory(path: string, rev: string, filePath: string, limit: number, skip: number): Promise<FileHistoryResult>;
+  readBlobAtRef(path: string, rev: string, filePath: string): Promise<BlobReadResult>;
   checkoutCommit(path: string, commitId: string): Promise<void>;
   resetSoft(path: string, commitId: string): Promise<void>;
   revertCommit(path: string, commitId: string, authorName: string, authorEmail: string): Promise<CommitInfo>;
@@ -299,6 +305,7 @@ type RepoStatus = { branch: string; branches: BranchInfo[]; ahead: number; behin
 
 export type {
   Author,
+  BlobReadResult,
   BranchInfo,
   CommitInfo,
   ConflictBlobs,
@@ -307,6 +314,7 @@ export type {
   DiffLine,
   DiffLineOrigin,
   FileDiff,
+  FileHistoryResult,
   FileStatus,
   FileStatusKind,
   GeneratedKey,
@@ -635,6 +643,77 @@ export async function commit(repoPath: string, message: string, author: Author):
 export async function log(repoPath: string, limit = 50, skip = 0): Promise<CommitInfo[]> {
   if (!GitEngineModule) return [];
   return run(() => GitEngineModule!.recentCommits(repoPath, skip, limit), []);
+}
+
+export async function fileHistory(
+  repoPath: string,
+  ref: string,
+  filePath: string,
+  limit = 50,
+  skip = 0,
+): Promise<FileHistoryResult> {
+  if (!GitEngineModule) {
+    return { entries: [], shallow: false };
+  }
+  return run(
+    () => GitEngineModule!.fileHistory(repoPath, ref, filePath, limit, skip),
+    { entries: [], shallow: false },
+  );
+}
+
+export type BlobReadSuccess = {
+  kind: 'Content';
+  content: string;
+  oid: string;
+  mimeType: string;
+  truncated: boolean;
+};
+
+export type BlobReadFailure = {
+  kind: 'Error';
+  errorKind: 'RefNotFound' | 'ShallowHistory' | 'PathNotFound' | 'BinaryContent' | 'TooLarge' | 'NativeUnavailable';
+  message: string;
+};
+
+export type BlobReadOutcome = BlobReadSuccess | BlobReadFailure;
+
+export async function readBlobAtRef(
+  repoPath: string,
+  ref: string,
+  filePath: string,
+): Promise<BlobReadOutcome> {
+  if (!GitEngineModule) {
+    return {
+      kind: 'Error',
+      errorKind: 'NativeUnavailable',
+      message: 'GitEngine native module unavailable',
+    };
+  }
+  let nativeResult: { kind: 'Content'; oid: string; content: Uint8Array; truncated: boolean; mimeType: string } | { kind: 'Error'; error: { kind: string; message: string } };
+  try {
+    nativeResult = await GitEngineModule!.readBlobAtRef(repoPath, ref, filePath);
+  } catch (e) {
+    throw normalizeError(e);
+  }
+  if (nativeResult.kind === 'Content') {
+    // Uses fatal:false so invalid UTF-8 sequences are replaced with U+FFFD
+    // instead of throwing. This preserves the string return type for edge-case
+    // malformed files that pass the null-byte binary heuristic. Callers needing
+    // raw bytes should use the native module directly.
+    const decoder = new TextDecoder('utf-8', { fatal: false });
+    return {
+      kind: 'Content',
+      content: decoder.decode(nativeResult.content),
+      oid: nativeResult.oid,
+      mimeType: nativeResult.mimeType,
+      truncated: nativeResult.truncated,
+    };
+  }
+  return {
+    kind: 'Error',
+    errorKind: nativeResult.error.kind as BlobReadFailure['errorKind'],
+    message: nativeResult.error.message,
+  };
 }
 
 /** Per-file diff of one commit against its first parent (`git show`-style). */

@@ -4,6 +4,7 @@ package expo.modules.gitengine
 
 import android.net.Uri
 import uniffi.gitnotes_git2.BranchInfo
+import uniffi.gitnotes_git2.BlobReadResult
 import uniffi.gitnotes_git2.CommitInfo
 import uniffi.gitnotes_git2.ConflictBlobs
 import uniffi.gitnotes_git2.ConflictEntry
@@ -11,12 +12,13 @@ import uniffi.gitnotes_git2.ConflictFile
 import uniffi.gitnotes_git2.DiffLine
 import uniffi.gitnotes_git2.DiffLineOrigin
 import uniffi.gitnotes_git2.FileDiff
+import uniffi.gitnotes_git2.FileHistoryEntry
+import uniffi.gitnotes_git2.FileHistoryResult
 import uniffi.gitnotes_git2.FileStatus
 import uniffi.gitnotes_git2.FileStatusKind
 import uniffi.gitnotes_git2.ProgressEvent
 import uniffi.gitnotes_git2.ProgressKind
 import uniffi.gitnotes_git2.PullKind
-import uniffi.gitnotes_git2.PullResult
 import uniffi.gitnotes_git2.PushIntegrateKind
 import uniffi.gitnotes_git2.PushIntegrateResult
 import uniffi.gitnotes_git2.PushResult
@@ -221,3 +223,35 @@ internal fun progressPayload(event: ProgressEvent): Map<String, Any?> = mapOf(
   "total" to event.total.toLong(),
   "percent" to event.percent.toInt(),
 )
+
+internal fun fileHistoryEntryDict(entry: FileHistoryEntry): Map<String, Any?> = mapOf(
+  "id" to entry.id,
+  "shortId" to entry.shortId,
+  "message" to entry.message,
+  "summary" to entry.summary,
+  "authorName" to entry.authorName,
+  "authorEmail" to entry.authorEmail,
+  "authorTime" to entry.authorTime,
+  "committerTime" to entry.committerTime,
+  "parentCount" to entry.parentCount.toInt(),
+  "parents" to entry.parents,
+)
+
+internal fun fileHistoryResultDict(result: FileHistoryResult): Map<String, Any?> = mapOf(
+  "entries" to result.entries.map(::fileHistoryEntryDict),
+  "shallow" to result.shallow,
+)
+
+internal fun blobReadResultDict(result: BlobReadResult): Map<String, Any?> = when (result) {
+  is BlobReadResult.Content -> mapOf(
+    "kind" to "content",
+    "oid" to result.oid,
+    "content" to result.content,
+    "truncated" to result.truncated,
+    "mimeType" to result.mimeType,
+  )
+  is BlobReadResult.Error -> mapOf(
+    "kind" to "error",
+    "code" to result.v1.kind.toString(),
+  )
+}

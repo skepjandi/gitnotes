@@ -14,8 +14,9 @@ use git2::{
 };
 
 use crate::api::types::{
-    Author, BranchInfo, CommitInfo, ConflictEntry, DiffLine, DiffLineOrigin, FileDiff, FileStatus,
-    FileStatusKind, HunkSelection, RemoteInfo, RepoInfo, RepoStatus,
+    Author, BlobReadError, BlobReadErrorKind, BlobReadResult, BranchInfo, CommitInfo,
+    ConflictEntry, DiffLine, DiffLineOrigin, FileDiff, FileHistoryEntry, FileHistoryResult,
+    FileStatus, FileStatusKind, HunkSelection, RemoteInfo, RepoInfo, RepoStatus, BLOB_SIZE_LIMIT,
 };
 use crate::engine::error::{EngineError, Result};
 use crate::engine::lock::{run_with_lock, try_run_with_lock, RepoLock};
@@ -451,6 +452,236 @@ pub fn recent_commits(path: &Path, skip: u32, limit: u32) -> Result<Vec<CommitIn
             .collect::<std::result::Result<Vec<_>, EngineError>>()?;
         Ok(out)
     })
+}
+
+/// File-scoped commit history: only commits that touched `file_path`.
+///
+/// Uses `git log -- <file_path>` semantics: walks from `ref` (or HEAD when `ref`
+/// is empty) and returns commits whose diff includes the path. Runs under the
+/// per-repo flock. `limit` caps the number of entries; `skip` offsets from the newest.
+pub fn file_history(
+    path: &Path,
+    rev: &str,
+    file_path: &str,
+    limit: u32,
+    skip: u32,
+) -> Result<FileHistoryResult> {
+    run_with_lock(path, || {
+        let repo = open_repo(path)?;
+        let oid = if rev.is_empty() {
+            repo.head()?.peel_to_commit()?.id()
+        } else {
+            repo.revparse_single(rev)?.id()
+        };
+        let mut revwalk = repo.revwalk()?;
+        revwalk.set_sorting(Sort::TIME | Sort::TOPOLOGICAL)?;
+        revwalk.push(oid)?;
+        let mut out = Vec::new();
+        let mut shallow = false;
+        for oid_result in revwalk {
+            let oid = match oid_result {
+                Ok(o) => o,
+                Err(e) if e.code() == git2::ErrorCode::InvalidSpec => {
+                    shallow = true;
+                    break;
+                }
+                Err(e) => return Err(EngineError::Git(e)),
+            };
+            let commit = repo.find_commit(oid)?;
+            if file_history_commit_touches_path(&repo, &commit, file_path)? {
+                out.push(FileHistoryEntry {
+                    id: commit.id().to_string(),
+                    short_id: commit.id().to_string().chars().take(7).collect(),
+                    message: commit.message().unwrap_or_default().to_string(),
+                    summary: commit
+                        .summary()
+                        .ok()
+                        .flatten()
+                        .unwrap_or_default()
+                        .to_string(),
+                    author_name: commit
+                        .author()
+                        .name()
+                        .map(str::to_string)
+                        .unwrap_or_default(),
+                    author_email: commit
+                        .author()
+                        .email()
+                        .map(str::to_string)
+                        .unwrap_or_default(),
+                    author_time: commit.time().seconds(),
+                    committer_time: commit.committer().when().seconds(),
+                    parent_count: commit.parent_count() as u32,
+                    parents: commit.parent_ids().map(|p| p.to_string()).collect(),
+                });
+            }
+        }
+        let skipped = out.len().min(skip as usize);
+        out.drain(..skipped);
+        out.truncate(limit.max(1) as usize);
+        Ok(FileHistoryResult {
+            entries: out,
+            shallow,
+        })
+    })
+}
+
+fn file_history_commit_touches_path(
+    repo: &Repository,
+    commit: &git2::Commit,
+    file_path: &str,
+) -> Result<bool> {
+    if commit.parent_count() == 0 {
+        let tree = commit.tree()?;
+        return Ok(tree.get_path(Path::new(file_path)).is_ok());
+    }
+    let tree = commit.tree()?;
+    let parent_tree = commit.parent(0)?.tree()?;
+    let diff = repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), None)?;
+    let mut touches = false;
+    diff.foreach(
+        &mut |delta, _| {
+            let old_path = delta.old_file().path().map(|p| p.display().to_string());
+            let new_path = delta.new_file().path().map(|p| p.display().to_string());
+            touches =
+                old_path.as_deref() == Some(file_path) || new_path.as_deref() == Some(file_path);
+            !touches
+        },
+        None,
+        None,
+        None,
+    )?;
+    Ok(touches)
+}
+
+/// Read the blob content at `file_path` for the given `rev` (commit/tag/branch ref).
+///
+/// Returns `BlobReadResult::Content` with the raw bytes, or `BlobReadResult::Error`
+/// with a typed kind when the path is missing, the blob is binary, it exceeds
+/// `BLOB_SIZE_LIMIT`, or the ref is invalid/shallow.
+///
+/// This is a read-only object-database lookup — it does NOT checkout, reset, or
+/// modify any working-tree state.
+pub fn read_blob_at_ref(path: &Path, rev: &str, file_path: &str) -> Result<BlobReadResult> {
+    run_with_lock(path, || read_blob_at_ref_unlocked(path, rev, file_path))
+}
+
+fn read_blob_at_ref_unlocked(path: &Path, rev: &str, file_path: &str) -> Result<BlobReadResult> {
+    let repo = open_repo(path)?;
+    let oid = match repo.revparse_single(rev) {
+        Ok(obj) => obj.id(),
+        Err(_) => {
+            return Ok(BlobReadResult::Error(BlobReadError {
+                kind: BlobReadErrorKind::RefNotFound,
+                message: format!("ref not found: {}", rev),
+            }));
+        }
+    };
+    let commit = match repo.find_commit(oid) {
+        Ok(c) => c,
+        Err(e) => {
+            return Ok(BlobReadResult::Error(BlobReadError {
+                kind: BlobReadErrorKind::RefNotFound,
+                message: format!("ref '{}' is not a commit: {}", rev, e.message()),
+            }));
+        }
+    };
+    let file_path = file_path.trim();
+    if file_path.is_empty()
+        || file_path.contains("..")
+        || file_path.starts_with('/')
+        || file_path.ends_with('/')
+    {
+        return Ok(BlobReadResult::Error(BlobReadError {
+            kind: BlobReadErrorKind::PathNotFound,
+            message: format!("invalid file path: '{}'", file_path),
+        }));
+    }
+    let tree = commit.tree()?;
+    let entry = match tree.get_path(Path::new(file_path)) {
+        Ok(e) => e,
+        Err(e) if e.code() == git2::ErrorCode::NotFound => {
+            return Ok(BlobReadResult::Error(BlobReadError {
+                kind: BlobReadErrorKind::PathNotFound,
+                message: format!("path '{}' not found at ref '{}'", file_path, rev),
+            }));
+        }
+        Err(e) => return Err(EngineError::Git(e)),
+    };
+    let blob = repo.find_blob(entry.id())?;
+    let size = blob.size() as u64;
+    if size > BLOB_SIZE_LIMIT as u64 {
+        return Ok(BlobReadResult::Error(BlobReadError {
+            kind: BlobReadErrorKind::TooLarge {
+                size,
+                limit: BLOB_SIZE_LIMIT as u64,
+            },
+            message: format!(
+                "blob at '{}' at ref '{}' is {} bytes (limit: {} bytes)",
+                file_path, rev, size, BLOB_SIZE_LIMIT
+            ),
+        }));
+    }
+    let content = blob.content().to_vec();
+    if content.contains(&0u8) {
+        return Ok(BlobReadResult::Error(BlobReadError {
+            kind: BlobReadErrorKind::BinaryContent,
+            message: format!(
+                "file '{}' at ref '{}' is binary (contains null byte)",
+                file_path, rev
+            ),
+        }));
+    }
+    let truncated = false;
+    let mime_type = detect_mime_type(&content, file_path);
+    Ok(BlobReadResult::Content {
+        oid: entry.id().to_string(),
+        content,
+        truncated,
+        mime_type,
+    })
+}
+
+/// Detect a basic MIME type from content bytes and filename.
+fn detect_mime_type(content: &[u8], file_path: &str) -> String {
+    let path_lower = file_path.to_lowercase();
+    if path_lower.ends_with(".md") || path_lower.ends_with(".markdown") {
+        return "text/markdown".to_string();
+    }
+    if path_lower.ends_with(".json") {
+        return "application/json".to_string();
+    }
+    if path_lower.ends_with(".xml") {
+        return "application/xml".to_string();
+    }
+    if path_lower.ends_with(".html") || path_lower.ends_with(".htm") {
+        return "text/html".to_string();
+    }
+    if path_lower.ends_with(".txt") {
+        return "text/plain".to_string();
+    }
+    if path_lower.ends_with(".png") {
+        return "image/png".to_string();
+    }
+    if path_lower.ends_with(".jpg") || path_lower.ends_with(".jpeg") {
+        return "image/jpeg".to_string();
+    }
+    if path_lower.ends_with(".gif") {
+        return "image/gif".to_string();
+    }
+    if path_lower.ends_with(".pdf") {
+        return "application/pdf".to_string();
+    }
+    if !content.is_empty() {
+        let start = &content[..content.len().min(512)];
+        if start
+            .iter()
+            .all(|&b| (32..127).contains(&b) || b == b'\n' || b == b'\r' || b == b'\t')
+        {
+            return "text/plain".to_string();
+        }
+    }
+    "application/octet-stream".to_string()
 }
 
 /// Per-file diff of one commit against its first parent (`git show`-style).

@@ -724,6 +724,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_gitnotes_git2_checksum_func_fetch_repo_with_progress(
     ): Int
+    external fun uniffi_gitnotes_git2_checksum_func_file_history(
+    ): Int
     external fun uniffi_gitnotes_git2_checksum_func_generate_ssh_key(
     ): Int
     external fun uniffi_gitnotes_git2_checksum_func_get_conflict_blobs(
@@ -749,6 +751,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_gitnotes_git2_checksum_func_push_repo(
     ): Int
     external fun uniffi_gitnotes_git2_checksum_func_push_repo_with_integrate(
+    ): Int
+    external fun uniffi_gitnotes_git2_checksum_func_read_blob_at_ref(
     ): Int
     external fun uniffi_gitnotes_git2_checksum_func_recent_commits(
     ): Int
@@ -849,6 +853,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_gitnotes_git2_fn_func_fetch_repo_with_progress(`path`: RustBuffer.ByValue,`remoteName`: RustBuffer.ByValue,`repoId`: RustBuffer.ByValue,`credentialSource`: RustBuffer.ByValue,`listener`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    external fun uniffi_gitnotes_git2_fn_func_file_history(`path`: RustBuffer.ByValue,`rev`: RustBuffer.ByValue,`filePath`: RustBuffer.ByValue,`limit`: Int,`skip`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_gitnotes_git2_fn_func_generate_ssh_key(`passphrase`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_gitnotes_git2_fn_func_get_conflict_blobs(`path`: RustBuffer.ByValue,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -874,6 +880,8 @@ internal object UniffiLib {
     external fun uniffi_gitnotes_git2_fn_func_push_repo(`path`: RustBuffer.ByValue,`remoteName`: RustBuffer.ByValue,`repoId`: RustBuffer.ByValue,`credentialSource`: RustBuffer.ByValue,`force`: Byte,`listener`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_gitnotes_git2_fn_func_push_repo_with_integrate(`path`: RustBuffer.ByValue,`remoteName`: RustBuffer.ByValue,`repoId`: RustBuffer.ByValue,`credentialSource`: RustBuffer.ByValue,`listener`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_gitnotes_git2_fn_func_read_blob_at_ref(`path`: RustBuffer.ByValue,`rev`: RustBuffer.ByValue,`filePath`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_gitnotes_git2_fn_func_recent_commits(`path`: RustBuffer.ByValue,`skip`: Int,`limit`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1368,6 +1376,25 @@ public object FfiConverterString: FfiConverter<String, RustBuffer.ByValue> {
     }
 }
 
+/**
+ * @suppress
+ */
+public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
+    override fun read(buf: ByteBuffer): ByteArray {
+        val len = buf.getInt()
+        val byteArr = ByteArray(len)
+        buf.get(byteArr)
+        return byteArr
+    }
+    override fun allocationSize(value: ByteArray): ULong {
+        return 4UL + value.size.toULong()
+    }
+    override fun write(value: ByteArray, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        buf.put(value)
+    }
+}
+
 
 // This template implements a class for working with a Rust struct via a handle
 // to the live Rust struct on the other side of the FFI.
@@ -1729,6 +1756,50 @@ public object FfiConverterTypeAuthor: FfiConverterRustBuffer<Author> {
     override fun write(value: Author, buf: ByteBuffer) {
             FfiConverterString.write(value.`name`, buf)
             FfiConverterString.write(value.`email`, buf)
+    }
+}
+
+
+
+/**
+ * Error when reading a blob at a ref.
+ */
+data class BlobReadError (
+    var `kind`: BlobReadErrorKind
+    , 
+    /**
+     * Human-readable message.
+     */
+    var `message`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeBlobReadError: FfiConverterRustBuffer<BlobReadError> {
+    override fun read(buf: ByteBuffer): BlobReadError {
+        return BlobReadError(
+            FfiConverterTypeBlobReadErrorKind.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: BlobReadError) = (
+            FfiConverterTypeBlobReadErrorKind.allocationSize(value.`kind`) +
+            FfiConverterString.allocationSize(value.`message`)
+    )
+
+    override fun write(value: BlobReadError, buf: ByteBuffer) {
+            FfiConverterTypeBlobReadErrorKind.write(value.`kind`, buf)
+            FfiConverterString.write(value.`message`, buf)
     }
 }
 
@@ -2260,6 +2331,155 @@ public object FfiConverterTypeFileDiff: FfiConverterRustBuffer<FileDiff> {
             FfiConverterUInt.write(value.`added`, buf)
             FfiConverterUInt.write(value.`deleted`, buf)
             FfiConverterSequenceTypeDiffLine.write(value.`lines`, buf)
+    }
+}
+
+
+
+/**
+ * A commit as it appears in file history (path-specific commits).
+ */
+data class FileHistoryEntry (
+    /**
+     * Full 40-char hex object id.
+     */
+    var `id`: kotlin.String
+    , 
+    /**
+     * Short (7-char) hex id.
+     */
+    var `shortId`: kotlin.String
+    , 
+    /**
+     * Full commit message (may contain newlines).
+     */
+    var `message`: kotlin.String
+    , 
+    /**
+     * First paragraph of the message.
+     */
+    var `summary`: kotlin.String
+    , 
+    var `authorName`: kotlin.String
+    , 
+    var `authorEmail`: kotlin.String
+    , 
+    /**
+     * Author timestamp, unix seconds.
+     */
+    var `authorTime`: kotlin.Long
+    , 
+    /**
+     * Committer timestamp, unix seconds.
+     */
+    var `committerTime`: kotlin.Long
+    , 
+    /**
+     * Number of parents (0 = root).
+     */
+    var `parentCount`: kotlin.UInt
+    , 
+    /**
+     * Parent commit ids.
+     */
+    var `parents`: List<kotlin.String>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFileHistoryEntry: FfiConverterRustBuffer<FileHistoryEntry> {
+    override fun read(buf: ByteBuffer): FileHistoryEntry {
+        return FileHistoryEntry(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FileHistoryEntry) = (
+            FfiConverterString.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`shortId`) +
+            FfiConverterString.allocationSize(value.`message`) +
+            FfiConverterString.allocationSize(value.`summary`) +
+            FfiConverterString.allocationSize(value.`authorName`) +
+            FfiConverterString.allocationSize(value.`authorEmail`) +
+            FfiConverterLong.allocationSize(value.`authorTime`) +
+            FfiConverterLong.allocationSize(value.`committerTime`) +
+            FfiConverterUInt.allocationSize(value.`parentCount`) +
+            FfiConverterSequenceString.allocationSize(value.`parents`)
+    )
+
+    override fun write(value: FileHistoryEntry, buf: ByteBuffer) {
+            FfiConverterString.write(value.`id`, buf)
+            FfiConverterString.write(value.`shortId`, buf)
+            FfiConverterString.write(value.`message`, buf)
+            FfiConverterString.write(value.`summary`, buf)
+            FfiConverterString.write(value.`authorName`, buf)
+            FfiConverterString.write(value.`authorEmail`, buf)
+            FfiConverterLong.write(value.`authorTime`, buf)
+            FfiConverterLong.write(value.`committerTime`, buf)
+            FfiConverterUInt.write(value.`parentCount`, buf)
+            FfiConverterSequenceString.write(value.`parents`, buf)
+    }
+}
+
+
+
+/**
+ * Result of `file_history`, including a flag when the history may be shallow.
+ */
+data class FileHistoryResult (
+    var `entries`: List<FileHistoryEntry>
+    , 
+    /**
+     * True when the history may be shallow (e.g., `git clone --depth` was used).
+     */
+    var `shallow`: kotlin.Boolean
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFileHistoryResult: FfiConverterRustBuffer<FileHistoryResult> {
+    override fun read(buf: ByteBuffer): FileHistoryResult {
+        return FileHistoryResult(
+            FfiConverterSequenceTypeFileHistoryEntry.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FileHistoryResult) = (
+            FfiConverterSequenceTypeFileHistoryEntry.allocationSize(value.`entries`) +
+            FfiConverterBoolean.allocationSize(value.`shallow`)
+    )
+
+    override fun write(value: FileHistoryResult, buf: ByteBuffer) {
+            FfiConverterSequenceTypeFileHistoryEntry.write(value.`entries`, buf)
+            FfiConverterBoolean.write(value.`shallow`, buf)
     }
 }
 
@@ -2990,6 +3210,276 @@ public object FfiConverterTypeRepoStatus: FfiConverterRustBuffer<RepoStatus> {
 
 
 
+/**
+ * Kind of error when reading a blob at a ref.
+ */
+sealed class BlobReadErrorKind {
+    
+    /**
+     * The given ref (branch/tag/commit) does not exist.
+     */
+    object RefNotFound : BlobReadErrorKind()
+    
+    
+    /**
+     * The ref exists but is a shallow commit (history truncated by `git clone --depth`).
+     */
+    object ShallowHistory : BlobReadErrorKind()
+    
+    
+    /**
+     * The file path does not exist at the given ref.
+     */
+    object PathNotFound : BlobReadErrorKind()
+    
+    
+    /**
+     * The file at the ref is binary (content contains a null byte).
+     */
+    object BinaryContent : BlobReadErrorKind()
+    
+    
+    /**
+     * The file exceeds the configured size limit.
+     */
+    data class TooLarge(
+        val `size`: kotlin.ULong, 
+        val `limit`: kotlin.ULong) : BlobReadErrorKind()
+        
+    {
+        
+
+        companion object
+    }
+    
+    /**
+     * Native module unavailable.
+     */
+    object NativeUnavailable : BlobReadErrorKind()
+    
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeBlobReadErrorKind : FfiConverterRustBuffer<BlobReadErrorKind>{
+    override fun read(buf: ByteBuffer): BlobReadErrorKind {
+        return when(buf.getInt()) {
+            1 -> BlobReadErrorKind.RefNotFound
+            2 -> BlobReadErrorKind.ShallowHistory
+            3 -> BlobReadErrorKind.PathNotFound
+            4 -> BlobReadErrorKind.BinaryContent
+            5 -> BlobReadErrorKind.TooLarge(
+                FfiConverterULong.read(buf),
+                FfiConverterULong.read(buf),
+                )
+            6 -> BlobReadErrorKind.NativeUnavailable
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: BlobReadErrorKind): ULong = when(value) {
+        is BlobReadErrorKind.RefNotFound -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is BlobReadErrorKind.ShallowHistory -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is BlobReadErrorKind.PathNotFound -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is BlobReadErrorKind.BinaryContent -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is BlobReadErrorKind.TooLarge -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterULong.allocationSize(value.`size`)
+                + FfiConverterULong.allocationSize(value.`limit`)
+            )
+        }
+        is BlobReadErrorKind.NativeUnavailable -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+    }
+
+    override fun write(value: BlobReadErrorKind, buf: ByteBuffer) {
+        when(value) {
+            is BlobReadErrorKind.RefNotFound -> {
+                buf.putInt(1)
+                Unit
+            }
+            is BlobReadErrorKind.ShallowHistory -> {
+                buf.putInt(2)
+                Unit
+            }
+            is BlobReadErrorKind.PathNotFound -> {
+                buf.putInt(3)
+                Unit
+            }
+            is BlobReadErrorKind.BinaryContent -> {
+                buf.putInt(4)
+                Unit
+            }
+            is BlobReadErrorKind.TooLarge -> {
+                buf.putInt(5)
+                FfiConverterULong.write(value.`size`, buf)
+                FfiConverterULong.write(value.`limit`, buf)
+                Unit
+            }
+            is BlobReadErrorKind.NativeUnavailable -> {
+                buf.putInt(6)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+/**
+ * Content of a blob at a ref, or an explicit error.
+ */
+sealed class BlobReadResult {
+    
+    /**
+     * Blob content was read successfully.
+     */
+    data class Content(
+        /**
+         * Git object id of the blob.
+         */
+        val `oid`: kotlin.String, 
+        /**
+         * Raw bytes of the blob.
+         */
+        val `content`: kotlin.ByteArray, 
+        /**
+         * True when the content was truncated to `BLOB_SIZE_LIMIT`.
+         */
+        val `truncated`: kotlin.Boolean, 
+        /**
+         * Detected MIME type based on content (e.g. `text/plain`, `application/octet-stream`).
+         */
+        val `mimeType`: kotlin.String) : BlobReadResult()
+        
+    {
+        
+
+        companion object
+    }
+    
+    /**
+     * Reading the blob failed with a typed error.
+     */
+    data class Error(
+        val v1: uniffi.gitnotes_git2.BlobReadError) : BlobReadResult()
+        
+    {
+        
+
+        companion object
+    }
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeBlobReadResult : FfiConverterRustBuffer<BlobReadResult>{
+    override fun read(buf: ByteBuffer): BlobReadResult {
+        return when(buf.getInt()) {
+            1 -> BlobReadResult.Content(
+                FfiConverterString.read(buf),
+                FfiConverterByteArray.read(buf),
+                FfiConverterBoolean.read(buf),
+                FfiConverterString.read(buf),
+                )
+            2 -> BlobReadResult.Error(
+                FfiConverterTypeBlobReadError.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: BlobReadResult): ULong = when(value) {
+        is BlobReadResult.Content -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`oid`)
+                + FfiConverterByteArray.allocationSize(value.`content`)
+                + FfiConverterBoolean.allocationSize(value.`truncated`)
+                + FfiConverterString.allocationSize(value.`mimeType`)
+            )
+        }
+        is BlobReadResult.Error -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypeBlobReadError.allocationSize(value.v1)
+            )
+        }
+    }
+
+    override fun write(value: BlobReadResult, buf: ByteBuffer) {
+        when(value) {
+            is BlobReadResult.Content -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`oid`, buf)
+                FfiConverterByteArray.write(value.`content`, buf)
+                FfiConverterBoolean.write(value.`truncated`, buf)
+                FfiConverterString.write(value.`mimeType`, buf)
+                Unit
+            }
+            is BlobReadResult.Error -> {
+                buf.putInt(2)
+                FfiConverterTypeBlobReadError.write(value.v1, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 
 
 /**
@@ -3264,19 +3754,31 @@ sealed class CredentialSource {
      * Let libgit2 try its default paths (ssh agent, config, credential helpers).
      */
     object Default : CredentialSource()
-
+    
+    
     /**
      * GitHub OAuth access token — used as a bearer for HTTPS auth.
      */
     data class GitHubOAuth(
         val `token`: kotlin.String) : CredentialSource()
+        
+    {
+        
 
+        companion object
+    }
+    
     /**
      * GitHub App installation token scoped to selected repositories.
      */
     data class GitHubAppInstallation(
         val `token`: kotlin.String) : CredentialSource()
-    
+        
+    {
+        
+
+        companion object
+    }
     
 
     
@@ -3348,12 +3850,14 @@ public object FfiConverterTypeCredentialSource : FfiConverterRustBuffer<Credenti
             )
         }
         is CredentialSource.GitHubOAuth -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
                 + FfiConverterString.allocationSize(value.`token`)
             )
         }
         is CredentialSource.GitHubAppInstallation -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
                 + FfiConverterString.allocationSize(value.`token`)
@@ -3976,6 +4480,34 @@ public object FfiConverterSequenceTypeFileDiff: FfiConverterRustBuffer<List<File
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeFileHistoryEntry: FfiConverterRustBuffer<List<FileHistoryEntry>> {
+    override fun read(buf: ByteBuffer): List<FileHistoryEntry> {
+        val len = buf.getInt()
+        return List<FileHistoryEntry>(len) {
+            FfiConverterTypeFileHistoryEntry.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<FileHistoryEntry>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeFileHistoryEntry.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<FileHistoryEntry>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeFileHistoryEntry.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeFileStatus: FfiConverterRustBuffer<List<FileStatus>> {
     override fun read(buf: ByteBuffer): List<FileStatus> {
         val len = buf.getInt()
@@ -4290,6 +4822,25 @@ public object FfiConverterSequenceTypeRemoteInfo: FfiConverterRustBuffer<List<Re
     
 
         /**
+         * File-scoped commit history: only commits touching `file_path` from `ref`.
+         */
+    @Throws(BridgeException::class) fun `fileHistory`(`path`: kotlin.String, `rev`: kotlin.String, `filePath`: kotlin.String, `limit`: kotlin.UInt, `skip`: kotlin.UInt): FileHistoryResult {
+            return FfiConverterTypeFileHistoryResult.lift(
+    uniffiRustCallWithError(BridgeException) { _status ->
+    UniffiLib.uniffi_gitnotes_git2_fn_func_file_history(
+    
+        
+        FfiConverterString.lower(`path`),
+        FfiConverterString.lower(`rev`),
+        FfiConverterString.lower(`filePath`),
+        FfiConverterUInt.lower(`limit`),
+        FfiConverterUInt.lower(`skip`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Generate an ed25519 SSH keypair, returning the public key (for the user to
          * add to a provider) and the private key PEM (optionally passphrase-encrypted).
          */
@@ -4496,6 +5047,24 @@ public object FfiConverterSequenceTypeRemoteInfo: FfiConverterRustBuffer<List<Re
         FfiConverterOptionalString.lower(`repoId`),
         FfiConverterOptionalTypeCredentialSource.lower(`credentialSource`),
         FfiConverterTypeProgressListener.lower(`listener`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Read the blob at `file_path` for `ref` (commit/tag/branch). Returns typed
+         * content or an explicit error (missing/binary/shallow/too-large).
+         */
+    @Throws(BridgeException::class) fun `readBlobAtRef`(`path`: kotlin.String, `rev`: kotlin.String, `filePath`: kotlin.String): BlobReadResult {
+            return FfiConverterTypeBlobReadResult.lift(
+    uniffiRustCallWithError(BridgeException) { _status ->
+    UniffiLib.uniffi_gitnotes_git2_fn_func_read_blob_at_ref(
+    
+        
+        FfiConverterString.lower(`path`),
+        FfiConverterString.lower(`rev`),
+        FfiConverterString.lower(`filePath`),_status)
 }
     )
     }
@@ -4817,4 +5386,5 @@ public object FfiConverterSequenceTypeRemoteInfo: FfiConverterRustBuffer<List<Re
     )
     }
     
+
 

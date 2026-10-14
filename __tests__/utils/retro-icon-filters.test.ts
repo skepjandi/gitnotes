@@ -245,8 +245,8 @@ describe('FILTER_PRESETS', () => {
     expect(gold.blockSize).toBe(8);
     expect(gold.palette.length).toBeGreaterThanOrEqual(4);
     // Signature colors: golden-ochre and yellow
-    expect(colorInPalette(201, 162, 0, gold.palette)).toBe(true); // #c9a200 golden-ochre midtone
-    expect(colorInPalette(245, 183, 0, gold.palette)).toBe(true); // #f5b700 yellow primary
+    expect(colorInPalette(229, 185, 0, gold.palette)).toBe(true); // #e5b900 bright yellow-gold midtone
+    expect(colorInPalette(255, 212, 71, gold.palette)).toBe(true); // #ffd447 bright golden primary
   });
 
   test('terminal-mono preset has green terminal palette', () => {

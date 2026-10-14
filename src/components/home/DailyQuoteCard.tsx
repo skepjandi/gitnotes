@@ -2,7 +2,6 @@ import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useAIStore } from '../../stores/aiStore';
 import type { DailyQuote } from '../../services/DailyQuoteService';
 import { useTranslation } from 'react-i18next';
 
@@ -37,7 +36,6 @@ export function DailyQuoteCard({
 }: DailyQuoteCardProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const dailyQuoteSourceVisible = useAIStore((s) => s.dailyQuoteSourceVisible);
 
   // Feature disabled / no content / not loading → render nothing.
   if (!quote && !isLoading && !error) return null;
@@ -102,7 +100,7 @@ export function DailyQuoteCard({
         ) : null}
       </View>
       <Text style={[styles.author, { color: colors.primary }]}>
-        — {quote.author}{dailyQuoteSourceVisible && quote.source ? `, ${quote.source}` : ''}
+        — {quote.author}{quote.source ? `, ${quote.source}` : ''}
       </Text>
       {quote.description ? (
         <Text style={[styles.description, { color: colors.textSecondary }]}>

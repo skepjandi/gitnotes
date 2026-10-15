@@ -27,6 +27,112 @@ import {
 } from 'expo-alternate-app-icons';
 
 // ---------------------------------------------------------------------------
+// Transient error detection
+// ---------------------------------------------------------------------------
+
+/** Patterns matching transient iOS launch-services errors that can be retried. */
+const TRANSIENT_ERROR_PATTERNS: Array<RegExp> = [
+  /resource temporarily unavailable/i,
+  /NSPOSIXErrorDomain.*35/i,
+  /temporarily unavailable/i,
+];
+
+/**
+ * Returns true when `err` represents a transient LaunchServices error
+ * that may succeed on retry (e.g. iOS 26.1+ POSIX code 35 / resource unavailable).
+ */
+function isTransientError(err: unknown): boolean {
+  if (err === null || err === undefined) return false;
+
+  const message = err instanceof Error ? err.message : String(err);
+  if (TRANSIENT_ERROR_PATTERNS.some((p) => p.test(message))) return true;
+
+  // NSPOSIXErrorDomain code 35 often surfaces as a numeric code property
+  const code = (err as { code?: number }).code;
+  return code === 35;
+}
+
+// ---------------------------------------------------------------------------
+// Serialized mutation queue
+// ---------------------------------------------------------------------------
+
+/** Maximum native attempts per mutation (1 initial + 2 retries). */
+const MAX_NATIVE_ATTEMPTS = 3;
+
+/** Initial backoff delay in ms before first retry. */
+const INITIAL_BACKOFF_MS = 100;
+
+type QueuedMutation = () => Promise<AppIconResult>;
+const mutationQueue: QueuedMutation[] = [];
+let queueDraining = false;
+
+/**
+ * Drains the mutation queue sequentially, enforcing that only one native call
+ * is in flight at a time. Each mutation runs through `executeWithRetry` before
+ * the next queue item is started.
+ */
+async function drainQueue(): Promise<void> {
+  if (queueDraining) return;
+  queueDraining = true;
+
+  while (mutationQueue.length > 0) {
+    const mutation = mutationQueue.shift();
+    if (mutation) await mutation();
+  }
+
+  queueDraining = false;
+}
+
+/**
+ * Enqueues a mutation to run through the serialized queue. The returned
+ * promise resolves when this specific mutation has finished (success or
+ * non-transient failure). Transient errors are retried up to MAX_NATIVE_ATTEMPTS.
+ */
+async function enqueueMutation(mutation: QueuedMutation): Promise<AppIconResult> {
+  return new Promise<AppIconResult>((resolve) => {
+    mutationQueue.push(async (): Promise<AppIconResult> => {
+      const result = await executeWithRetry(mutation);
+      resolve(result);
+      return result;
+    });
+    drainQueue();
+  });
+}
+
+/**
+ * Executes `mutation` up to MAX_NATIVE_ATTEMPTS times, retrying only on
+ * transient errors with bounded exponential backoff. Non-transient errors
+ * fail immediately.
+ */
+async function executeWithRetry(
+  mutation: QueuedMutation,
+): Promise<AppIconResult> {
+  for (let attempt = 1; attempt <= MAX_NATIVE_ATTEMPTS; attempt++) {
+    const result = await mutation();
+
+    if (result.success) return result;
+
+    // result.error may be a transient string message; pass to isTransientError
+    // which normalizes it back to an Error-like check
+    if (attempt === MAX_NATIVE_ATTEMPTS) return result;
+
+    const err = result.error ? new Error(result.error) : new Error('unknown');
+    if (!isTransientError(err)) return result;
+
+    // Transient error: back off before next attempt
+    const backoffMs = INITIAL_BACKOFF_MS * Math.pow(2, attempt - 1);
+    await sleep(backoffMs);
+  }
+
+  // Should not reach here
+  return { success: false, error: 'max retries exceeded', unavailable: false };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
 
@@ -227,41 +333,31 @@ export async function setForTheme(name: AppIconName, isDark: boolean): Promise<A
   }
 
   const previous = await current();
+  const nativeName = name === null ? null : resolveNative(name, isDark);
 
-  try {
-    // Resolve native name: null → null (reset), logical → paired variant
-    const nativeName = name === null ? null : resolveNative(name, isDark);
-    if (name !== null && getAppIconName() === nativeName) {
-      return {
-        success: true,
-        current: name,
-        isDefault: name === null,
-      };
-    }
-    const result = await setAlternateAppIcon(nativeName);
-
-    // Persist logical name to storage after native success
-    if (name === null) {
-      await AsyncStorage.removeItem(APP_ICON_STORAGE_KEY);
-    } else {
-      await AsyncStorage.setItem(APP_ICON_STORAGE_KEY, name);
-    }
-
-    const normalized = normalizeNativeName(result ?? null);
-    return {
-      success: true,
-      current: normalized,
-      isDefault: normalized === null,
-    };
-  } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    return {
-      success: false,
-      error,
-      previous,
-      unavailable: false,
-    };
+  // No-op when the requested variant is already active (skip queue entirely)
+  if (name !== null && getAppIconName() === nativeName) {
+    return { success: true, current: name, isDefault: name === null };
   }
+
+  return enqueueMutation(async (): Promise<AppIconResult> => {
+    try {
+      const result = await setAlternateAppIcon(nativeName);
+
+      // Persist logical name to storage after native success
+      if (name === null) {
+        await AsyncStorage.removeItem(APP_ICON_STORAGE_KEY);
+      } else {
+        await AsyncStorage.setItem(APP_ICON_STORAGE_KEY, name);
+      }
+
+      const normalized = normalizeNativeName(result ?? null);
+      return { success: true, current: normalized, isDefault: normalized === null };
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      return { success: false, error, previous, unavailable: false };
+    }
+  });
 }
 
 /**
@@ -294,23 +390,16 @@ export async function reset(): Promise<AppIconResult> {
 
   const previous = await current();
 
-  try {
-    await resetAppIcon();
-    await AsyncStorage.removeItem(APP_ICON_STORAGE_KEY);
-    return {
-      success: true,
-      current: null,
-      isDefault: true,
-    };
-  } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    return {
-      success: false,
-      error,
-      previous,
-      unavailable: false,
-    };
-  }
+  return enqueueMutation(async (): Promise<AppIconResult> => {
+    try {
+      await resetAppIcon();
+      await AsyncStorage.removeItem(APP_ICON_STORAGE_KEY);
+      return { success: true, current: null, isDefault: true };
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      return { success: false, error, previous, unavailable: false };
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------

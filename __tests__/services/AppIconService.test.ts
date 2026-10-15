@@ -29,6 +29,10 @@ jest.mock('expo-alternate-app-icons', () => {
   let mockCurrentIcon: NativeIconName = null;
   let mockSetError: Error | null = null;
   const mockSetCalls: Array<{ name: NativeIconName }> = [];
+  let mockErrorQueue: Error[] = [];
+  let mockDelayMs = 0;
+  let activeCalls = 0;
+  let maxConcurrentCalls = 0;
 
   return {
     get supportsAlternateIcons() {
@@ -39,20 +43,40 @@ jest.mock('expo-alternate-app-icons', () => {
     },
     async setAlternateAppIcon(name: NativeIconName): Promise<NativeIconName> {
       mockSetCalls.push({ name });
-      if (mockSetError) throw mockSetError;
-      mockCurrentIcon = name;
-      return name;
+      activeCalls += 1;
+      maxConcurrentCalls = Math.max(maxConcurrentCalls, activeCalls);
+      try {
+        if (mockDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, mockDelayMs));
+        if (mockErrorQueue.length > 0) throw mockErrorQueue.shift()!;
+        if (mockSetError) throw mockSetError;
+        mockCurrentIcon = name;
+        return name;
+      } finally {
+        activeCalls -= 1;
+      }
     },
     async resetAppIcon(): Promise<void> {
       mockSetCalls.push({ name: null });
-      if (mockSetError) throw mockSetError;
-      mockCurrentIcon = null;
+      activeCalls += 1;
+      maxConcurrentCalls = Math.max(maxConcurrentCalls, activeCalls);
+      try {
+        if (mockDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, mockDelayMs));
+        if (mockErrorQueue.length > 0) throw mockErrorQueue.shift()!;
+        if (mockSetError) throw mockSetError;
+        mockCurrentIcon = null;
+      } finally {
+        activeCalls -= 1;
+      }
     },
     _reset() {
       mockPlatformSupports = true;
       mockCurrentIcon = null;
       mockSetError = null;
       mockSetCalls.length = 0;
+      mockErrorQueue = [];
+      mockDelayMs = 0;
+      activeCalls = 0;
+      maxConcurrentCalls = 0;
     },
     _setPlatformSupports(v: boolean) {
       mockPlatformSupports = v;
@@ -63,8 +87,20 @@ jest.mock('expo-alternate-app-icons', () => {
     _setError(v: Error | null) {
       mockSetError = v;
     },
+    _setNextErrors(errors: Error[]) {
+      mockErrorQueue = [...errors];
+    },
+    _setDelay(ms: number) {
+      mockDelayMs = ms;
+    },
     _getSetCalls() {
       return mockSetCalls;
+    },
+    _getCallCount() {
+      return mockSetCalls.length;
+    },
+    _getMaxConcurrentCalls() {
+      return maxConcurrentCalls;
     },
     _storage: sharedStorage,
   };
@@ -105,7 +141,11 @@ type ExpoMock = {
   _setPlatformSupports: (v: boolean) => void;
   _setCurrentIcon: (v: NativeIconName) => void;
   _setError: (v: Error | null) => void;
+  _setNextErrors: (errors: Error[]) => void;
+  _setDelay: (ms: number) => void;
   _getSetCalls: () => Array<{ name: NativeIconName }>;
+  _getCallCount: () => number;
+  _getMaxConcurrentCalls: () => number;
 };
 
 const mock = ExpoAlternateAppIcons as unknown as ExpoMock;
@@ -381,5 +421,101 @@ describe('AppIconService.current', () => {
     sharedStorage[APP_ICON_STORAGE_KEY] = 'Mars';
     const result = await AppIconService.current();
     expect(result).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Serialization and retry regression tests
+// ---------------------------------------------------------------------------
+
+describe('AppIconService queue serialization', () => {
+  it('serializes mutations — max one native call in flight', async () => {
+    mock._setDelay(10);
+
+    const [result1, result2] = await Promise.all([
+      AppIconService.setForTheme('Neon', false),
+      AppIconService.setForTheme('Grayscale', false),
+    ]);
+
+    expect(result1.success).toBe(true);
+    expect(result2.success).toBe(true);
+
+    const calls = mock._getSetCalls();
+    expect(calls).toContainEqual({ name: 'NeonLight' });
+    expect(calls).toContainEqual({ name: 'GrayscaleLight' });
+    expect(mock._getMaxConcurrentCalls()).toBe(1);
+  });
+
+  it('transient failure retries and succeeds on subsequent attempt', async () => {
+    mock._setNextErrors([new Error('Resource temporarily unavailable')]);
+
+    const result = await AppIconService.setForTheme('Neon', false);
+
+    expect(result.success).toBe(true);
+    expect(result.current).toBe('Neon');
+    expect(mock._getCallCount()).toBeGreaterThanOrEqual(2);
+    expect(sharedStorage[APP_ICON_STORAGE_KEY]).toBe('Neon');
+  });
+
+  it('exhausted transient retries — all 3 attempts fail', async () => {
+    mock._setNextErrors([
+      new Error('Resource temporarily unavailable'),
+      new Error('Resource temporarily unavailable'),
+      new Error('Resource temporarily unavailable'),
+    ]);
+
+    const result = await AppIconService.setForTheme('Neon', false);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Resource temporarily unavailable');
+    expect(result.unavailable).toBe(false);
+    expect(mock._getCallCount()).toBe(3);
+    expect(sharedStorage[APP_ICON_STORAGE_KEY]).toBeUndefined();
+  });
+
+  it('non-transient error fails immediately without retry', async () => {
+    mock._setNextErrors([new Error('Some permanent rejection')]);
+
+    const result = await AppIconService.setForTheme('Neon', false);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Some permanent rejection');
+    expect(mock._getCallCount()).toBe(1);
+    expect(sharedStorage[APP_ICON_STORAGE_KEY]).toBeUndefined();
+  });
+
+  it('NSPOSIXErrorDomain code 35 triggers retry', async () => {
+    const posix35Error = Object.assign(
+      new Error('NSPOSIXErrorDomain error 35: Resource temporarily unavailable'),
+      { code: 35 },
+    );
+    mock._setNextErrors([posix35Error]);
+
+    const result = await AppIconService.setForTheme('Neon', false);
+
+    expect(result.success).toBe(true);
+    expect(result.current).toBe('Neon');
+    expect(mock._getCallCount()).toBeGreaterThanOrEqual(2);
+  });
+
+  it('reset() goes through the queue and retries on transient error', async () => {
+    mock._setNextErrors([new Error('Resource temporarily unavailable')]);
+
+    const result = await AppIconService.reset();
+
+    expect(result.success).toBe(true);
+    expect(result.current).toBeNull();
+    expect(result.isDefault).toBe(true);
+    expect(mock._getCallCount()).toBeGreaterThanOrEqual(2);
+  });
+
+  it('reset() non-transient error fails fast', async () => {
+    mock._setNextErrors([new Error('Permanent reset failure')]);
+
+    const result = await AppIconService.reset();
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Permanent reset failure');
+    expect(mock._getCallCount()).toBe(1);
   });
 });

@@ -1130,6 +1130,30 @@
       "multiAccount": {
         "title": "여러 GitHub 계정",
         "description": "여러 GitHub 계정을 나란히 동기화하세요"
+      },
+      "accentColor": {
+        "title": "강조 색상",
+        "description": "사용자 정의 강조 색상으로 GitNotēs를 개인화하세요"
+      },
+      "proAppIcons": {
+        "title": "Pro 앱 아이콘",
+        "description": "독점적인 Neon, 회색조, Gold 아이콘 중에서 선택하세요"
+      },
+      "premiumThemes": {
+        "title": "프리미엄 테마",
+        "description": "Neumorphic와 Retrofuturistic 스타일 사이를 전환하세요"
+      },
+      "multiHost": {
+        "title": "멀티호스트 동기화",
+        "description": "GitHub 외에도 GitLab, Gitea 등을 연결하세요"
+      },
+      "biometricLock": {
+        "title": "생체 인증 잠금",
+        "description": "Face ID 또는 Touch ID로 노트를 보호하세요"
+      },
+      "unlimitedRepos": {
+        "title": "무제한 저장소",
+        "description": "워크플로에 필요한 만큼 많은 저장소를 추가하세요"
       }
     },
     "featureDescriptions": {

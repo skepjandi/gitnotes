@@ -1,4 +1,3 @@
-import React from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -75,6 +74,42 @@ const FEATURE_META: FeatureMeta[] = [
     titleKey: 'paywall.features.multiAccount.title',
     descKey: 'paywall.features.multiAccount.description',
     icon: 'people',
+  },
+  {
+    id: 'accentColor',
+    titleKey: 'paywall.features.accentColor.title',
+    descKey: 'paywall.features.accentColor.description',
+    icon: 'color-palette',
+  },
+  {
+    id: 'proAppIcons',
+    titleKey: 'paywall.features.proAppIcons.title',
+    descKey: 'paywall.features.proAppIcons.description',
+    icon: 'image',
+  },
+  {
+    id: 'premiumThemes',
+    titleKey: 'paywall.features.premiumThemes.title',
+    descKey: 'paywall.features.premiumThemes.description',
+    icon: 'color-fill',
+  },
+  {
+    id: 'multiHost',
+    titleKey: 'paywall.features.multiHost.title',
+    descKey: 'paywall.features.multiHost.description',
+    icon: 'git-network',
+  },
+  {
+    id: 'biometricLock',
+    titleKey: 'paywall.features.biometricLock.title',
+    descKey: 'paywall.features.biometricLock.description',
+    icon: 'finger-print',
+  },
+  {
+    id: 'unlimitedRepos',
+    titleKey: 'paywall.features.unlimitedRepos.title',
+    descKey: 'paywall.features.unlimitedRepos.description',
+    icon: 'folder-open',
   },
 ];
 

@@ -721,3 +721,12 @@ jest.mock('./src/hooks/useGitHostQueries', () => ({
   useGitHostPullRequests: () => ({ data: [], isLoading: false, isError: false, isSuccess: true, refetch: jest.fn() }),
   useGitHostIssues: () => ({ data: [], isLoading: false, isError: false, isSuccess: true, refetch: jest.fn() }),
 }));
+
+// expo-alternate-app-icons is a native module unavailable in jest.
+// Mock it with safe defaults that won't affect tests that don't exercise app icon functionality.
+jest.mock('expo-alternate-app-icons', () => ({
+  supportsAlternateIcons: false,
+  getAppIconName: jest.fn(() => null),
+  setAlternateAppIcon: jest.fn(async () => null),
+  resetAppIcon: jest.fn(async () => undefined),
+}));

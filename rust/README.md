@@ -39,9 +39,9 @@ scripts/build-rust.sh --all           # bindings + iOS + Android
 
 Artifacts land in the GitEngine module:
 
-- iOS staticlib: `modules/GitEngine/ios/rust/libgitnotes_git2.a`
+- iOS staticlib: `modules/GitEngine/ios-local/rust/libgitnotes_git2.a`
 - Android libs: `modules/GitEngine/android/src/main/jniLibs/<abi>/libgitnotes_git2.so`
-- Swift bindings: `modules/GitEngine/ios/generated/`
+- Swift bindings: `modules/GitEngine/ios-local/generated/`
 - Kotlin bindings: `modules/GitEngine/android/src/main/java/uniffi/gitnotes_git2/`
 
 Bindings are generated from a host-built `cdylib` (UniFFI library mode reads
@@ -68,7 +68,7 @@ the app target that runs `scripts/build-rust.sh --xcode`. The script detects
 (`aarch64-apple-ios-sim` for Apple-silicon simulator dev), and copies the
 staticlib to the pod's vendored path before linking.
 
-Pod wiring (modules/GitEngine/ios/GitEngine.podspec):
+Pod wiring (modules/GitEngine/ios-local/GitEngine.podspec):
 `s.vendored_libraries = 'rust/libgitnotes_git2.a'`; the generated FFI module
 (`generated/GitNotesGit2FFI/module.modulemap`) is exposed to the pod's Swift via
 `SWIFT_INCLUDE_PATHS = $(PODS_TARGET_SRCROOT)/generated`, and a Podfile

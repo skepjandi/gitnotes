@@ -30,7 +30,7 @@ RUST_DIR="$ROOT_DIR/rust"
 MODULE_DIR="$ROOT_DIR/modules/GitEngine"
 IOS_LIB_DIR="$MODULE_DIR/ios-local/rust"
 JNI_DIR="$MODULE_DIR/android/src/main/jniLibs"
-SWIFT_GEN_DIR="$MODULE_DIR/ios/generated"
+SWIFT_GEN_DIR="$MODULE_DIR/ios-local/generated"
 KOTLIN_GEN_DIR="$MODULE_DIR/android/src/main/java"
 
 PROFILE="${RUST_PROFILE:-debug}"

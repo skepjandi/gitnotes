@@ -108,7 +108,7 @@ export function getStoreListingUrl(): string | null {
     }
   }
   if (Platform.OS === 'ios') {
-    return 'https://apps.apple.com/app/gitnotes/id6764829004';
+    return 'https://apps.apple.com/app/id6764829004';
   }
   if (Platform.OS === 'android') {
     return 'https://play.google.com/store/apps/details?id=org.gitnotes.app';

@@ -522,4 +522,73 @@ describe('NoteHistoryModal', () => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('auto-selection', () => {
+    it('auto-selects first entry when modal becomes visible with ready state and no selection', () => {
+      const selectCommit = jest.fn();
+      const entries: FileHistoryEntry[] = [
+        { ...sampleEntry, id: 'commit1', summary: 'First commit' },
+        { ...sampleEntry, id: 'commit2', summary: 'Second commit' },
+      ];
+      const history = makeHistoryResult({
+        state: { status: 'ready', entries, shallow: false, hasMore: false },
+        selectedCommitId: null,
+        selectCommit,
+      });
+      render(<NoteHistoryModal visible={true} history={history} onClose={jest.fn()} />);
+
+      expect(selectCommit).toHaveBeenCalledWith('commit1');
+    });
+
+    it('does not auto-select if a commit is already selected', () => {
+      const selectCommit = jest.fn();
+      const entries: FileHistoryEntry[] = [
+        { ...sampleEntry, id: 'commit1', summary: 'First commit' },
+        { ...sampleEntry, id: 'commit2', summary: 'Second commit' },
+      ];
+      const history = makeHistoryResult({
+        state: { status: 'ready', entries, shallow: false, hasMore: false },
+        selectedCommitId: 'commit2',
+        selectCommit,
+      });
+      render(<NoteHistoryModal visible={true} history={history} onClose={jest.fn()} />);
+
+      expect(selectCommit).not.toHaveBeenCalled();
+    });
+
+    it('does not auto-select while loading', () => {
+      const selectCommit = jest.fn();
+      const history = makeHistoryResult({
+        state: { status: 'loading' },
+        selectedCommitId: null,
+        selectCommit,
+      });
+      render(<NoteHistoryModal visible={true} history={history} onClose={jest.fn()} />);
+
+      expect(selectCommit).not.toHaveBeenCalled();
+    });
+
+    it('preserves selectable preview text', () => {
+      const history = makeHistoryResult({
+        state: {
+          status: 'ready',
+          entries: [sampleEntry],
+          shallow: false,
+          hasMore: false,
+        },
+        selectedCommitId: 'abc123',
+        selectedBlob: {
+          kind: 'Content',
+          content: '# Hello World\n\nThis is the note content.',
+          oid: 'abc123',
+          mimeType: 'text/markdown',
+          truncated: false,
+        },
+      });
+      render(<NoteHistoryModal visible={true} history={history} onClose={jest.fn()} />);
+
+      const previewText = screen.getByTestId('note-history.preview.text');
+      expect(previewText.props.selectable).toBe(true);
+    });
+  });
 });

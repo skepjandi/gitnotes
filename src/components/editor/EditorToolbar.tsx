@@ -62,7 +62,7 @@ export function EditorToolbar({
         <>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <IconButton size="md" testID="note-editor.toolbar.history" onPress={onOpenHistory} accessibilityLabel="History">
-            <Ionicons name="git-commit-outline" size={20} color={colors.primary} />
+            <Ionicons name="time-outline" size={20} color={colors.primary} />
           </IconButton>
         </>
       ) : null}

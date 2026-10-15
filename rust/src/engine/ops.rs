@@ -543,9 +543,9 @@ fn file_history_commit_touches_path(
         &mut |delta, _| {
             let old_path = delta.old_file().path().map(|p| p.display().to_string());
             let new_path = delta.new_file().path().map(|p| p.display().to_string());
-            touches =
+            touches |=
                 old_path.as_deref() == Some(file_path) || new_path.as_deref() == Some(file_path);
-            !touches
+            true
         },
         None,
         None,
@@ -1533,6 +1533,30 @@ mod tests {
         let entry = index.get_path(Path::new(rel), 0).unwrap();
         let blob = repo.find_blob(entry.id).unwrap();
         String::from_utf8(blob.content().to_vec()).unwrap()
+    }
+
+    #[test]
+    fn file_history_returns_commits_that_touch_path() {
+        let dir = scratch_repo("file-history");
+        commit_file(&dir, "README", "baseline\n", "baseline");
+        fs::write(dir.join("README"), "changed\n").unwrap();
+        fs::write(dir.join("other"), "unrelated\n").unwrap();
+        let repo = open_repo(&dir).unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new("README")).unwrap();
+        index.add_path(Path::new("other")).unwrap();
+        index.write().unwrap();
+        let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
+        let sig = Signature::now("QA", "qa@gitnotes.test").unwrap();
+        let parent = repo.head().unwrap().peel_to_commit().unwrap();
+        repo.commit(Some("HEAD"), &sig, &sig, "changed", &tree, &[&parent])
+            .unwrap();
+
+        let result = file_history(&dir, "HEAD", "README", 50, 0).unwrap();
+
+        assert_eq!(result.entries.len(), 2);
+        assert_eq!(result.entries[0].message, "changed");
+        assert_eq!(result.entries[1].message, "baseline");
     }
 
     #[test]

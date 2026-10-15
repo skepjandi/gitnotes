@@ -20,9 +20,9 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ### fix(editor): size note history bottom sheet
 
-**What:** The History sheet could open with only its header visible, leaving the history body collapsed and appearing empty.
+**What:** The History sheet could open with only its header visible, leaving the history body collapsed and appearing empty. Loading history could also surface `GitEngine.BridgeError.Git(message: "no error")` on repositories with matching file changes.
 
-**Fix:** Give the History bottom sheet an explicit 85% height so its loading, empty, error, revision, and preview states render below the header.
+**Fix:** Give the History bottom sheet an explicit 85% height so its loading, empty, error, revision, and preview states render below the header. Keep scanning libgit2 diff callbacks after a match instead of treating an early callback stop as `GIT_EUSER`.
 
 ## 2026-10-14
 

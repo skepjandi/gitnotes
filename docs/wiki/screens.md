@@ -322,7 +322,7 @@ The `NoteHistoryModal` is accessible from both Preview mode (`NoteViewer`) and E
 - Biometric lock toggle (`BiometricLockContext`)
 - Language (i18n)
 
-**Quick Setup:** A dedicated Quick Setup row in Settings starts the GitHub repository setup flow without requiring users to restart onboarding.
+**Quick Setup:** A dedicated Quick Setup section directly beneath Accounts starts the GitHub repository setup flow without requiring users to restart onboarding.
 
 **Appearance (UI Style) selector:**
 

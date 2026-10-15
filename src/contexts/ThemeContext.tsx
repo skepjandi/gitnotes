@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getBootValue } from '../services/StorageBootstrap';
+import { syncToTheme } from '../services/AppIconService';
 import {
   Palette,
   ThemeStyle,
@@ -108,6 +109,13 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     }
     return theme === 'dark';
   }, [theme, systemColorScheme]);
+
+  // Sync app icon to current theme on initial mount and whenever isDark changes
+  useEffect(() => {
+    syncToTheme(isDark).catch(() => {
+      // Best-effort — never surface icon sync errors to the user
+    });
+  }, [isDark]);
 
   const setTheme = useCallback(async (newTheme: ThemeMode) => {
     try {

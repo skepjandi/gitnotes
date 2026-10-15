@@ -12,9 +12,15 @@ import fs from 'fs';
 
 const ROOT = path.resolve(__dirname, '../..');
 
+interface IosIconEntry {
+  light: string;
+  dark: string;
+  tinted: string;
+}
+
 interface AlternateIconConfig {
   name: string;
-  ios: string;
+  ios: string | IosIconEntry;
   android: {
     foregroundImage: string;
     backgroundColor: string;
@@ -74,13 +80,38 @@ describe('Alternate app icon assets', () => {
 
   for (const icon of icons) {
     describe(`icon: ${icon.name}`, () => {
-      const iconPath = path.resolve(ROOT, icon.ios);
       const adaptivePath = path.resolve(ROOT, icon.android.foregroundImage);
       const monochromePath = path.resolve(ROOT, icon.android.monochromeImage);
 
-      it(`${icon.ios} exists`, () => {
-        expect(fs.existsSync(iconPath)).toBe(true);
-      });
+      if (typeof icon.ios === 'string') {
+        const iconPath = path.resolve(ROOT, icon.ios);
+        it(`${icon.ios} exists`, () => {
+          expect(fs.existsSync(iconPath)).toBe(true);
+        });
+        if (fs.existsSync(iconPath)) {
+          it(`${icon.ios} is 1024x1024 PNG`, () => {
+            const dims = getPngDimensions(iconPath);
+            expect(dims).not.toBeNull();
+            expect(dims!.width).toBe(1024);
+            expect(dims!.height).toBe(1024);
+          });
+        }
+      } else {
+        for (const variant of ['light', 'dark', 'tinted'] as const) {
+          const iconPath = path.resolve(ROOT, icon.ios[variant]);
+          it(`${icon.ios[variant]} (${variant}) exists`, () => {
+            expect(fs.existsSync(iconPath)).toBe(true);
+          });
+          if (fs.existsSync(iconPath)) {
+            it(`${icon.ios[variant]} is 1024x1024 PNG`, () => {
+              const dims = getPngDimensions(iconPath);
+              expect(dims).not.toBeNull();
+              expect(dims!.width).toBe(1024);
+              expect(dims!.height).toBe(1024);
+            });
+          }
+        }
+      }
 
       it(`${icon.android.foregroundImage} exists`, () => {
         expect(fs.existsSync(adaptivePath)).toBe(true);
@@ -89,15 +120,6 @@ describe('Alternate app icon assets', () => {
       it(`${icon.android.monochromeImage} exists`, () => {
         expect(fs.existsSync(monochromePath)).toBe(true);
       });
-
-      if (fs.existsSync(iconPath)) {
-        it(`${icon.ios} is 1024x1024 PNG`, () => {
-          const dims = getPngDimensions(iconPath);
-          expect(dims).not.toBeNull();
-          expect(dims!.width).toBe(1024);
-          expect(dims!.height).toBe(1024);
-        });
-      }
 
       if (fs.existsSync(adaptivePath)) {
         it(`${icon.android.foregroundImage} is 1024x1024 PNG`, () => {

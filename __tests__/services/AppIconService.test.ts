@@ -1,29 +1,43 @@
 /**
  * Tests for AppIconService.
- * Exercises: supportsAlternateIcons, getAppIconName, setAlternateAppIcon, resetAppIcon.
+ * Exercises: supportsAlternateIcons, getAppIconName, setAlternateAppIcon, resetAppIcon,
+ * setForTheme, syncToCurrentTheme, native variant mapping, storage normalization.
  *
  * Strategy: jest.mock factory with inline controlled mock. The real module throws on
  * import (requireNativeModule fails in test env), so we replace it entirely.
  */
 
-type IconName = 'Neon' | 'Grayscale' | 'Gold';
+type NativeIconName =
+  | 'NeonLight'
+  | 'NeonDark'
+  | 'GrayscaleLight'
+  | 'GrayscaleDark'
+  | 'GoldLight'
+  | 'GoldDark'
+  | 'TerminalMonoLight'
+  | 'TerminalMonoDark'
+  | 'AmberTerminalLight'
+  | 'AmberTerminalDark'
+  | 'MonochromeGridLight'
+  | 'MonochromeGridDark'
+  | null;
 
 const sharedStorage: Record<string, string | null> = {};
 
 jest.mock('expo-alternate-app-icons', () => {
   let mockPlatformSupports = true;
-  let mockCurrentIcon: IconName | null = null;
+  let mockCurrentIcon: NativeIconName = null;
   let mockSetError: Error | null = null;
-  const mockSetCalls: Array<{ name: IconName | null }> = [];
+  const mockSetCalls: Array<{ name: NativeIconName }> = [];
 
   return {
     get supportsAlternateIcons() {
       return mockPlatformSupports;
     },
-    getAppIconName(): IconName | null {
+    getAppIconName(): NativeIconName {
       return mockCurrentIcon;
     },
-    async setAlternateAppIcon(name: IconName | null): Promise<IconName | null> {
+    async setAlternateAppIcon(name: NativeIconName): Promise<NativeIconName> {
       mockSetCalls.push({ name });
       if (mockSetError) throw mockSetError;
       mockCurrentIcon = name;
@@ -43,7 +57,7 @@ jest.mock('expo-alternate-app-icons', () => {
     _setPlatformSupports(v: boolean) {
       mockPlatformSupports = v;
     },
-    _setCurrentIcon(v: IconName | null) {
+    _setCurrentIcon(v: NativeIconName) {
       mockCurrentIcon = v;
     },
     _setError(v: Error | null) {
@@ -73,16 +87,25 @@ jest.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
-import { AppIconService } from '@/services/AppIconService';
+jest.mock('react-native', () => ({
+  Platform: { OS: 'ios', select: (o: object) => o },
+  Appearance: {
+    getColorScheme: jest.fn(() => 'light'),
+    addEventListener: jest.fn(() => ({ remove: jest.fn() })),
+    removeEventListener: jest.fn(),
+  },
+}));
+
+import { AppIconService, APP_ICON_STORAGE_KEY } from '@/services/AppIconService';
 import * as ExpoAlternateAppIcons from 'expo-alternate-app-icons';
-import { Platform } from 'react-native';
+import { Platform, Appearance } from 'react-native';
 
 type ExpoMock = {
   _reset: () => void;
   _setPlatformSupports: (v: boolean) => void;
-  _setCurrentIcon: (v: IconName | null) => void;
+  _setCurrentIcon: (v: NativeIconName) => void;
   _setError: (v: Error | null) => void;
-  _getSetCalls: () => Array<{ name: IconName | null }>;
+  _getSetCalls: () => Array<{ name: NativeIconName }>;
 };
 
 const mock = ExpoAlternateAppIcons as unknown as ExpoMock;
@@ -92,6 +115,7 @@ beforeEach(() => {
   Object.keys(sharedStorage).forEach((k) => {
     delete sharedStorage[k];
   });
+  (Appearance.getColorScheme as jest.Mock).mockReturnValue('light');
 });
 
 describe('AppIconService.isSupported', () => {
@@ -118,37 +142,131 @@ describe('AppIconService.isSupported', () => {
   });
 });
 
-describe('AppIconService.set valid names', () => {
-  it('set("Neon") calls native setAlternateAppIcon with "Neon"', async () => {
-    await AppIconService.set('Neon');
-    expect(mock._getSetCalls()).toContainEqual({ name: 'Neon' });
+describe('AppIconService.setForTheme — native variant resolution', () => {
+  beforeEach(() => {
+    (Appearance.getColorScheme as jest.Mock).mockReturnValue('light');
   });
 
-  it('set("Grayscale") calls native setAlternateAppIcon with "Grayscale"', async () => {
-    await AppIconService.set('Grayscale');
-    expect(mock._getSetCalls()).toContainEqual({ name: 'Grayscale' });
+  it('setForTheme(Neon, false) calls native with NeonLight', async () => {
+    await AppIconService.setForTheme('Neon', false);
+    expect(mock._getSetCalls()).toContainEqual({ name: 'NeonLight' });
   });
 
-  it('set("Gold") calls native setAlternateAppIcon with "Gold"', async () => {
-    await AppIconService.set('Gold');
-    expect(mock._getSetCalls()).toContainEqual({ name: 'Gold' });
+  it('setForTheme(Neon, true) calls native with NeonDark', async () => {
+    await AppIconService.setForTheme('Neon', true);
+    expect(mock._getSetCalls()).toContainEqual({ name: 'NeonDark' });
   });
 
-  it('set(null) calls native resetAppIcon', async () => {
-    await AppIconService.set(null);
+  it('setForTheme(Grayscale, true) calls native with GrayscaleDark', async () => {
+    await AppIconService.setForTheme('Grayscale', true);
+    expect(mock._getSetCalls()).toContainEqual({ name: 'GrayscaleDark' });
+  });
+
+  it('setForTheme(Gold, false) calls native with GoldLight', async () => {
+    await AppIconService.setForTheme('Gold', false);
+    expect(mock._getSetCalls()).toContainEqual({ name: 'GoldLight' });
+  });
+
+  it('setForTheme(TerminalMono, true) calls native with TerminalMonoDark', async () => {
+    await AppIconService.setForTheme('TerminalMono', true);
+    expect(mock._getSetCalls()).toContainEqual({ name: 'TerminalMonoDark' });
+  });
+
+  it('setForTheme(AmberTerminal, false) calls native with AmberTerminalLight', async () => {
+    await AppIconService.setForTheme('AmberTerminal', false);
+    expect(mock._getSetCalls()).toContainEqual({ name: 'AmberTerminalLight' });
+  });
+
+  it('setForTheme(MonochromeGrid, true) calls native with MonochromeGridDark', async () => {
+    await AppIconService.setForTheme('MonochromeGrid', true);
+    expect(mock._getSetCalls()).toContainEqual({ name: 'MonochromeGridDark' });
+  });
+
+  it('setForTheme(null, _) calls native with null (reset)', async () => {
+    await AppIconService.setForTheme(null, true);
     expect(mock._getSetCalls()).toContainEqual({ name: null });
+  });
+});
+
+describe('AppIconService.set — auto-resolves from Appearance.getColorScheme', () => {
+  it('set(Neon) when isDark=false resolves to NeonLight', async () => {
+    (Appearance.getColorScheme as jest.Mock).mockReturnValue('light');
+    await AppIconService.set('Neon');
+    expect(mock._getSetCalls()).toContainEqual({ name: 'NeonLight' });
+  });
+
+  it('set(Neon) when isDark=true resolves to NeonDark', async () => {
+    (Appearance.getColorScheme as jest.Mock).mockReturnValue('dark');
+    await AppIconService.set('Neon');
+    expect(mock._getSetCalls()).toContainEqual({ name: 'NeonDark' });
+  });
+});
+
+describe('AppIconService.syncToCurrentTheme', () => {
+  it('syncToCurrentTheme reads stored logical name and applies correct native variant', async () => {
+    sharedStorage[APP_ICON_STORAGE_KEY] = 'Neon';
+    (Appearance.getColorScheme as jest.Mock).mockReturnValue('dark');
+    await AppIconService.syncToCurrentTheme();
+    expect(mock._getSetCalls()).toContainEqual({ name: 'NeonDark' });
+  });
+
+  it('syncToCurrentTheme does nothing when no icon is stored', async () => {
+    await AppIconService.syncToCurrentTheme();
+    expect(mock._getSetCalls()).toHaveLength(0);
+  });
+});
+
+describe('AppIconService.syncToTheme', () => {
+  it('uses the resolved app theme instead of the system appearance', async () => {
+    sharedStorage[APP_ICON_STORAGE_KEY] = 'Neon';
+    (Appearance.getColorScheme as jest.Mock).mockReturnValue('light');
+    await AppIconService.syncToTheme(true);
+    expect(mock._getSetCalls()).toContainEqual({ name: 'NeonDark' });
+  });
+
+  it('does not call native switching when the requested variant is already active', async () => {
+    sharedStorage[APP_ICON_STORAGE_KEY] = 'Neon';
+    mock._setCurrentIcon('NeonDark');
+    const result = await AppIconService.syncToTheme(true);
+    expect(result.current).toBe('Neon');
+    expect(mock._getSetCalls()).toHaveLength(0);
+  });
+});
+
+describe('AppIconService storage normalization', () => {
+  it('set persists the logical name to storage, not the native name', async () => {
+    await AppIconService.setForTheme('Neon', true);
+    expect(sharedStorage[APP_ICON_STORAGE_KEY]).toBe('Neon');
+  });
+
+  it('hydrate with native NeonDark in storage normalizes to logical Neon', async () => {
+    mock._setCurrentIcon('NeonDark');
+    const result = await AppIconService.hydrate();
+    expect(result.current).toBe('Neon');
+  });
+
+  it('hydrate with native GrayscaleLight normalizes to Grayscale', async () => {
+    mock._setCurrentIcon('GrayscaleLight');
+    const result = await AppIconService.hydrate();
+    expect(result.current).toBe('Grayscale');
+  });
+
+  it('hydrate returns stored logical name directly', async () => {
+    sharedStorage[APP_ICON_STORAGE_KEY] = 'Gold';
+    const result = await AppIconService.hydrate();
+    expect(result.current).toBe('Gold');
   });
 });
 
 describe('AppIconService invalid storage hydration', () => {
   it('hydrate with unknown stored value falls back to null', async () => {
-    sharedStorage['@gitnotes:app_icon'] = 'Mars';
+    sharedStorage[APP_ICON_STORAGE_KEY] = 'Mars';
     const result = await AppIconService.hydrate();
     expect(result.current).toBeNull();
   });
 
   it('hydrate with empty string falls back to null', async () => {
-    sharedStorage['@gitnotes:app_icon'] = '';
+    sharedStorage[APP_ICON_STORAGE_KEY] = '';
     const result = await AppIconService.hydrate();
     expect(result.current).toBeNull();
   });
@@ -156,14 +274,14 @@ describe('AppIconService invalid storage hydration', () => {
 
 describe('AppIconService.hydrate', () => {
   it('hydrate reads native state when supported and no stored value', async () => {
-    mock._setCurrentIcon('Neon');
+    mock._setCurrentIcon('NeonDark');
     const result = await AppIconService.hydrate();
     expect(result.current).toBe('Neon');
     expect(result.isDefault).toBe(false);
   });
 
   it('hydrate returns stored value when valid', async () => {
-    sharedStorage['@gitnotes:app_icon'] = 'Gold';
+    sharedStorage[APP_ICON_STORAGE_KEY] = 'Gold';
     const result = await AppIconService.hydrate();
     expect(result.current).toBe('Gold');
     expect(result.isDefault).toBe(false);
@@ -183,38 +301,38 @@ describe('AppIconService.hydrate', () => {
   });
 });
 
-describe('AppIconService.set persistence', () => {
-  it('set persists the icon name after native success', async () => {
-    await AppIconService.set('Gold');
-    expect(sharedStorage['@gitnotes:app_icon']).toBe('Gold');
+describe('AppIconService.setForTheme persistence', () => {
+  it('setForTheme persists the logical icon name after native success', async () => {
+    await AppIconService.setForTheme('Gold', false);
+    expect(sharedStorage[APP_ICON_STORAGE_KEY]).toBe('Gold');
   });
 
-  it('set does not persist when native throws', async () => {
+  it('setForTheme does not persist when native throws', async () => {
     mock._setError(new Error('rejected'));
-    await AppIconService.set('Neon');
-    expect('@gitnotes:app_icon' in sharedStorage).toBe(false);
+    await AppIconService.setForTheme('Neon', false);
+    expect(APP_ICON_STORAGE_KEY in sharedStorage).toBe(false);
   });
 
-  it('set returns error result when native throws', async () => {
+  it('setForTheme returns error result when native throws', async () => {
     mock._setError(new Error('rejected'));
-    const result = await AppIconService.set('Neon');
+    const result = await AppIconService.setForTheme('Neon', false);
     expect(result.success).toBe(false);
     expect(result.error).toBe('rejected');
     expect(result.unavailable).toBe(false);
   });
 
-  it('set returns unavailable when platform does not support', async () => {
+  it('setForTheme returns unavailable when platform does not support', async () => {
     mock._setPlatformSupports(false);
-    const result = await AppIconService.set('Neon');
+    const result = await AppIconService.setForTheme('Neon', false);
     expect(result.success).toBe(false);
     expect(result.unavailable).toBe(true);
     expect(result.error).toBeUndefined();
   });
 
-  it('set(null) persists null and calls native resetAppIcon', async () => {
-    sharedStorage['@gitnotes:app_icon'] = 'Neon';
-    await AppIconService.set(null);
-    expect('@gitnotes:app_icon' in sharedStorage).toBe(false);
+  it('setForTheme(null, _) persists null and calls native resetAppIcon', async () => {
+    sharedStorage[APP_ICON_STORAGE_KEY] = 'Neon';
+    await AppIconService.setForTheme(null, true);
+    expect(APP_ICON_STORAGE_KEY in sharedStorage).toBe(false);
     expect(mock._getSetCalls()).toContainEqual({ name: null });
   });
 });
@@ -226,9 +344,9 @@ describe('AppIconService.reset', () => {
   });
 
   it('reset removes storage key', async () => {
-    sharedStorage['@gitnotes:app_icon'] = 'Gold';
+    sharedStorage[APP_ICON_STORAGE_KEY] = 'Gold';
     await AppIconService.reset();
-    expect('@gitnotes:app_icon' in sharedStorage).toBe(false);
+    expect(APP_ICON_STORAGE_KEY in sharedStorage).toBe(false);
   });
 
   it('reset returns error result when native throws', async () => {
@@ -249,7 +367,7 @@ describe('AppIconService.reset', () => {
 
 describe('AppIconService.current', () => {
   it('current returns stored icon', async () => {
-    sharedStorage['@gitnotes:app_icon'] = 'Gold';
+    sharedStorage[APP_ICON_STORAGE_KEY] = 'Gold';
     const result = await AppIconService.current();
     expect(result).toBe('Gold');
   });
@@ -260,7 +378,7 @@ describe('AppIconService.current', () => {
   });
 
   it('current returns null when stored value is invalid', async () => {
-    sharedStorage['@gitnotes:app_icon'] = 'Mars';
+    sharedStorage[APP_ICON_STORAGE_KEY] = 'Mars';
     const result = await AppIconService.current();
     expect(result).toBeNull();
   });

@@ -170,6 +170,7 @@ onRemoveAccount: (id: string, login: string) => void;
   onToggleSSH: (hostId: string) => void;
   hostUseSsh: Record<string, boolean>;
   appIcon: AppIconName | null;
+  appIconPreviewSource?: number;
   appIconSupported: boolean;
   appIconLoading: boolean;
   onOpenAppIconPicker: () => void;
@@ -286,6 +287,7 @@ export function SettingsContent(props: SettingsContentProps) {
     onToggleSSH,
     hostUseSsh,
     appIcon,
+    appIconPreviewSource,
     appIconSupported,
     appIconLoading,
     onOpenAppIconPicker,
@@ -590,7 +592,28 @@ export function SettingsContent(props: SettingsContentProps) {
             appIconLoading ? (
               <ActivityIndicator size="small" color={colors.textSecondary} />
             ) : appIconSupported ? (
-              <View className="flex-row items-center gap-1">
+              <View className="flex-row items-center gap-2">
+                <View
+                  testID="settings.preview.app-icon"
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    overflow: 'hidden',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  {appIconPreviewSource ? (
+                    <Image
+                      source={appIconPreviewSource}
+                      style={{ width: 28, height: 28, borderRadius: 6 }}
+                    />
+                  ) : null}
+                </View>
                 <Text style={[styles.settingValue, { color: colors.textSecondary }]}>
                   {appIcon ?? t('settings.appIcon.default', { defaultValue: 'Default' })}
                 </Text>

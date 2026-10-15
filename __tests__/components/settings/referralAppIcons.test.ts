@@ -1,6 +1,7 @@
 import {
   isAppIconOptionUnlocked,
   isReferralAppIconUnlocked,
+  getAppIconPreviewAsset,
   PRO_APP_ICON_OPTIONS,
   REFERRAL_APP_ICON_OPTIONS,
 } from '../../../src/components/settings/referralAppIcons';
@@ -27,5 +28,10 @@ describe('referral app icon options', () => {
     expect(isAppIconOptionUnlocked(PRO_APP_ICON_OPTIONS[0], true, 0)).toBe(true);
     expect(isAppIconOptionUnlocked(REFERRAL_APP_ICON_OPTIONS[0], false, 0)).toBe(false);
     expect(isAppIconOptionUnlocked(REFERRAL_APP_ICON_OPTIONS[0], false, 1)).toBe(true);
+  });
+
+  it('resolves the default preview asset from the repository root', () => {
+    expect(getAppIconPreviewAsset(null, true)).toBeTruthy();
+    expect(getAppIconPreviewAsset(null, false)).toBeTruthy();
   });
 });

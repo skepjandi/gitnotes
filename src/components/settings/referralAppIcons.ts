@@ -35,3 +35,23 @@ export function isReferralAppIconUnlocked(option: ReferralAppIconOption, progres
 export function isAppIconOptionUnlocked(option: ProAppIconOption | ReferralAppIconOption, isPro: boolean, progress: number): boolean {
   return option.entitlement === 'pro' ? isPro : isReferralAppIconUnlocked(option, progress);
 }
+
+export function getAppIconPreviewAsset(iconName: AppIconName | null) {
+  if (iconName === null) return require('../../assets/generated/alternate/base/icon.png');
+  switch (iconName) {
+    case 'Neon':
+      return require('../../assets/generated/alternate/neon/icon.png');
+    case 'Grayscale':
+      return require('../../assets/generated/alternate/grayscale/icon.png');
+    case 'Gold':
+      return require('../../assets/generated/alternate/gold/icon.png');
+    case 'TerminalMono':
+      return require('../../assets/generated/alternate/terminal-mono/icon.png');
+    case 'AmberTerminal':
+      return require('../../assets/generated/alternate/amber-terminal/icon.png');
+    case 'MonochromeGrid':
+      return require('../../assets/generated/alternate/monochrome-grid/icon.png');
+    default:
+      return require('../../assets/generated/alternate/base/icon.png');
+  }
+}

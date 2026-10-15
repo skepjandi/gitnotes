@@ -390,6 +390,26 @@ describe('SettingsContent app-icon row', () => {
       const { getByTestId } = render(<SettingsContent {...props} />);
       expect(getByTestId('settings.row.app-icon')).toBeTruthy();
     });
+
+    it('uses the light surface color for the current icon preview', () => {
+      const props = makeProps({
+        appIcon: 'Neon',
+        appIconSupported: true,
+        colors: { ...makeProps().colors, surface: '#f0f0f0' },
+      });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+      expect(getByTestId('settings.preview.app-icon').props.style).toEqual(expect.objectContaining({ backgroundColor: '#f0f0f0' }));
+    });
+
+    it('uses the dark surface color for the current icon preview', () => {
+      const props = makeProps({
+        appIcon: 'Neon',
+        appIconSupported: true,
+        colors: { ...makeProps().colors, surface: '#1c1c1e' },
+      });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+      expect(getByTestId('settings.preview.app-icon').props.style).toEqual(expect.objectContaining({ backgroundColor: '#1c1c1e' }));
+    });
   });
 
   // ---- Interactions ------------------------------------------------------

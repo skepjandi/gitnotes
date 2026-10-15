@@ -23,6 +23,8 @@ type NativeIconName =
   | null;
 
 const sharedStorage: Record<string, string | null> = {};
+let mockDeviceIsDevice = true;
+let mockDeviceOsVersion: string | null = '18.6';
 
 jest.mock('expo-alternate-app-icons', () => {
   let mockPlatformSupports = true;
@@ -123,6 +125,19 @@ jest.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
+jest.mock('expo-device', () => ({
+  get isDevice() {
+    return mockDeviceIsDevice;
+  },
+  get osVersion() {
+    return mockDeviceOsVersion;
+  },
+  set(isDevice: boolean, osVersion: string | null) {
+    mockDeviceIsDevice = isDevice;
+    mockDeviceOsVersion = osVersion;
+  },
+}));
+
 jest.mock('react-native', () => ({
   Platform: { OS: 'ios', Version: '18.6', select: (o: object) => o },
   Appearance: {
@@ -135,6 +150,7 @@ jest.mock('react-native', () => ({
 import { AppIconService, APP_ICON_STORAGE_KEY } from '@/services/AppIconService';
 import * as ExpoAlternateAppIcons from 'expo-alternate-app-icons';
 import { Platform, Appearance } from 'react-native';
+import * as ExpoDevice from 'expo-device';
 
 type ExpoMock = {
   _reset: () => void;
@@ -148,7 +164,12 @@ type ExpoMock = {
   _getMaxConcurrentCalls: () => number;
 };
 
+type DeviceMock = {
+  set: (isDevice: boolean, osVersion: string | null) => void;
+};
+
 const mock = ExpoAlternateAppIcons as unknown as ExpoMock;
+const device = ExpoDevice as unknown as DeviceMock;
 
 beforeEach(() => {
   mock._reset();
@@ -156,6 +177,7 @@ beforeEach(() => {
     delete sharedStorage[k];
   });
   (Appearance.getColorScheme as jest.Mock).mockReturnValue('light');
+  device.set(true, '18.6');
 });
 
 describe('AppIconService.isSupported', () => {
@@ -181,6 +203,16 @@ describe('AppIconService.isSupported', () => {
     }
   });
 
+  it('returns false for iOS 26.1+ simulators', async () => {
+    const platform = jest.replaceProperty(Platform, 'OS', 'ios');
+    device.set(false, '26.5');
+    try {
+      const result = await AppIconService.isSupported();
+      expect(result).toBe(false);
+    } finally {
+      platform.restore();
+    }
+  });
 });
 
 describe('AppIconService.setForTheme — native variant resolution', () => {

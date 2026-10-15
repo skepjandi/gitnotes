@@ -19,6 +19,7 @@
 import { Appearance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import * as Device from 'expo-device';
 import {
   supportsAlternateIcons,
   getAppIconName,
@@ -196,7 +197,16 @@ export const NATIVE_VARIANT_MAP: Record<string, { light: string; dark: string }>
 };
 
 function isAppIconSwitchingSupported(): boolean {
-  return supportsAlternateIcons && !(Platform.OS === 'android' && __DEV__);
+  return supportsAlternateIcons && !isIos26SimulatorIconRegression() && !(Platform.OS === 'android' && __DEV__);
+}
+
+function isIos26SimulatorIconRegression(): boolean {
+  if (Platform.OS !== 'ios' || Device.isDevice) return false;
+
+  const [major, minor] = (Device.osVersion ?? String(Platform.Version ?? ''))
+    .split('.')
+    .map(Number);
+  return major === 26 && minor >= 1;
 }
 
 // ---------------------------------------------------------------------------

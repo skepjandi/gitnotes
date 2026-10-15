@@ -15,11 +15,7 @@
       "buildNumber": "10",
       "scheme": "gitnotes",
       "associatedDomains": ["applinks:gitnotes.org"],
-      "icon": {
-        "light": "./assets/generated/icon-light.png",
-        "dark": "./assets/generated/icon-dark.png",
-        "tinted": "./assets/generated/icon-light.png"
-      },
+      "icon": "./assets/generated/icon.png",
       "appStoreUrl": "itms-apps://itunes.apple.com/app/id6764829004?action=write-review",
       "infoPlist": {
         "LSApplicationQueriesSchemes": ["itms-apps"],
@@ -175,11 +171,7 @@
         [
           {
             "name": "NeonLight",
-            "ios": {
-              "light": "./assets/generated/alternate/neon-light/icon.png",
-              "dark": "./assets/generated/alternate/neon-dark/icon.png",
-              "tinted": "./assets/generated/alternate/neon-light/icon.png"
-            },
+            "ios": "./assets/generated/alternate/neon-light/icon.png",
             "android": {
               "foregroundImage": "./assets/generated/alternate/neon-light/adaptive-icon.png",
               "backgroundColor": "#ffffff",
@@ -188,11 +180,7 @@
           },
           {
             "name": "NeonDark",
-            "ios": {
-              "light": "./assets/generated/alternate/neon-light/icon.png",
-              "dark": "./assets/generated/alternate/neon-dark/icon.png",
-              "tinted": "./assets/generated/alternate/neon-dark/icon.png"
-            },
+            "ios": "./assets/generated/alternate/neon-dark/icon.png",
             "android": {
               "foregroundImage": "./assets/generated/alternate/neon-dark/adaptive-icon.png",
               "backgroundColor": "#0D0D0A",
@@ -201,11 +189,7 @@
           },
           {
             "name": "GrayscaleLight",
-            "ios": {
-              "light": "./assets/generated/alternate/grayscale-light/icon.png",
-              "dark": "./assets/generated/alternate/grayscale-dark/icon.png",
-              "tinted": "./assets/generated/alternate/grayscale-light/icon.png"
-            },
+            "ios": "./assets/generated/alternate/grayscale-light/icon.png",
             "android": {
               "foregroundImage": "./assets/generated/alternate/grayscale-light/adaptive-icon.png",
               "backgroundColor": "#ffffff",
@@ -214,11 +198,7 @@
           },
           {
             "name": "GrayscaleDark",
-            "ios": {
-              "light": "./assets/generated/alternate/grayscale-light/icon.png",
-              "dark": "./assets/generated/alternate/grayscale-dark/icon.png",
-              "tinted": "./assets/generated/alternate/grayscale-dark/icon.png"
-            },
+            "ios": "./assets/generated/alternate/grayscale-dark/icon.png",
             "android": {
               "foregroundImage": "./assets/generated/alternate/grayscale-dark/adaptive-icon.png",
               "backgroundColor": "#0D0D0A",
@@ -227,11 +207,7 @@
           },
           {
             "name": "GoldLight",
-            "ios": {
-              "light": "./assets/generated/alternate/gold-light/icon.png",
-              "dark": "./assets/generated/alternate/gold-dark/icon.png",
-              "tinted": "./assets/generated/alternate/gold-light/icon.png"
-            },
+            "ios": "./assets/generated/alternate/gold-light/icon.png",
             "android": {
               "foregroundImage": "./assets/generated/alternate/gold-light/adaptive-icon.png",
               "backgroundColor": "#ffffff",
@@ -240,11 +216,7 @@
           },
           {
             "name": "GoldDark",
-            "ios": {
-              "light": "./assets/generated/alternate/gold-light/icon.png",
-              "dark": "./assets/generated/alternate/gold-dark/icon.png",
-              "tinted": "./assets/generated/alternate/gold-dark/icon.png"
-            },
+            "ios": "./assets/generated/alternate/gold-dark/icon.png",
             "android": {
               "foregroundImage": "./assets/generated/alternate/gold-dark/adaptive-icon.png",
               "backgroundColor": "#1A140A",
@@ -253,11 +225,7 @@
           },
           {
             "name": "TerminalMonoLight",
-            "ios": {
-              "light": "./assets/generated/alternate/terminal-mono-light/icon.png",
-              "dark": "./assets/generated/alternate/terminal-mono-dark/icon.png",
-              "tinted": "./assets/generated/alternate/terminal-mono-light/icon.png"
-            },
+            "ios": "./assets/generated/alternate/terminal-mono-light/icon.png",
             "android": {
               "foregroundImage": "./assets/generated/alternate/terminal-mono-light/adaptive-icon.png",
               "backgroundColor": "#ffffff",
@@ -266,11 +234,7 @@
           },
           {
             "name": "TerminalMonoDark",
-            "ios": {
-              "light": "./assets/generated/alternate/terminal-mono-light/icon.png",
-              "dark": "./assets/generated/alternate/terminal-mono-dark/icon.png",
-              "tinted": "./assets/generated/alternate/terminal-mono-dark/icon.png"
-            },
+            "ios": "./assets/generated/alternate/terminal-mono-dark/icon.png",
             "android": {
               "foregroundImage": "./assets/generated/alternate/terminal-mono-dark/adaptive-icon.png",
               "backgroundColor": "#0D0D0A",
@@ -279,11 +243,7 @@
           },
           {
             "name": "AmberTerminalLight",
-            "ios": {
-              "light": "./assets/generated/alternate/amber-terminal-light/icon.png",
-              "dark": "./assets/generated/alternate/amber-terminal-dark/icon.png",
-              "tinted": "./assets/generated/alternate/amber-terminal-light/icon.png"
-            },
+            "ios": "./assets/generated/alternate/amber-terminal-light/icon.png",
             "android": {
               "foregroundImage": "./assets/generated/alternate/amber-terminal-light/adaptive-icon.png",
               "backgroundColor": "#ffffff",
@@ -292,11 +252,7 @@
           },
           {
             "name": "AmberTerminalDark",
-            "ios": {
-              "light": "./assets/generated/alternate/amber-terminal-light/icon.png",
-              "dark": "./assets/generated/alternate/amber-terminal-dark/icon.png",
-              "tinted": "./assets/generated/alternate/amber-terminal-dark/icon.png"
-            },
+            "ios": "./assets/generated/alternate/amber-terminal-dark/icon.png",
             "android": {
               "foregroundImage": "./assets/generated/alternate/amber-terminal-dark/adaptive-icon.png",
               "backgroundColor": "#1A1A17",
@@ -305,11 +261,7 @@
           },
           {
             "name": "MonochromeGridLight",
-            "ios": {
-              "light": "./assets/generated/alternate/monochrome-grid-light/icon.png",
-              "dark": "./assets/generated/alternate/monochrome-grid-dark/icon.png",
-              "tinted": "./assets/generated/alternate/monochrome-grid-light/icon.png"
-            },
+            "ios": "./assets/generated/alternate/monochrome-grid-light/icon.png",
             "android": {
               "foregroundImage": "./assets/generated/alternate/monochrome-grid-light/adaptive-icon.png",
               "backgroundColor": "#ffffff",
@@ -318,11 +270,7 @@
           },
           {
             "name": "MonochromeGridDark",
-            "ios": {
-              "light": "./assets/generated/alternate/monochrome-grid-light/icon.png",
-              "dark": "./assets/generated/alternate/monochrome-grid-dark/icon.png",
-              "tinted": "./assets/generated/alternate/monochrome-grid-dark/icon.png"
-            },
+            "ios": "./assets/generated/alternate/monochrome-grid-dark/icon.png",
             "android": {
               "foregroundImage": "./assets/generated/alternate/monochrome-grid-dark/adaptive-icon.png",
               "backgroundColor": "#0D0D0A",

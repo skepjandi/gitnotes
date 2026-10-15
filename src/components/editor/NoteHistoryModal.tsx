@@ -511,6 +511,7 @@ export function NoteHistoryModal({ visible, history, onClose }: NoteHistoryModal
 
 const styles = StyleSheet.create({
   modalContent: {
+    height: '85%',
     padding: 0,
     paddingBottom: 34,
   },

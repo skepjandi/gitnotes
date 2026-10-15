@@ -164,6 +164,16 @@ describe('NoteHistoryModal', () => {
     expect(editBtn.props.accessibilityState?.disabled).toBe(true);
   });
 
+  it('gives the bottom sheet an explicit height', () => {
+    const history = makeHistoryResult();
+    render(<NoteHistoryModal visible={true} history={history} onClose={jest.fn()} />);
+
+    const modal = screen.getByLabelText('noteHistory.accessibilityLabel');
+    expect(modal.props.contentStyle).toEqual(
+      expect.objectContaining({ height: '85%' }),
+    );
+  });
+
   it('shows loading state with activity indicator', () => {
     const history = makeHistoryResult({ state: { status: 'loading' } });
     render(<NoteHistoryModal visible={true} history={history} onClose={jest.fn()} />);

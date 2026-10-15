@@ -35,6 +35,7 @@ jest.mock('../../src/services/workerApi', () => ({
   workerApi: {
     referrals: {
       complete: jest.fn(),
+      create: jest.fn(),
     },
   },
 }));
@@ -66,6 +67,7 @@ const mockSecureStoreGet = SecureStore.getItemAsync as jest.Mock;
 const mockSecureStoreSet = SecureStore.setItemAsync as jest.Mock;
 const mockSecureStoreDelete = SecureStore.deleteItemAsync as jest.Mock;
 const mockComplete = workerApi.referrals.complete as jest.Mock;
+const mockCreate = workerApi.referrals.create as jest.Mock;
 const mockGetOAuthCredential = AccountStorage.getOAuthCredential as jest.Mock;
 const mockGetActiveHostId = AccountStorage.getActiveHostId as jest.Mock;
 const mockGetHostConnection = AccountStorage.getHostConnection as jest.Mock;
@@ -83,6 +85,7 @@ beforeEach(() => {
   mockSecureStoreSet.mockReset();
   mockSecureStoreDelete.mockReset();
   mockComplete.mockReset();
+  mockCreate.mockReset();
   mockGetOAuthCredential.mockReset();
   mockGetActiveHostId.mockReset();
   mockGetHostConnection.mockReset();
@@ -92,6 +95,11 @@ beforeEach(() => {
   mockSecureStoreSet.mockImplementation(() => Promise.resolve());
   mockSecureStoreDelete.mockImplementation(() => Promise.resolve());
   mockComplete.mockImplementation(() => Promise.resolve({ accepted: true }));
+  mockCreate.mockImplementation(() => Promise.resolve({
+    code: 'test-code',
+    share_url: 'https://gitnotes.org/r/test-code',
+    expires_at: Date.now() + 86_400_000,
+  }));
   mockGetOAuthCredential.mockImplementation(() => Promise.resolve(null));
   mockGetActiveHostId.mockImplementation(() => Promise.resolve(null));
   mockGetHostConnection.mockImplementation(() => Promise.resolve(null));
@@ -373,6 +381,21 @@ describe('ReferralService identity proof', () => {
 
     expect(proof.kind).toBe('installation');
     expect(proof.installationId).toBe(cachedId);
+  });
+});
+
+describe('ReferralService referral creation', () => {
+  it('creates a referral with the current identity proof', async () => {
+    const cachedId = 'install-create-uuid';
+    mockSecureStoreGet.mockResolvedValueOnce(cachedId);
+
+    const result = await ReferralService.createReferral();
+
+    expect(result.share_url).toBe('https://gitnotes.org/r/test-code');
+    expect(mockCreate).toHaveBeenCalledWith(
+      {},
+      { kind: 'installation', installationId: cachedId },
+    );
   });
 });
 

@@ -1135,6 +1135,30 @@
       "multiAccount": {
         "title": "Multiple GitHub accounts",
         "description": "Sync multiple GitHub accounts side by side"
+      },
+      "accentColor": {
+        "title": "Accent colors",
+        "description": "Make GitNotēs yours with a custom accent color"
+      },
+      "proAppIcons": {
+        "title": "Pro app icons",
+        "description": "Choose from exclusive Neon, Grayscale, and Gold icons"
+      },
+      "premiumThemes": {
+        "title": "Premium themes",
+        "description": "Switch between Neumorphic and Retrofuturistic styles"
+      },
+      "multiHost": {
+        "title": "Multi-host sync",
+        "description": "Connect GitLab, Gitea, and more alongside GitHub"
+      },
+      "biometricLock": {
+        "title": "Biometric lock",
+        "description": "Protect your notes with Face ID or Touch ID"
+      },
+      "unlimitedRepos": {
+        "title": "Unlimited repositories",
+        "description": "Add as many repositories as your workflow needs"
       }
     },
     "featureDescriptions": {

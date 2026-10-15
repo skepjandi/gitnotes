@@ -1130,6 +1130,30 @@
       "multiAccount": {
         "title": "Plusieurs comptes GitHub",
         "description": "Synchronisez plusieurs comptes GitHub côte à côte"
+      },
+      "accentColor": {
+        "title": "Couleurs d'accentuation",
+        "description": "Personnalisez GitNotēs avec une couleur d'accentuation personnalisée"
+      },
+      "proAppIcons": {
+        "title": "Icônes d'app Pro",
+        "description": "Choisissez parmi les icônes Neon, Niveaux de gris et Or exclusives"
+      },
+      "premiumThemes": {
+        "title": "Thèmes premium",
+        "description": "Basculez entre les styles Néomorphique et Rétrofuturiste"
+      },
+      "multiHost": {
+        "title": "Synchronisation multi-hébergeur",
+        "description": "Connectez GitLab, Gitea et plus encore en plus de GitHub"
+      },
+      "biometricLock": {
+        "title": "Verrouillage biométrique",
+        "description": "Protégez vos notes avec Face ID ou Touch ID"
+      },
+      "unlimitedRepos": {
+        "title": "Dépôts illimités",
+        "description": "Ajoutez autant de dépôts que votre flux de travail l'exige"
       }
     },
     "featureDescriptions": {

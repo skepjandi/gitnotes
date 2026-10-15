@@ -1130,6 +1130,30 @@
       "multiAccount": {
         "title": "Mehrere GitHub-Konten",
         "description": "Synchronisiere mehrere GitHub-Konten nebeneinander"
+      },
+      "accentColor": {
+        "title": "Akzentfarben",
+        "description": "Gestalte GitNotēs mit einer eigenen Akzentfarbe"
+      },
+      "proAppIcons": {
+        "title": "Pro App-Symbole",
+        "description": "Wähle aus exklusiven Neon-, Graustufen- und Gold-Symbolen"
+      },
+      "premiumThemes": {
+        "title": "Premium-Themen",
+        "description": "Wechsle zwischen Neumorphismus- und Retrofuturismus-Stilen"
+      },
+      "multiHost": {
+        "title": "Multi-Host-Synchronisierung",
+        "description": "Verbinde GitLab, Gitea und mehr zusätzlich zu GitHub"
+      },
+      "biometricLock": {
+        "title": "Biometrische Sperre",
+        "description": "Schütze deine Notizen mit Face ID oder Touch ID"
+      },
+      "unlimitedRepos": {
+        "title": "Unbegrenzte Repositories",
+        "description": "Füge so viele Repositories hinzu, wie dein Workflow benötigt"
       }
     },
     "featureDescriptions": {

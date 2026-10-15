@@ -1128,6 +1128,30 @@
       "multiAccount": {
         "title": "複数のGitHubアカウント",
         "description": "複数のGitHubアカウントを並行して同期"
+      },
+      "accentColor": {
+        "title": "アクセントカラー",
+        "description": "カスタムアクセントカラーでGitNotēsをあなたらしく"
+      },
+      "proAppIcons": {
+        "title": "Proアプリアイコン",
+        "description": "Neon、グレースケール、ゴールドの独占アイコンから選択"
+      },
+      "premiumThemes": {
+        "title": "プレミアムテーマ",
+        "description": "ニューモーフィックとレトロフューチュリスティックを切り替え"
+      },
+      "multiHost": {
+        "title": "マルチホスト同期",
+        "description": "GitHub以外にGitLab、Giteaなどを接続"
+      },
+      "biometricLock": {
+        "title": "生体認証ロック",
+        "description": "Face IDまたはTouch IDでノートを保護"
+      },
+      "unlimitedRepos": {
+        "title": "無制限のリポジトリ",
+        "description": "ワークフローに必要なだけリポジトリを追加"
       }
     },
     "featureDescriptions": {

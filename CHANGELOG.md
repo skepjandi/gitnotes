@@ -8,6 +8,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-10-15
+
+### fix(ios): keep UniFFI bindings aligned with the iOS pod
+
+**What:** Clean local iOS builds regenerated Rust artifacts but compiled stale Swift bindings, so the Git file-history native APIs were missing after `expo prebuild`.
+
+**Fix:** Write local UniFFI Swift bindings to the `ios-local` directory consumed by the pod, refresh the committed bindings, and correct the Rust build documentation paths.
+
 ## 2026-10-14
 
 ### fix(files): restore Git file preview padding and theme updates

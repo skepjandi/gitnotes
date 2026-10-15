@@ -586,6 +586,24 @@ fileprivate struct FfiConverterString: FfiConverter {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterData: FfiConverterRustBuffer {
+    typealias SwiftType = Data
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
+        let len: Int32 = try readInt(&buf)
+        return Data(try readBytes(&buf, count: Int(len)))
+    }
+
+    public static func write(_ value: Data, into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        writeBytes(&buf, value)
+    }
+}
+
 
 
 
@@ -851,6 +869,69 @@ public func FfiConverterTypeAuthor_lift(_ buf: RustBuffer) throws -> Author {
 #endif
 public func FfiConverterTypeAuthor_lower(_ value: Author) -> RustBuffer {
     return FfiConverterTypeAuthor.lower(value)
+}
+
+
+/**
+ * Error when reading a blob at a ref.
+ */
+public struct BlobReadError: Equatable, Hashable {
+    public let kind: BlobReadErrorKind
+    /**
+     * Human-readable message.
+     */
+    public let message: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(kind: BlobReadErrorKind, 
+        /**
+         * Human-readable message.
+         */message: String) {
+        self.kind = kind
+        self.message = message
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BlobReadError: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBlobReadError: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BlobReadError {
+        return
+            try BlobReadError(
+                kind: FfiConverterTypeBlobReadErrorKind.read(from: &buf), 
+                message: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BlobReadError, into buf: inout [UInt8]) {
+        FfiConverterTypeBlobReadErrorKind.write(value.kind, into: &buf)
+        FfiConverterString.write(value.message, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlobReadError_lift(_ buf: RustBuffer) throws -> BlobReadError {
+    return try FfiConverterTypeBlobReadError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlobReadError_lower(_ value: BlobReadError) -> RustBuffer {
+    return FfiConverterTypeBlobReadError.lower(value)
 }
 
 
@@ -1572,6 +1653,206 @@ public func FfiConverterTypeFileDiff_lift(_ buf: RustBuffer) throws -> FileDiff 
 #endif
 public func FfiConverterTypeFileDiff_lower(_ value: FileDiff) -> RustBuffer {
     return FfiConverterTypeFileDiff.lower(value)
+}
+
+
+/**
+ * A commit as it appears in file history (path-specific commits).
+ */
+public struct FileHistoryEntry: Equatable, Hashable {
+    /**
+     * Full 40-char hex object id.
+     */
+    public let id: String
+    /**
+     * Short (7-char) hex id.
+     */
+    public let shortId: String
+    /**
+     * Full commit message (may contain newlines).
+     */
+    public let message: String
+    /**
+     * First paragraph of the message.
+     */
+    public let summary: String
+    public let authorName: String
+    public let authorEmail: String
+    /**
+     * Author timestamp, unix seconds.
+     */
+    public let authorTime: Int64
+    /**
+     * Committer timestamp, unix seconds.
+     */
+    public let committerTime: Int64
+    /**
+     * Number of parents (0 = root).
+     */
+    public let parentCount: UInt32
+    /**
+     * Parent commit ids.
+     */
+    public let parents: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Full 40-char hex object id.
+         */id: String, 
+        /**
+         * Short (7-char) hex id.
+         */shortId: String, 
+        /**
+         * Full commit message (may contain newlines).
+         */message: String, 
+        /**
+         * First paragraph of the message.
+         */summary: String, authorName: String, authorEmail: String, 
+        /**
+         * Author timestamp, unix seconds.
+         */authorTime: Int64, 
+        /**
+         * Committer timestamp, unix seconds.
+         */committerTime: Int64, 
+        /**
+         * Number of parents (0 = root).
+         */parentCount: UInt32, 
+        /**
+         * Parent commit ids.
+         */parents: [String]) {
+        self.id = id
+        self.shortId = shortId
+        self.message = message
+        self.summary = summary
+        self.authorName = authorName
+        self.authorEmail = authorEmail
+        self.authorTime = authorTime
+        self.committerTime = committerTime
+        self.parentCount = parentCount
+        self.parents = parents
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension FileHistoryEntry: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFileHistoryEntry: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FileHistoryEntry {
+        return
+            try FileHistoryEntry(
+                id: FfiConverterString.read(from: &buf), 
+                shortId: FfiConverterString.read(from: &buf), 
+                message: FfiConverterString.read(from: &buf), 
+                summary: FfiConverterString.read(from: &buf), 
+                authorName: FfiConverterString.read(from: &buf), 
+                authorEmail: FfiConverterString.read(from: &buf), 
+                authorTime: FfiConverterInt64.read(from: &buf), 
+                committerTime: FfiConverterInt64.read(from: &buf), 
+                parentCount: FfiConverterUInt32.read(from: &buf), 
+                parents: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FileHistoryEntry, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.shortId, into: &buf)
+        FfiConverterString.write(value.message, into: &buf)
+        FfiConverterString.write(value.summary, into: &buf)
+        FfiConverterString.write(value.authorName, into: &buf)
+        FfiConverterString.write(value.authorEmail, into: &buf)
+        FfiConverterInt64.write(value.authorTime, into: &buf)
+        FfiConverterInt64.write(value.committerTime, into: &buf)
+        FfiConverterUInt32.write(value.parentCount, into: &buf)
+        FfiConverterSequenceString.write(value.parents, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFileHistoryEntry_lift(_ buf: RustBuffer) throws -> FileHistoryEntry {
+    return try FfiConverterTypeFileHistoryEntry.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFileHistoryEntry_lower(_ value: FileHistoryEntry) -> RustBuffer {
+    return FfiConverterTypeFileHistoryEntry.lower(value)
+}
+
+
+/**
+ * Result of `file_history`, including a flag when the history may be shallow.
+ */
+public struct FileHistoryResult: Equatable, Hashable {
+    public let entries: [FileHistoryEntry]
+    /**
+     * True when the history may be shallow (e.g., `git clone --depth` was used).
+     */
+    public let shallow: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(entries: [FileHistoryEntry], 
+        /**
+         * True when the history may be shallow (e.g., `git clone --depth` was used).
+         */shallow: Bool) {
+        self.entries = entries
+        self.shallow = shallow
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension FileHistoryResult: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFileHistoryResult: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FileHistoryResult {
+        return
+            try FileHistoryResult(
+                entries: FfiConverterSequenceTypeFileHistoryEntry.read(from: &buf), 
+                shallow: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FileHistoryResult, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeFileHistoryEntry.write(value.entries, into: &buf)
+        FfiConverterBool.write(value.shallow, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFileHistoryResult_lift(_ buf: RustBuffer) throws -> FileHistoryResult {
+    return try FfiConverterTypeFileHistoryResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFileHistoryResult_lower(_ value: FileHistoryResult) -> RustBuffer {
+    return FfiConverterTypeFileHistoryResult.lower(value)
 }
 
 
@@ -2551,6 +2832,221 @@ public func FfiConverterTypeRepoStatus_lower(_ value: RepoStatus) -> RustBuffer 
 
 
 /**
+ * Kind of error when reading a blob at a ref.
+ */
+
+public enum BlobReadErrorKind: Equatable, Hashable {
+    
+    /**
+     * The given ref (branch/tag/commit) does not exist.
+     */
+    case refNotFound
+    /**
+     * The ref exists but is a shallow commit (history truncated by `git clone --depth`).
+     */
+    case shallowHistory
+    /**
+     * The file path does not exist at the given ref.
+     */
+    case pathNotFound
+    /**
+     * The file at the ref is binary (content contains a null byte).
+     */
+    case binaryContent
+    /**
+     * The file exceeds the configured size limit.
+     */
+    case tooLarge(size: UInt64, limit: UInt64
+    )
+    /**
+     * Native module unavailable.
+     */
+    case nativeUnavailable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension BlobReadErrorKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBlobReadErrorKind: FfiConverterRustBuffer {
+    typealias SwiftType = BlobReadErrorKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BlobReadErrorKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .refNotFound
+        
+        case 2: return .shallowHistory
+        
+        case 3: return .pathNotFound
+        
+        case 4: return .binaryContent
+        
+        case 5: return .tooLarge(size: try FfiConverterUInt64.read(from: &buf), limit: try FfiConverterUInt64.read(from: &buf)
+        )
+        
+        case 6: return .nativeUnavailable
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: BlobReadErrorKind, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .refNotFound:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .shallowHistory:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .pathNotFound:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .binaryContent:
+            writeInt(&buf, Int32(4))
+        
+        
+        case let .tooLarge(size,limit):
+            writeInt(&buf, Int32(5))
+            FfiConverterUInt64.write(size, into: &buf)
+            FfiConverterUInt64.write(limit, into: &buf)
+            
+        
+        case .nativeUnavailable:
+            writeInt(&buf, Int32(6))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlobReadErrorKind_lift(_ buf: RustBuffer) throws -> BlobReadErrorKind {
+    return try FfiConverterTypeBlobReadErrorKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlobReadErrorKind_lower(_ value: BlobReadErrorKind) -> RustBuffer {
+    return FfiConverterTypeBlobReadErrorKind.lower(value)
+}
+
+
+
+/**
+ * Content of a blob at a ref, or an explicit error.
+ */
+
+public enum BlobReadResult: Equatable, Hashable {
+    
+    /**
+     * Blob content was read successfully.
+     */
+    case content(
+        /**
+         * Git object id of the blob.
+         */oid: String, 
+        /**
+         * Raw bytes of the blob.
+         */content: Data, 
+        /**
+         * True when the content was truncated to `BLOB_SIZE_LIMIT`.
+         */truncated: Bool, 
+        /**
+         * Detected MIME type based on content (e.g. `text/plain`, `application/octet-stream`).
+         */mimeType: String
+    )
+    /**
+     * Reading the blob failed with a typed error.
+     */
+    case error(BlobReadError
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension BlobReadResult: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBlobReadResult: FfiConverterRustBuffer {
+    typealias SwiftType = BlobReadResult
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BlobReadResult {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .content(oid: try FfiConverterString.read(from: &buf), content: try FfiConverterData.read(from: &buf), truncated: try FfiConverterBool.read(from: &buf), mimeType: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 2: return .error(try FfiConverterTypeBlobReadError.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: BlobReadResult, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .content(oid,content,truncated,mimeType):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(oid, into: &buf)
+            FfiConverterData.write(content, into: &buf)
+            FfiConverterBool.write(truncated, into: &buf)
+            FfiConverterString.write(mimeType, into: &buf)
+            
+        
+        case let .error(v1):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeBlobReadError.write(v1, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlobReadResult_lift(_ buf: RustBuffer) throws -> BlobReadResult {
+    return try FfiConverterTypeBlobReadResult.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlobReadResult_lower(_ value: BlobReadResult) -> RustBuffer {
+    return FfiConverterTypeBlobReadResult.lower(value)
+}
+
+
+
+/**
  * Errors surfaced across the FFI boundary.
  *
  * Kept separate from `EngineError` because UniFFI error types must be
@@ -2771,8 +3267,10 @@ public struct FfiConverterTypeCredentialSource: FfiConverterRustBuffer {
         )
         
         case 4: return .`default`
+        
         case 5: return .gitHubOAuth(token: try FfiConverterString.read(from: &buf)
         )
+        
         case 6: return .gitHubAppInstallation(token: try FfiConverterString.read(from: &buf)
         )
         
@@ -2804,13 +3302,17 @@ public struct FfiConverterTypeCredentialSource: FfiConverterRustBuffer {
         
         case .`default`:
             writeInt(&buf, Int32(4))
+        
+        
         case let .gitHubOAuth(token):
             writeInt(&buf, Int32(5))
             FfiConverterString.write(token, into: &buf)
+            
+        
         case let .gitHubAppInstallation(token):
             writeInt(&buf, Int32(6))
             FfiConverterString.write(token, into: &buf)
-        
+            
         }
     }
 }
@@ -3659,6 +4161,31 @@ fileprivate struct FfiConverterSequenceTypeFileDiff: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeFileHistoryEntry: FfiConverterRustBuffer {
+    typealias SwiftType = [FileHistoryEntry]
+
+    public static func write(_ value: [FileHistoryEntry], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFileHistoryEntry.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FileHistoryEntry] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FileHistoryEntry]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFileHistoryEntry.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeFileStatus: FfiConverterRustBuffer {
     typealias SwiftType = [FileStatus]
 
@@ -3909,6 +4436,21 @@ public func fetchRepoWithProgress(path: String, remoteName: String, repoId: Stri
 }
 }
 /**
+ * File-scoped commit history: only commits touching `file_path` from `ref`.
+ */
+public func fileHistory(path: String, rev: String, filePath: String, limit: UInt32, skip: UInt32)throws  -> FileHistoryResult  {
+    return try  FfiConverterTypeFileHistoryResult_lift(try rustCallWithError(FfiConverterTypeBridgeError_lift) {
+        uniffiCallStatus in
+    uniffi_gitnotes_git2_fn_func_file_history(
+        FfiConverterString.lower(path),
+        FfiConverterString.lower(rev),
+        FfiConverterString.lower(filePath),
+        FfiConverterUInt32.lower(limit),
+        FfiConverterUInt32.lower(skip),uniffiCallStatus
+    )
+})
+}
+/**
  * Generate an ed25519 SSH keypair, returning the public key (for the user to
  * add to a provider) and the private key PEM (optionally passphrase-encrypted).
  */
@@ -4071,6 +4613,20 @@ public func pushRepoWithIntegrate(path: String, remoteName: String, repoId: Stri
 })
 }
 /**
+ * Read the blob at `file_path` for `ref` (commit/tag/branch). Returns typed
+ * content or an explicit error (missing/binary/shallow/too-large).
+ */
+public func readBlobAtRef(path: String, rev: String, filePath: String)throws  -> BlobReadResult  {
+    return try  FfiConverterTypeBlobReadResult_lift(try rustCallWithError(FfiConverterTypeBridgeError_lift) {
+        uniffiCallStatus in
+    uniffi_gitnotes_git2_fn_func_read_blob_at_ref(
+        FfiConverterString.lower(path),
+        FfiConverterString.lower(rev),
+        FfiConverterString.lower(filePath),uniffiCallStatus
+    )
+})
+}
+/**
  * Recent commit history.
  */
 public func recentCommits(path: String, skip: UInt32, limit: UInt32)throws  -> [CommitInfo]  {
@@ -4220,6 +4776,52 @@ public func setRemoteUrl(path: String, name: String, url: String)throws   {try r
 }
 }
 /**
+ * Sets the SSL certificate directory for Android.
+ *
+ * On Android, this is preferred over `set_ssl_cert_file` because OpenSSL's
+ * directory mode uses hash-based certificate lookup, which works directly
+ * with Android's `/apex/com.android.conscrypt/cacerts` directory without
+ * requiring a bundled PEM file.
+ *
+ * This must be called from the host app's module-initialization entry point
+ * (`OnCreate` / `applicationDidFinishLaunching`) **before** any engine operation
+ * is dispatched.
+ */
+public func setSslCertDirectory(certDir: String)throws   {try rustCallWithError(FfiConverterTypeBridgeError_lift) {
+        uniffiCallStatus in
+    uniffi_gitnotes_git2_fn_func_set_ssl_cert_directory(
+        FfiConverterString.lower(certDir),uniffiCallStatus
+    )
+}
+}
+/**
+ * Configure git2's SSL CA certificate file for Android.
+ *
+ * This **must** be called from the host app's module-initialization entry point
+ * (`OnCreate` / `applicationDidFinishLaunching`) **before** any engine operation
+ * is dispatched. The Kotlin host builds a PEM bundle from the Android system CA
+ * directories and passes the path here; on non-Android platforms the equivalent
+ * bundle path from the host platform's CA store should be passed.
+ *
+ * Returns `Ok(())` when the certificate file was configured successfully.
+ * Returns `Err(BridgeError)` when `set_ssl_cert_file` failed.
+ */
+public func setSslCertFile(certFile: String)throws   {try rustCallWithError(FfiConverterTypeBridgeError_lift) {
+        uniffiCallStatus in
+    uniffi_gitnotes_git2_fn_func_set_ssl_cert_file(
+        FfiConverterString.lower(certFile),uniffiCallStatus
+    )
+}
+}
+public func setSslCertLocations(certFile: String, certDir: String)throws   {try rustCallWithError(FfiConverterTypeBridgeError_lift) {
+        uniffiCallStatus in
+    uniffi_gitnotes_git2_fn_func_set_ssl_cert_locations(
+        FfiConverterString.lower(certFile),
+        FfiConverterString.lower(certDir),uniffiCallStatus
+    )
+}
+}
+/**
  * LINE-LEVEL PARTIAL STAGING: stage only the selected diff lines.
  */
 public func stageFileLines(path: String, filePath: String, hunks: [HunkSelection])throws   {try rustCallWithError(FfiConverterTypeBridgeError_lift) {
@@ -4324,6 +4926,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_gitnotes_git2_checksum_func_fetch_repo_with_progress() != 53247) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_gitnotes_git2_checksum_func_file_history() != 12070) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_gitnotes_git2_checksum_func_generate_ssh_key() != 21791) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -4363,6 +4968,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_gitnotes_git2_checksum_func_push_repo_with_integrate() != 54095) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_gitnotes_git2_checksum_func_read_blob_at_ref() != 26017) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_gitnotes_git2_checksum_func_recent_commits() != 15673) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -4400,6 +5008,15 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_gitnotes_git2_checksum_func_set_remote_url() != 54340) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_gitnotes_git2_checksum_func_set_ssl_cert_directory() != 34027) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_gitnotes_git2_checksum_func_set_ssl_cert_file() != 26244) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_gitnotes_git2_checksum_func_set_ssl_cert_locations() != 57313) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_gitnotes_git2_checksum_func_stage_file_lines() != 26625) {

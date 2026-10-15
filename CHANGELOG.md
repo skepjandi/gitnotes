@@ -10,6 +10,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-10-15
 
+### fix(ios): open reviews in the App Store
+
+**What:** The Settings “Leave a Review” action sent users to Safari with an invalid-address error.
+
+**Fix:** Use Apple’s native `itms-apps` review URL with the `write-review` action so iOS opens the App Store directly instead of routing the review flow through Safari.
+
 ### fix(git-engine): normalize blob-read bridge shape for iOS and Android
 
 **What:** Selecting a note history revision showed `Git engine unavailable` because iOS and Android native `blobReadResultDict` emitted lower-case `kind: content/error` with a flat `code` field, while `GitEngine.ts` expected PascalCase `kind: Content/Error` with a nested `error: { kind, message }` object. Accessing `nativeResult.error.kind` on the flat shape threw a TypeError.

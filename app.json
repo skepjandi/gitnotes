@@ -16,8 +16,9 @@
       "scheme": "gitnotes",
       "associatedDomains": ["applinks:gitnotes.org"],
       "icon": "./assets/generated/icon.png",
-      "appStoreUrl": "https://apps.apple.com/app/id6764829004",
+      "appStoreUrl": "itms-apps://itunes.apple.com/app/id6764829004?action=write-review",
       "infoPlist": {
+        "LSApplicationQueriesSchemes": ["itms-apps"],
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [

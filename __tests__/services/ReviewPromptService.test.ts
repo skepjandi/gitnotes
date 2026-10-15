@@ -20,7 +20,7 @@ const mockAppState = { currentState: 'active', addEventListener: jest.fn(() => (
 jest.mock('expo-store-review');
 jest.mock('expo-constants', () => ({
   expoConfig: {
-    ios: { appStoreUrl: 'https://apps.apple.com/app/gitnotes/id6764829004' },
+    ios: { appStoreUrl: 'https://apps.apple.com/app/id6764829004' },
     android: { playStoreUrl: 'https://play.google.com/store/apps/details?id=org.gitnotes.app' },
   },
 }));
@@ -405,7 +405,7 @@ describe('ReviewPromptService', () => {
       require('react-native').Linking.canOpenURL.mockResolvedValue(true);
       const result = await openStoreListing();
       expect(result).toBe(true);
-      expect(require('react-native').Linking.openURL).toHaveBeenCalledWith('https://apps.apple.com/app/gitnotes/id6764829004');
+      expect(require('react-native').Linking.openURL).toHaveBeenCalledWith('https://apps.apple.com/app/id6764829004');
     });
 
     it('returns false when canOpenURL is false', async () => {

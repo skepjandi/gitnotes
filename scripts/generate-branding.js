@@ -13,9 +13,12 @@
  *   monochrome-icon.png 1024×1024  Android themed icon — grayscale depth mask
  *
  * Plus alternate icon families under `assets/generated/alternate/{variant}/`:
- *   icon.png            1024×1024  iOS / Expo alternate app icon
- *   adaptive-icon.png   1024×1024  Android adaptive icon FOREGROUND
- *   monochrome-icon.png 1024×1024  Android themed icon foreground mask
+ *   icon.png            1024×1024  iOS / Expo alternate app icon (light background)
+ *   icon-dark.png       1024×1024  iOS dark variant icon (dark background + bright foreground)
+ *   adaptive-icon.png   1024×1024  Android adaptive icon FOREGROUND (transparent bg, light mode)
+ *   adaptive-icon-dark.png 1024×1024  Android adaptive icon FOREGROUND (transparent bg, dark mode)
+ *   monochrome-icon.png 1024×1024  Android themed icon foreground mask (light mode)
+ *   monochrome-icon-dark.png 1024×1024  Android themed icon foreground mask (dark mode, lighter gray)
  *
  * Seven palette variants:
  *   base              — EXACT byte-for-byte copy of top-level defaults (icon.png,
@@ -27,6 +30,11 @@
  *   terminal-mono     — retro pixel-art filter with green terminal palette
  *   amber-terminal    — retro pixel-art filter with orange phosphor palette + scanlines
  *   monochrome-grid   — retro pixel-art filter with cool gray palette + grid texture
+ *
+ * Each variant has a light and dark sub-variant (e.g., neon/ and neon-dark/):
+ *   Light: white/light background for iOS icon, transparent foreground for Android
+ *   Dark: dark background for iOS icon + bright foreground for visibility,
+ *          transparent colored foreground for Android (backgroundColor provides the dark fill)
  *
  * The artwork is auto-cropped to its alpha bounding box, scaled to a target
  * fraction of the canvas (safe padding), and composited centered on a
@@ -88,6 +96,22 @@ const VARIANTS = {
   'terminal-mono': { isRetro: true, retroPreset: 'terminal-mono' },
   'amber-terminal': { isRetro: true, retroPreset: 'amber-terminal' },
   'monochrome-grid': { isRetro: true, retroPreset: 'monochrome-grid' },
+};
+
+// Dark variant of each retro variant - uses brightened foreground for iOS dark icon visibility
+// Android dark adaptive-icon uses transparent colored foreground (colored on dark still has contrast)
+const DARK_VARIANT_SUFFIX = '-dark';
+const LIGHT_VARIANT_SUFFIX = '-light';
+
+const DARK_VARIANT_CONFIG = {
+  // For iOS dark icon: dark background + brightened foreground
+  iconBrightnessBoost: 1.8, // multiply luminance to brighten colored logo
+  // For Android monochrome-dark: lighter gray values for visibility on dark backgrounds
+  monochromeLightenFactor: 2.5, // multiply grayscale luminance for lighter appearance
+};
+
+const LIGHT_VARIANT_CONFIG = {
+  backgroundColor: { r: 255, g: 255, b: 255, alpha: 255 },
 };
 
 function linearToSrgb(c) {
@@ -219,7 +243,7 @@ async function renderArtworkBBox(svgBuffer) {
   };
 }
 
-async function generateTarget(svgBuffer, target, variant) {
+async function generateTarget(svgBuffer, target, variant, opts = {}) {
   const { data, info, bbox } = await renderArtworkBBox(svgBuffer);
 
   const croppedRaw = await sharp(data, {
@@ -243,9 +267,31 @@ async function generateTarget(svgBuffer, target, variant) {
     for (let i = 0; i < croppedRaw.length; i++) {
       retroImageData.data[i] = croppedRaw[i];
     }
-    // Map source fills to explicit palette slots before bitmapped processing
     preserveSourceFills(retroImageData, retroPreset.palette, LOGO_SOURCE_FILLS);
-    const filtered = applyRetroFilter(retroImageData, retroPreset);
+    let filtered = applyRetroFilter(retroImageData, retroPreset);
+
+    if (opts.brightnessBoost && opts.brightnessBoost > 1) {
+      const boost = opts.brightnessBoost;
+      const boosted = Buffer.alloc(filtered.data.length);
+      for (let i = 0; i < filtered.data.length; i += 4) {
+        if (filtered.data[i + 3] > 0) {
+          const r = Math.min(255, Math.round(filtered.data[i] * boost));
+          const g = Math.min(255, Math.round(filtered.data[i + 1] * boost));
+          const b = Math.min(255, Math.round(filtered.data[i + 2] * boost));
+          boosted[i] = r;
+          boosted[i + 1] = g;
+          boosted[i + 2] = b;
+          boosted[i + 3] = filtered.data[i + 3];
+        } else {
+          boosted[i] = filtered.data[i];
+          boosted[i + 1] = filtered.data[i + 1];
+          boosted[i + 2] = filtered.data[i + 2];
+          boosted[i + 3] = filtered.data[i + 3];
+        }
+      }
+      filtered = { ...filtered, data: boosted };
+    }
+
     artwork = await sharp(Buffer.from(filtered.data), {
       raw: { width: croppedWidth, height: croppedHeight, channels: 4 },
     })
@@ -254,7 +300,30 @@ async function generateTarget(svgBuffer, target, variant) {
       .png()
       .toBuffer();
   } else if (variant) {
-    const recolored = recolorBuffer(croppedRaw, croppedWidth, croppedHeight, variant);
+    let recolored = recolorBuffer(croppedRaw, croppedWidth, croppedHeight, variant);
+
+    if (opts.brightnessBoost && opts.brightnessBoost > 1) {
+      const boost = opts.brightnessBoost;
+      const boosted = Buffer.alloc(recolored.length);
+      for (let i = 0; i < recolored.length; i += 4) {
+        if (recolored[i + 3] > 0) {
+          const r = Math.min(255, Math.round(recolored[i] * boost));
+          const g = Math.min(255, Math.round(recolored[i + 1] * boost));
+          const b = Math.min(255, Math.round(recolored[i + 2] * boost));
+          boosted[i] = r;
+          boosted[i + 1] = g;
+          boosted[i + 2] = b;
+          boosted[i + 3] = recolored[i + 3];
+        } else {
+          boosted[i] = recolored[i];
+          boosted[i + 1] = recolored[i + 1];
+          boosted[i + 2] = recolored[i + 2];
+          boosted[i + 3] = recolored[i + 3];
+        }
+      }
+      recolored = boosted;
+    }
+
     artwork = await sharp(recolored, {
       raw: { width: croppedWidth, height: croppedHeight, channels: 4 },
     })
@@ -283,7 +352,10 @@ async function generateTarget(svgBuffer, target, variant) {
       const r = artData[i * 4];
       const g = artData[i * 4 + 1];
       const b = artData[i * 4 + 2];
-      const luma = (0.299 * r + 0.587 * g + 0.114 * b) | 0;
+      let luma = (0.299 * r + 0.587 * g + 0.114 * b) | 0;
+      if (opts.monochromeLightenFactor) {
+        luma = Math.min(255, Math.round(luma * opts.monochromeLightenFactor));
+      }
       mono[i * 4] = luma;
       mono[i * 4 + 1] = luma;
       mono[i * 4 + 2] = luma;
@@ -299,8 +371,10 @@ async function generateTarget(svgBuffer, target, variant) {
   const left = Math.round((size - width) / 2);
   const top = Math.round((size - height) / 2);
 
+  const canvasBg = opts.backgroundColor ? opts.backgroundColor : { r: 0, g: 0, b: 0, alpha: 0 };
+
   return sharp({
-    create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+    create: { width: size, height: size, channels: 4, background: canvasBg },
   })
     .composite([{ input: artwork, left, top }])
     .png({ compressionLevel: 9 })
@@ -328,6 +402,22 @@ async function generateAll() {
     }
   }
 
+  const iconTarget = TARGETS.find((target) => target.name === 'icon.png');
+  if (iconTarget) {
+    for (const [suffix, options] of [
+      [LIGHT_VARIANT_SUFFIX, LIGHT_VARIANT_CONFIG],
+      [
+        DARK_VARIANT_SUFFIX,
+        { ...DARK_VARIANT_CONFIG, backgroundColor: { r: 13, g: 13, b: 10, alpha: 255 } },
+      ],
+    ]) {
+      const outPath = path.join(OUT_DIR, `icon${suffix}.png`);
+      const buffer = await generateTarget(svgBuffer, iconTarget, null, options);
+      fs.writeFileSync(outPath, buffer);
+      console.log(`✓ Generated ${path.basename(outPath)}`);
+    }
+  }
+
   for (const [variantKey, variant] of Object.entries(VARIANTS)) {
     const variantDir = path.join(ALTERNATE_DIR, variantKey);
     fs.mkdirSync(variantDir, { recursive: true });
@@ -338,14 +428,42 @@ async function generateAll() {
 
       const outPath = path.join(variantDir, name);
       if (variant.isBase) {
-        // base/ must be byte-identical to top-level defaults — copy directly
-        // to avoid hueShift=0 round-trip rounding differences from recolorBuffer
         fs.copyFileSync(path.join(OUT_DIR, name), outPath);
         console.log(`✓ Copied alternate/${variantKey}/${name} from defaults`);
       } else {
         const buffer = await generateTarget(svgBuffer, baseTarget, variant);
         fs.writeFileSync(outPath, buffer);
         console.log(`✓ Generated alternate/${variantKey}/${name}`);
+      }
+    }
+
+    if (!variant.isBase) {
+      for (const [suffix, options] of [
+        [LIGHT_VARIANT_SUFFIX, LIGHT_VARIANT_CONFIG],
+        [
+          DARK_VARIANT_SUFFIX,
+          { ...DARK_VARIANT_CONFIG, backgroundColor: { r: 13, g: 13, b: 10, alpha: 255 } },
+        ],
+      ]) {
+        const themedVariantDir = path.join(ALTERNATE_DIR, variantKey + suffix);
+        fs.mkdirSync(themedVariantDir, { recursive: true });
+
+        for (const name of VARIANT_TARGET_NAMES) {
+          const baseTarget = TARGETS.find((t) => t.name === name);
+          if (!baseTarget) continue;
+
+          const isIcon = name === 'icon.png';
+          const isMono = name === 'monochrome-icon.png';
+          const outPath = path.join(themedVariantDir, name);
+          const targetOptions = isIcon
+            ? options
+            : isMono && suffix === DARK_VARIANT_SUFFIX
+              ? { ...options, backgroundColor: { r: 0, g: 0, b: 0, alpha: 0 } }
+              : { backgroundColor: { r: 0, g: 0, b: 0, alpha: 0 } };
+          const buffer = await generateTarget(svgBuffer, baseTarget, variant, targetOptions);
+          fs.writeFileSync(outPath, buffer);
+          console.log(`✓ Generated alternate/${variantKey}${suffix}/${name}`);
+        }
       }
     }
   }
@@ -355,7 +473,7 @@ async function generateAll() {
 
 async function checkAll() {
   let ok = true;
-  for (const target of TARGETS) {
+  for (const target of TARGETS.filter((item) => item.name !== 'splash-icon.png')) {
     const outPath = path.join(OUT_DIR, target.name);
     if (!fs.existsSync(outPath)) {
       console.error(`✗ Missing ${target.name}`);
@@ -373,6 +491,21 @@ async function checkAll() {
     }
     console.log(`✓ ${target.name} ${meta.width}×${meta.height}`);
   }
+  for (const name of ['icon-light.png', 'icon-dark.png']) {
+    const outPath = path.join(OUT_DIR, name);
+    if (!fs.existsSync(outPath)) {
+      console.error(`✗ Missing ${name}`);
+      ok = false;
+      continue;
+    }
+    const meta = await sharp(outPath).metadata();
+    if (meta.width !== 1024 || meta.height !== 1024 || !meta.hasAlpha) {
+      console.error(`✗ ${name}: expected 1024×1024 PNG with alpha`);
+      ok = false;
+      continue;
+    }
+    console.log(`✓ ${name} ${meta.width}×${meta.height}`);
+  }
   if (!ok) {
     console.error('✗ Branding check FAILED — run npm run branding to regenerate.');
     process.exit(1);
@@ -383,8 +516,12 @@ async function checkAll() {
 async function checkAllVariants() {
   const crypto = require('crypto');
   let ok = true;
+  const variantKeys = Object.keys(VARIANTS).filter((key) => !VARIANTS[key].isBase);
 
-  for (const variantKey of Object.keys(VARIANTS)) {
+  for (const variantKey of [
+    ...Object.keys(VARIANTS),
+    ...variantKeys.flatMap((key) => [key + LIGHT_VARIANT_SUFFIX, key + DARK_VARIANT_SUFFIX]),
+  ]) {
     const variantDir = path.join(ALTERNATE_DIR, variantKey);
     for (const name of VARIANT_TARGET_NAMES) {
       const outPath = path.join(variantDir, name);

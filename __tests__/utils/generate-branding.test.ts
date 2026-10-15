@@ -244,15 +244,17 @@ describe('variant registry — all seven variants are registered', () => {
   const VARIANT_KEYS = ['base', 'grayscale', 'neon', 'gold', 'terminal-mono', 'amber-terminal', 'monochrome-grid'];
   const VARIANT_TARGET_NAMES = ['icon.png', 'adaptive-icon.png', 'monochrome-icon.png'];
 
-  test('variant registry has exactly seven entries', () => {
+  test('variant registry has at least the seven expected entries (light variants)', () => {
     const path = require('path');
     const ROOT = path.resolve(__dirname, '../..');
-    // VARIANTS is not directly exported, so we verify via generated output dirs
     const altDir = path.join(ROOT, 'assets', 'generated', 'alternate');
     const actualVariants = require('fs').readdirSync(altDir).filter(f =>
       require('fs').statSync(path.join(altDir, f)).isDirectory()
     );
-    expect(actualVariants.sort()).toEqual(VARIANT_KEYS.sort());
+    // Every light variant must be present; dark variants may also exist
+    for (const v of VARIANT_KEYS) {
+      expect(actualVariants).toContain(v);
+    }
   });
 
   test('each variant directory contains all three target output files', () => {

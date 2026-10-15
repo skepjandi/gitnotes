@@ -16,6 +16,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **Fix:** Write local UniFFI Swift bindings to the `ios-local` directory consumed by the pod, refresh the committed bindings, and correct the Rust build documentation paths.
 
+## 2026-10-15
+
+### fix(editor): size note history bottom sheet
+
+**What:** The History sheet could open with only its header visible, leaving the history body collapsed and appearing empty.
+
+**Fix:** Give the History bottom sheet an explicit 85% height so its loading, empty, error, revision, and preview states render below the header.
+
 ## 2026-10-14
 
 ### fix(settings): separate Quick Setup from Accounts rows

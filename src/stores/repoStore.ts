@@ -52,6 +52,17 @@ interface RepoActions {
   refreshRepos: () => Promise<void>;
 }
 
+async function checkRepoAccess(path: string, token: string) {
+  try {
+    return await checkGitHubRepoAccess(path, token);
+  } catch (error: unknown) {
+    if (isDevBundleLoadError(error)) {
+      throw new Error(DEV_BUNDLE_LOAD_RETRY_MESSAGE);
+    }
+    throw error;
+  }
+}
+
 export const useRepoStore = create<RepoState & RepoActions>()((set, get) => ({
   repositories: [],
   isLoading: true,
@@ -96,7 +107,7 @@ export const useRepoStore = create<RepoState & RepoActions>()((set, get) => ({
           hostId,
           repoFullName: path,
         })).token;
-        const access = await checkGitHubRepoAccess(path, hostToken);
+        const access = await checkRepoAccess(path, hostToken);
         switch (access.kind) {
           case 'ok':
             break;
@@ -126,7 +137,7 @@ export const useRepoStore = create<RepoState & RepoActions>()((set, get) => ({
       const activeHostConnection = await AccountStorage.getHostConnection(activeHost.hostId);
       hostLogin = activeHostConnection?.hostLogin ?? null;
       if (resolvedProvider === 'github') {
-        const access = await checkGitHubRepoAccess(path, activeHost.token);
+        const access = await checkRepoAccess(path, activeHost.token);
         switch (access.kind) {
           case 'ok':
             break;

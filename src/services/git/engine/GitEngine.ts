@@ -677,6 +677,47 @@ export type BlobReadFailure = {
 
 export type BlobReadOutcome = BlobReadSuccess | BlobReadFailure;
 
+// Normalized bridge shape: both the canonical PascalCase/nested-error shape
+// (currently shipping to new builds) and the legacy lower-case/flat-code shape
+// (already deployed on user devices) are normalized here so Metro reloads do
+// not require an immediate native rebuild.
+type NormalizedBlobReadResult =
+  | { kind: 'Content'; oid: string; content: Uint8Array; truncated: boolean; mimeType: string }
+  | { kind: 'Error'; errorKind: string; message: string };
+
+/** Normalize a raw native blob-read result to the internal bridge shape. */
+function normalizeBlobReadResult(
+  raw: unknown,
+): NormalizedBlobReadResult {
+  const r = raw as Record<string, unknown>;
+  const kind = typeof r.kind === 'string' ? r.kind : '';
+  if (kind === 'content' || kind === 'Content') {
+    return {
+      kind: 'Content',
+      oid: String(r.oid ?? ''),
+      content: r.content as Uint8Array,
+      truncated: Boolean(r.truncated),
+      mimeType: String(r.mimeType ?? 'application/octet-stream'),
+    };
+  }
+  // Error leg: support both nested-error (canonical) and flat-code (legacy) shapes.
+  let errorKind: string;
+  let message: string;
+  if (typeof r.error === 'object' && r.error !== null) {
+    const e = r.error as Record<string, unknown>;
+    errorKind = typeof e.kind === 'string' ? e.kind : 'Unknown';
+    message = typeof e.message === 'string' ? e.message : '';
+  } else if (typeof r.code === 'string') {
+    // Legacy flat-code shape from pre-normalization native builds.
+    errorKind = r.code;
+    message = '';
+  } else {
+    errorKind = 'Unknown';
+    message = '';
+  }
+  return { kind: 'Error', errorKind, message };
+}
+
 export async function readBlobAtRef(
   repoPath: string,
   ref: string,
@@ -689,9 +730,10 @@ export async function readBlobAtRef(
       message: 'GitEngine native module unavailable',
     };
   }
-  let nativeResult: { kind: 'Content'; oid: string; content: Uint8Array; truncated: boolean; mimeType: string } | { kind: 'Error'; error: { kind: string; message: string } };
+  let nativeResult: NormalizedBlobReadResult;
   try {
-    nativeResult = await GitEngineModule!.readBlobAtRef(repoPath, ref, filePath);
+    const raw = await GitEngineModule!.readBlobAtRef(repoPath, ref, filePath);
+    nativeResult = normalizeBlobReadResult(raw);
   } catch (e) {
     throw normalizeError(e);
   }
@@ -711,8 +753,8 @@ export async function readBlobAtRef(
   }
   return {
     kind: 'Error',
-    errorKind: nativeResult.error.kind as BlobReadFailure['errorKind'],
-    message: nativeResult.error.message,
+    errorKind: nativeResult.errorKind as BlobReadFailure['errorKind'],
+    message: nativeResult.message,
   };
 }
 

@@ -195,13 +195,28 @@ private func fileHistoryResultDict(_ result: FileHistoryResult) -> [String: Any]
   ]
 }
 
+private func blobReadErrorKindLabel(_ kind: BlobReadErrorKind) -> String {
+  switch kind {
+  case .refNotFound:
+    return "RefNotFound"
+  case .shallowHistory:
+    return "ShallowHistory"
+  case .pathNotFound:
+    return "PathNotFound"
+  case .binaryContent:
+    return "BinaryContent"
+  case .tooLarge:
+    return "TooLarge"
+  case .nativeUnavailable:
+    return "NativeUnavailable"
+  }
+}
+
 private func blobReadResultDict(_ result: BlobReadResult) -> [String: Any] {
   switch result {
   case .content(let oid, let content, let truncated, let mimeType):
-    // Expo TurboModules bridge Swift Data -> JS Uint8Array directly.
-    // TextDecoder.decode() in the JS facade expects Uint8Array.
     return [
-      "kind": "content",
+      "kind": "Content",
       "oid": oid,
       "content": content,
       "truncated": truncated,
@@ -209,8 +224,11 @@ private func blobReadResultDict(_ result: BlobReadResult) -> [String: Any] {
     ]
   case .error(let err):
     return [
-      "kind": "error",
-      "code": String(describing: err.kind),
+      "kind": "Error",
+      "error": [
+        "kind": blobReadErrorKindLabel(err.kind),
+        "message": err.message,
+      ],
     ]
   }
 }

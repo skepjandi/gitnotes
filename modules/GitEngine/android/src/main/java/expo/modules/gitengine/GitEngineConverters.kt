@@ -242,16 +242,28 @@ internal fun fileHistoryResultDict(result: FileHistoryResult): Map<String, Any?>
   "shallow" to result.shallow,
 )
 
+private fun blobReadErrorKindLabel(kind: BlobReadErrorKind): String = when (kind) {
+  BlobReadErrorKind.RefNotFound -> "RefNotFound"
+  BlobReadErrorKind.ShallowHistory -> "ShallowHistory"
+  BlobReadErrorKind.PathNotFound -> "PathNotFound"
+  BlobReadErrorKind.BinaryContent -> "BinaryContent"
+  is BlobReadErrorKind.TooLarge -> "TooLarge"
+  BlobReadErrorKind.NativeUnavailable -> "NativeUnavailable"
+}
+
 internal fun blobReadResultDict(result: BlobReadResult): Map<String, Any?> = when (result) {
   is BlobReadResult.Content -> mapOf(
-    "kind" to "content",
+    "kind" to "Content",
     "oid" to result.oid,
     "content" to result.content,
     "truncated" to result.truncated,
     "mimeType" to result.mimeType,
   )
   is BlobReadResult.Error -> mapOf(
-    "kind" to "error",
-    "code" to result.v1.kind.toString(),
+    "kind" to "Error",
+    "error" to mapOf(
+      "kind" to blobReadErrorKindLabel(result.v1.kind),
+      "message" to result.v1.message,
+    ),
   )
 }

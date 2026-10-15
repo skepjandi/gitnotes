@@ -278,7 +278,7 @@ export default function RewardCatalogModal({
                       isSelected={isSelected}
                     >
                       <View style={styles.rewardContent}>
-                        <View style={[styles.iconPreview, { backgroundColor: colors.surfaceSecondary }]}>
+                        <View style={[styles.iconPreview, { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }]}>
                           {iconName === 'TerminalMono' ? (
                             <Image
                               source={require('../../../assets/generated/alternate/terminal-mono/icon.png')}

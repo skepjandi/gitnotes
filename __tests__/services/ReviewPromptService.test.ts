@@ -422,28 +422,34 @@ describe('ReviewPromptService', () => {
     });
 
     it('falls back to the HTTPS listing when the native App Store is unavailable', async () => {
-      require('react-native').Linking.canOpenURL
-        .mockResolvedValueOnce(false)
-        .mockResolvedValueOnce(true);
+      require('react-native').Linking.openURL
+        .mockRejectedValueOnce(new Error('App Store unavailable'))
+        .mockResolvedValueOnce(undefined);
       const result = await openStoreListing();
       expect(result).toBe(true);
       expect(require('react-native').Linking.openURL).toHaveBeenCalledWith('https://apps.apple.com/app/id6764829004');
     });
 
-    it('returns false when neither App Store URL can open', async () => {
-      require('react-native').Linking.canOpenURL.mockResolvedValue(false);
-      const result = await openStoreListing();
-      expect(result).toBe(false);
-      expect(require('react-native').Linking.openURL).not.toHaveBeenCalled();
+    it('opens the Play Store URL without relying on canOpenURL', async () => {
+      const { Linking, Platform } = require('react-native');
+      Platform.OS = 'android';
+      Linking.openURL.mockResolvedValue(undefined);
+
+      try {
+        const result = await openStoreListing();
+        expect(result).toBe(true);
+        expect(Linking.openURL).toHaveBeenCalledWith('https://play.google.com/store/apps/details?id=org.gitnotes.app');
+      } finally {
+        Platform.OS = 'ios';
+      }
     });
 
-    it('returns false when Linking.openURL throws', async () => {
-      const { Linking } = require('react-native');
-      Linking.canOpenURL.mockResolvedValue(true);
-      Linking.openURL.mockRejectedValue(new Error('cannot open'));
+    it('returns false when the store URL and iOS fallback both fail', async () => {
+      require('react-native').Linking.openURL.mockRejectedValue(new Error('cannot open'));
       const result = await openStoreListing();
       expect(result).toBe(false);
     });
+
   });
 
   // ── Full pipeline ───────────────────────────────────────────────────────

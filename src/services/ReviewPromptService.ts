@@ -83,6 +83,8 @@ const FOURTEEN_DAYS_MS = 14 * DAYS_MS;
 const NINETY_DAYS_MS = 90 * DAYS_MS;
 const MAX_DISMISS_ATTEMPTS = 3;
 const MAX_PROMPT_ATTEMPTS = 3;
+const IOS_REVIEW_URL = 'itms-apps://itunes.apple.com/app/id6764829004?action=write-review';
+const IOS_WEB_STORE_URL = 'https://apps.apple.com/app/id6764829004';
 
 // ── Store listing URLs (official App Store / Play Store) ───────────────────
 
@@ -108,7 +110,7 @@ export function getStoreListingUrl(): string | null {
     }
   }
   if (Platform.OS === 'ios') {
-    return 'itms-apps://itunes.apple.com/app/id6764829004?action=write-review';
+    return IOS_REVIEW_URL;
   }
   if (Platform.OS === 'android') {
     return 'https://play.google.com/store/apps/details?id=org.gitnotes.app';
@@ -501,12 +503,27 @@ export async function openStoreListing(): Promise<boolean> {
   if (!url) return false;
   try {
     const supported = await Linking.canOpenURL(url);
-    if (!supported) return false;
-    await Linking.openURL(url);
-    return true;
+    if (supported) {
+      await Linking.openURL(url);
+      return true;
+    }
+
+    if (Platform.OS === 'ios' && url !== IOS_WEB_STORE_URL && (await Linking.canOpenURL(IOS_WEB_STORE_URL))) {
+      await Linking.openURL(IOS_WEB_STORE_URL);
+      return true;
+    }
   } catch {
+    if (Platform.OS === 'ios' && url !== IOS_WEB_STORE_URL) {
+      try {
+        await Linking.openURL(IOS_WEB_STORE_URL);
+        return true;
+      } catch {
+        return false;
+      }
+    }
     return false;
   }
+  return false;
 }
 
 // ── Debug / test helpers ────────────────────────────────────────────────────

@@ -421,7 +421,16 @@ describe('ReviewPromptService', () => {
       expect(require('react-native').Linking.openURL).toHaveBeenCalledWith('itms-apps://itunes.apple.com/app/id6764829004?action=write-review');
     });
 
-    it('returns false when canOpenURL is false', async () => {
+    it('falls back to the HTTPS listing when the native App Store is unavailable', async () => {
+      require('react-native').Linking.canOpenURL
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true);
+      const result = await openStoreListing();
+      expect(result).toBe(true);
+      expect(require('react-native').Linking.openURL).toHaveBeenCalledWith('https://apps.apple.com/app/id6764829004');
+    });
+
+    it('returns false when neither App Store URL can open', async () => {
       require('react-native').Linking.canOpenURL.mockResolvedValue(false);
       const result = await openStoreListing();
       expect(result).toBe(false);

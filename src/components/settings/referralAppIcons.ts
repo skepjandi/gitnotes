@@ -39,37 +39,37 @@ export function isAppIconOptionUnlocked(option: ProAppIconOption | ReferralAppIc
 export function getAppIconPreviewAsset(iconName: AppIconName | null, isDark: boolean) {
   if (iconName === null) {
     return isDark
-      ? require('../../assets/generated/icon-dark.png')
-      : require('../../assets/generated/icon-light.png');
+      ? require('../../../assets/generated/icon-dark.png')
+      : require('../../../assets/generated/icon-light.png');
   }
   switch (iconName) {
     case 'Neon':
       return isDark
-        ? require('../../assets/generated/alternate/neon-dark/icon.png')
-        : require('../../assets/generated/alternate/neon-light/icon.png');
+        ? require('../../../assets/generated/alternate/neon-dark/icon.png')
+        : require('../../../assets/generated/alternate/neon-light/icon.png');
     case 'Grayscale':
       return isDark
-        ? require('../../assets/generated/alternate/grayscale-dark/icon.png')
-        : require('../../assets/generated/alternate/grayscale-light/icon.png');
+        ? require('../../../assets/generated/alternate/grayscale-dark/icon.png')
+        : require('../../../assets/generated/alternate/grayscale-light/icon.png');
     case 'Gold':
       return isDark
-        ? require('../../assets/generated/alternate/gold-dark/icon.png')
-        : require('../../assets/generated/alternate/gold-light/icon.png');
+        ? require('../../../assets/generated/alternate/gold-dark/icon.png')
+        : require('../../../assets/generated/alternate/gold-light/icon.png');
     case 'TerminalMono':
       return isDark
-        ? require('../../assets/generated/alternate/terminal-mono-dark/icon.png')
-        : require('../../assets/generated/alternate/terminal-mono-light/icon.png');
+        ? require('../../../assets/generated/alternate/terminal-mono-dark/icon.png')
+        : require('../../../assets/generated/alternate/terminal-mono-light/icon.png');
     case 'AmberTerminal':
       return isDark
-        ? require('../../assets/generated/alternate/amber-terminal-dark/icon.png')
-        : require('../../assets/generated/alternate/amber-terminal-light/icon.png');
+        ? require('../../../assets/generated/alternate/amber-terminal-dark/icon.png')
+        : require('../../../assets/generated/alternate/amber-terminal-light/icon.png');
     case 'MonochromeGrid':
       return isDark
-        ? require('../../assets/generated/alternate/monochrome-grid-dark/icon.png')
-        : require('../../assets/generated/alternate/monochrome-grid-light/icon.png');
+        ? require('../../../assets/generated/alternate/monochrome-grid-dark/icon.png')
+        : require('../../../assets/generated/alternate/monochrome-grid-light/icon.png');
     default:
       return isDark
-        ? require('../../assets/generated/icon-dark.png')
-        : require('../../assets/generated/icon-light.png');
+        ? require('../../../assets/generated/icon-dark.png')
+        : require('../../../assets/generated/icon-light.png');
   }
 }

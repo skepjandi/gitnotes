@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Image, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Modal } from '../ui';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -10,6 +10,7 @@ import {
   type ReferralStatus,
 } from '../../services/RewardEntitlementService';
 import { REFERRAL_MILESTONES } from '../../types/worker';
+import { ReferralService } from '../../services/ReferralService';
 import type { ThemeStyle } from '../../theme/tokens';
 
 
@@ -116,6 +117,8 @@ export default function RewardCatalogModal({
   const [status, setStatus] = useState<ReferralStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -135,6 +138,19 @@ export default function RewardCatalogModal({
       void loadStatus();
     }
   }, [visible, loadStatus]);
+
+  const handleShareReferral = useCallback(async () => {
+    setSharing(true);
+    setShareError(null);
+    try {
+      const referral = await ReferralService.createReferral();
+      await Share.share({ message: referral.share_url });
+    } catch (e) {
+      setShareError(e instanceof Error ? e.message : 'Failed to create referral link');
+    } finally {
+      setSharing(false);
+    }
+  }, []);
 
   const handleThemeSelect = useCallback(
     (reward: RewardEntry) => {
@@ -218,6 +234,34 @@ export default function RewardCatalogModal({
                   ]}
                 />
               </View>
+              <TouchableOpacity
+                testID="reward-catalog.share-referral"
+                onPress={() => void handleShareReferral()}
+                disabled={sharing}
+                style={[styles.shareButton, { backgroundColor: colors.accent, opacity: sharing ? 0.6 : 1 }]}
+                accessibilityRole="button"
+                accessibilityLabel="Share referral link"
+              >
+                {sharing ? (
+                  <ActivityIndicator size="small" color={colors.background} />
+                ) : (
+                  <Ionicons name="share-outline" size={18} color={colors.background} />
+                )}
+                <Text style={[styles.shareButtonText, { color: colors.background }]}>Share Referral Link</Text>
+              </TouchableOpacity>
+              {shareError && (
+                <View style={styles.shareErrorContainer}>
+                  <Text style={[styles.shareError, { color: colors.error }]}>{shareError}</Text>
+                  <TouchableOpacity
+                    testID="reward-catalog.share-retry"
+                    onPress={() => void handleShareReferral()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Retry sharing referral link"
+                  >
+                    <Text style={[styles.retryText, { color: colors.primary }]}>Retry</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             <View style={styles.section}>
@@ -369,6 +413,28 @@ const styles = StyleSheet.create({
   progressSection: {
     paddingHorizontal: 16,
     paddingBottom: 20,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 12,
+  },
+  shareButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  shareError: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  shareErrorContainer: {
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
   },
   progressHeader: {
     flexDirection: 'row',

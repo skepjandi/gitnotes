@@ -35,6 +35,7 @@ jest.mock('react-native', () => {
     Modal: View,
     KeyboardAvoidingView: View,
     Pressable: View,
+    Share: { share: jest.fn(() => Promise.resolve({ action: 'sharedAction' })) },
   };
 });
 
@@ -83,6 +84,12 @@ jest.mock('../../../src/services/RewardEntitlementService', () => ({
     fetchStatus: jest.fn(),
     getStatus: jest.fn(),
     isUnlocked: jest.fn(),
+  },
+}));
+
+jest.mock('../../../src/services/ReferralService', () => ({
+  ReferralService: {
+    createReferral: jest.fn(),
   },
 }));
 
@@ -191,6 +198,45 @@ describe('RewardCatalogModal appIconSupported gating', () => {
     await waitFor(() => {
       expect(getByTestId('reward.row.terminal-mono-icon')).toBeTruthy();
     });
+  });
+});
+
+describe('RewardCatalogModal referral sharing', () => {
+  beforeEach(() => {
+    const { ReferralService } = require('../../../src/services/ReferralService');
+    const { Share } = require('react-native');
+    ReferralService.createReferral.mockResolvedValue({
+      code: 'abc123',
+      share_url: 'https://gitnotes.org/r/abc123',
+      expires_at: Date.now() + 86_400_000,
+    });
+    Share.share.mockClear();
+  });
+
+  it('creates and shares the server-provided referral URL', async () => {
+    const props = makeProps();
+    const { getByTestId } = render(<RewardCatalogModal {...props} />);
+
+    await waitFor(() => expect(getByTestId('reward-catalog.share-referral')).toBeTruthy());
+    fireEvent.press(getByTestId('reward-catalog.share-referral'));
+
+    await waitFor(() => {
+      expect(require('react-native').Share.share).toHaveBeenCalledWith({
+        message: 'https://gitnotes.org/r/abc123',
+      });
+    });
+  });
+
+  it('shows an error when referral creation fails', async () => {
+    const { ReferralService } = require('../../../src/services/ReferralService');
+    ReferralService.createReferral.mockRejectedValueOnce(new Error('Network unavailable'));
+    const props = makeProps();
+    const { getByTestId, getByText } = render(<RewardCatalogModal {...props} />);
+
+    await waitFor(() => expect(getByTestId('reward-catalog.share-referral')).toBeTruthy());
+    fireEvent.press(getByTestId('reward-catalog.share-referral'));
+
+    await waitFor(() => expect(getByText('Network unavailable')).toBeTruthy());
   });
 });
 

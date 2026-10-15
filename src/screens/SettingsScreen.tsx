@@ -81,6 +81,7 @@ import {
   PRO_APP_ICON_OPTIONS,
   REFERRAL_APP_ICON_OPTIONS,
   isReferralAppIconUnlocked,
+  getAppIconPreviewAsset,
 } from '../components/settings/referralAppIcons';
 
 // Mirrors GitFsService's MAX_CLONE_RETRIES so a failing repo can't loop the outer flow.
@@ -1606,6 +1607,7 @@ export default function SettingsScreen() {
         onToggleSSH={handleToggleSSH}
         hostUseSsh={hostUseSsh}
         appIcon={appIcon}
+        appIconPreviewSource={getAppIconPreviewAsset(appIcon)}
         appIconSupported={appIconSupported}
         appIconLoading={appIconLoading}
         onOpenAppIconPicker={() => setShowAppIconPicker(true)}
@@ -1727,10 +1729,12 @@ export default function SettingsScreen() {
             disabled={appIconLoading}
             onPress={() => { void handleAppIconSelect(null); }}
             leading={
-              <Image
-                source={require('../../assets/generated/alternate/base/icon.png')}
-                style={{ width: 40, height: 40, borderRadius: 8 }}
-              />
+              <View style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' }}>
+                <Image
+                  source={require('../../assets/generated/alternate/base/icon.png')}
+                  style={{ width: 36, height: 36, borderRadius: 8 }}
+                />
+              </View>
             }
             trailing={appIcon === null ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
           >
@@ -1756,10 +1760,12 @@ export default function SettingsScreen() {
                       : openPaywall
                 }
                 leading={
-                  <Image
-                    source={getAppIconAsset(option.assetSlug)}
-                    style={{ width: 40, height: 40, borderRadius: 8 }}
-                  />
+                  <View style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' }}>
+                    <Image
+                      source={getAppIconAsset(option.assetSlug)}
+                      style={{ width: 36, height: 36, borderRadius: 8 }}
+                    />
+                  </View>
                 }
                 trailing={
                   unlocked && appIcon === option.name
@@ -1792,10 +1798,12 @@ export default function SettingsScreen() {
                     disabled={appIconLoading || !unlocked}
                     onPress={unlocked ? () => { void handleAppIconSelect(option.name); } : undefined}
                     leading={
-                      <Image
-                        source={getAppIconAsset(option.assetSlug)}
-                        style={{ width: 40, height: 40, borderRadius: 8 }}
-                      />
+                      <View style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' }}>
+                        <Image
+                          source={getAppIconAsset(option.assetSlug)}
+                          style={{ width: 36, height: 36, borderRadius: 8 }}
+                        />
+                      </View>
                     }
                     trailing={unlocked && appIcon === option.name ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
                   >

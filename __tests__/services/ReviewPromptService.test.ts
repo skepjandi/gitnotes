@@ -51,6 +51,7 @@ import {
   attemptNativeReviewPrompt,
   recordDismiss,
   openStoreListing,
+  getStoreListingUrl,
   getPersistedState,
   __resetForTest,
   __forceStateForTest,
@@ -401,6 +402,18 @@ describe('ReviewPromptService', () => {
   // ── openStoreListing ────────────────────────────────────────────────────
 
   describe('openStoreListing', () => {
+    it('uses the stable iOS App Store ID fallback when config is unavailable', () => {
+      const Constants = require('expo-constants');
+      const configuredUrl = Constants.expoConfig.ios.appStoreUrl;
+      Constants.expoConfig.ios.appStoreUrl = undefined;
+
+      try {
+        expect(getStoreListingUrl()).toBe('https://apps.apple.com/app/id6764829004');
+      } finally {
+        Constants.expoConfig.ios.appStoreUrl = configuredUrl;
+      }
+    });
+
     it('returns true and calls Linking.openURL with configured URL', async () => {
       require('react-native').Linking.canOpenURL.mockResolvedValue(true);
       const result = await openStoreListing();

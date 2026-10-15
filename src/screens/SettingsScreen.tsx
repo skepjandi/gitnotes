@@ -99,20 +99,32 @@ function resolveBackendUrl(): string {
   return base.replace(/\/api\/v1\/?$/, '');
 }
 
-function getAppIconAsset(option: 'neon' | 'grayscale' | 'gold' | 'terminal-mono' | 'amber-terminal' | 'monochrome-grid') {
+function getAppIconAsset(option: 'neon' | 'grayscale' | 'gold' | 'terminal-mono' | 'amber-terminal' | 'monochrome-grid', isDark: boolean) {
   switch (option) {
     case 'neon':
-      return require('../../assets/generated/alternate/neon/icon.png');
+      return isDark
+        ? require('../../assets/generated/alternate/neon-dark/icon.png')
+        : require('../../assets/generated/alternate/neon-light/icon.png');
     case 'grayscale':
-      return require('../../assets/generated/alternate/grayscale/icon.png');
+      return isDark
+        ? require('../../assets/generated/alternate/grayscale-dark/icon.png')
+        : require('../../assets/generated/alternate/grayscale-light/icon.png');
     case 'gold':
-      return require('../../assets/generated/alternate/gold/icon.png');
+      return isDark
+        ? require('../../assets/generated/alternate/gold-dark/icon.png')
+        : require('../../assets/generated/alternate/gold-light/icon.png');
     case 'terminal-mono':
-      return require('../../assets/generated/alternate/terminal-mono/icon.png');
+      return isDark
+        ? require('../../assets/generated/alternate/terminal-mono-dark/icon.png')
+        : require('../../assets/generated/alternate/terminal-mono-light/icon.png');
     case 'amber-terminal':
-      return require('../../assets/generated/alternate/amber-terminal/icon.png');
+      return isDark
+        ? require('../../assets/generated/alternate/amber-terminal-dark/icon.png')
+        : require('../../assets/generated/alternate/amber-terminal-light/icon.png');
     case 'monochrome-grid':
-      return require('../../assets/generated/alternate/monochrome-grid/icon.png');
+      return isDark
+        ? require('../../assets/generated/alternate/monochrome-grid-dark/icon.png')
+        : require('../../assets/generated/alternate/monochrome-grid-light/icon.png');
   }
 }
 
@@ -122,7 +134,7 @@ type ImportAtAddOutcome = 'imported' | 'cancelled' | 'failed';
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
-  const { theme, colors, setTheme, style: uiStyle, setStyle, accentColor, setAccentColor } = useTheme();
+  const { theme, isDark, colors, setTheme, style: uiStyle, setStyle, accentColor, setAccentColor } = useTheme();
   const { isPro, loading: isProLoading } = useProStatus();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const openPaywall = useCallback(() => {
@@ -1607,7 +1619,7 @@ export default function SettingsScreen() {
         onToggleSSH={handleToggleSSH}
         hostUseSsh={hostUseSsh}
         appIcon={appIcon}
-        appIconPreviewSource={getAppIconPreviewAsset(appIcon)}
+        appIconPreviewSource={getAppIconPreviewAsset(appIcon, isDark)}
         appIconSupported={appIconSupported}
         appIconLoading={appIconLoading}
         onOpenAppIconPicker={() => setShowAppIconPicker(true)}
@@ -1731,7 +1743,7 @@ export default function SettingsScreen() {
             leading={
               <View style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' }}>
                 <Image
-                  source={require('../../assets/generated/alternate/base/icon.png')}
+                  source={isDark ? require('../../assets/generated/icon-dark.png') : require('../../assets/generated/icon-light.png')}
                   style={{ width: 36, height: 36, borderRadius: 8 }}
                 />
               </View>
@@ -1762,7 +1774,7 @@ export default function SettingsScreen() {
                 leading={
                   <View style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' }}>
                     <Image
-                      source={getAppIconAsset(option.assetSlug)}
+                      source={getAppIconAsset(option.assetSlug, isDark)}
                       style={{ width: 36, height: 36, borderRadius: 8 }}
                     />
                   </View>
@@ -1800,7 +1812,7 @@ export default function SettingsScreen() {
                     leading={
                       <View style={{ width: 44, height: 44, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' }}>
                         <Image
-                          source={getAppIconAsset(option.assetSlug)}
+                          source={getAppIconAsset(option.assetSlug, isDark)}
                           style={{ width: 36, height: 36, borderRadius: 8 }}
                         />
                       </View>

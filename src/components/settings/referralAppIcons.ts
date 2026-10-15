@@ -36,22 +36,40 @@ export function isAppIconOptionUnlocked(option: ProAppIconOption | ReferralAppIc
   return option.entitlement === 'pro' ? isPro : isReferralAppIconUnlocked(option, progress);
 }
 
-export function getAppIconPreviewAsset(iconName: AppIconName | null) {
-  if (iconName === null) return require('../../assets/generated/alternate/base/icon.png');
+export function getAppIconPreviewAsset(iconName: AppIconName | null, isDark: boolean) {
+  if (iconName === null) {
+    return isDark
+      ? require('../../assets/generated/icon-dark.png')
+      : require('../../assets/generated/icon-light.png');
+  }
   switch (iconName) {
     case 'Neon':
-      return require('../../assets/generated/alternate/neon/icon.png');
+      return isDark
+        ? require('../../assets/generated/alternate/neon-dark/icon.png')
+        : require('../../assets/generated/alternate/neon-light/icon.png');
     case 'Grayscale':
-      return require('../../assets/generated/alternate/grayscale/icon.png');
+      return isDark
+        ? require('../../assets/generated/alternate/grayscale-dark/icon.png')
+        : require('../../assets/generated/alternate/grayscale-light/icon.png');
     case 'Gold':
-      return require('../../assets/generated/alternate/gold/icon.png');
+      return isDark
+        ? require('../../assets/generated/alternate/gold-dark/icon.png')
+        : require('../../assets/generated/alternate/gold-light/icon.png');
     case 'TerminalMono':
-      return require('../../assets/generated/alternate/terminal-mono/icon.png');
+      return isDark
+        ? require('../../assets/generated/alternate/terminal-mono-dark/icon.png')
+        : require('../../assets/generated/alternate/terminal-mono-light/icon.png');
     case 'AmberTerminal':
-      return require('../../assets/generated/alternate/amber-terminal/icon.png');
+      return isDark
+        ? require('../../assets/generated/alternate/amber-terminal-dark/icon.png')
+        : require('../../assets/generated/alternate/amber-terminal-light/icon.png');
     case 'MonochromeGrid':
-      return require('../../assets/generated/alternate/monochrome-grid/icon.png');
+      return isDark
+        ? require('../../assets/generated/alternate/monochrome-grid-dark/icon.png')
+        : require('../../assets/generated/alternate/monochrome-grid-light/icon.png');
     default:
-      return require('../../assets/generated/alternate/base/icon.png');
+      return isDark
+        ? require('../../assets/generated/icon-dark.png')
+        : require('../../assets/generated/icon-light.png');
   }
 }

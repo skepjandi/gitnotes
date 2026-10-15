@@ -8,9 +8,12 @@
  * - restore is NOT called on mount (before any tap)
  */
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import React from 'react';
+import type { ReactElement } from 'react';
 
 const mockRestore = jest.fn();
+const mockPackageFor = (identifier: string, priceString: string) => ({
+  product: { identifier, priceString },
+});
 
 jest.mock('@/stores/proStore', () => {
   const mockLoadOfferingsIfNeeded = jest.fn();
@@ -22,9 +25,9 @@ jest.mock('@/stores/proStore', () => {
       trialEndsAt: null,
       entitlementExpiresAt: null,
       offeringsReady: true,
-      monthlyPackage: null,
-      yearlyPackage: null,
-      lifetimePackage: null,
+      monthlyPackage: mockPackageFor('monthly', '$0.99'),
+      yearlyPackage: mockPackageFor('yearly', '$9.99'),
+      lifetimePackage: mockPackageFor('lifetime', '$19.99'),
       currentOffering: null,
       isPurchasing: false,
       isRestoring: false,
@@ -42,9 +45,9 @@ jest.mock('@/stores/proStore', () => {
       trialEndsAt: null,
       entitlementExpiresAt: null,
       offeringsReady: true,
-      monthlyPackage: null,
-      yearlyPackage: null,
-      lifetimePackage: null,
+      monthlyPackage: mockPackageFor('monthly', '$0.99'),
+      yearlyPackage: mockPackageFor('yearly', '$9.99'),
+      lifetimePackage: mockPackageFor('lifetime', '$19.99'),
       currentOffering: null,
       isPurchasing: false,
       isRestoring: false,
@@ -73,6 +76,31 @@ jest.mock('@/services/PaywallAnalytics', () => ({
   trackRestoreTap: jest.fn(),
   trackRestoreOutcome: jest.fn(),
 }));
+
+jest.mock('@/components/paywall/PaywallPlanGrid', () => {
+  const ReactNative = jest.requireActual('react-native');
+  const React = jest.requireActual('react');
+
+  return {
+    __esModule: true,
+    default: ({ plans }: { plans: Array<{ id: string; variant: string }> }) =>
+      React.createElement(
+        ReactNative.View,
+        { testID: 'paywall.plans' },
+        plans.map((plan) =>
+          React.createElement(
+            ReactNative.View,
+            { key: plan.id, testID: `paywall.plan.${plan.id}` },
+            React.createElement(
+              ReactNative.Text,
+              { testID: `paywall.plan.${plan.id}.variant` },
+              plan.variant,
+            ),
+          ),
+        ),
+      ),
+  };
+});
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ goBack: jest.fn() }),
@@ -149,5 +177,26 @@ describe('PaywallScreen restore button', () => {
     await waitFor(() => {
       expect(mockRestore).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('puts Lifetime first and makes it the primary offer', async () => {
+    const { getByTestId } = render(<PaywallScreen />);
+
+    await waitFor(() => {
+      expect(getByTestId('paywall.plan.lifetime')).toBeTruthy();
+    });
+
+    const planGrid = getByTestId('paywall.plans');
+    const planChildren = planGrid.props.children as ReactElement<{ testID?: string }>[];
+    const planIds = planChildren.map((plan) => plan.props.testID);
+
+    expect(planIds).toEqual([
+      'paywall.plan.lifetime',
+      'paywall.plan.yearly',
+      'paywall.plan.monthly',
+    ]);
+    expect(getByTestId('paywall.plan.lifetime.variant').props.children).toBe('primary');
+    expect(getByTestId('paywall.plan.yearly.variant').props.children).toBe('secondary');
+    expect(getByTestId('paywall.plan.monthly.variant').props.children).toBe('secondary');
   });
 });

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -114,19 +114,20 @@ export default function PaywallScreen() {
     // 'cancelled' — user dismissed the sheet; silent, no message.
   }, [restore, navigation]);
 
-  const plans: PlanTileData[] = [
-    {
-      id: 'monthly',
-      title: t('paywall.monthly.title'),
-      priceLine: monthlyPrice ? t('paywall.monthly.price', { price: monthlyPrice }) : null,
-      ctaLabel: t('paywall.action.subscribe'),
-      ctaTestID: 'paywall.monthly.cta',
+  const plans: PlanTileData[] = [];
+  if (lifetimePackage) {
+    plans.push({
+      id: 'lifetime',
+      title: t('paywall.lifetime.title'),
+      priceLine: lifetimePrice ? t('paywall.lifetime.cta', { price: lifetimePrice }) : null,
+      ctaLabel: t('paywall.action.buy'),
+      ctaTestID: 'paywall.lifetime.cta',
       variant: 'primary',
-      disabled: busy || !monthlyPrice,
-      onPress: handleMonthly,
-      icon: 'calendar',
-    },
-  ];
+      disabled: busy || !lifetimePrice,
+      onPress: handleLifetime,
+      icon: 'infinite',
+    });
+  }
   if (yearlyPackage) {
     plans.push({
       id: 'yearly',
@@ -140,19 +141,17 @@ export default function PaywallScreen() {
       icon: 'pricetag',
     });
   }
-  if (lifetimePackage) {
-    plans.push({
-      id: 'lifetime',
-      title: t('paywall.lifetime.title'),
-      priceLine: lifetimePrice ? t('paywall.lifetime.cta', { price: lifetimePrice }) : null,
-      ctaLabel: t('paywall.action.buy'),
-      ctaTestID: 'paywall.lifetime.cta',
-      variant: 'secondary',
-      disabled: busy || !lifetimePrice,
-      onPress: handleLifetime,
-      icon: 'infinite',
-    });
-  }
+  plans.push({
+    id: 'monthly',
+    title: t('paywall.monthly.title'),
+    priceLine: monthlyPrice ? t('paywall.monthly.price', { price: monthlyPrice }) : null,
+    ctaLabel: t('paywall.action.subscribe'),
+    ctaTestID: 'paywall.monthly.cta',
+    variant: 'secondary',
+    disabled: busy || !monthlyPrice,
+    onPress: handleMonthly,
+    icon: 'calendar',
+  });
 
   return (
     <SafeAreaView edges={['top']} className="flex-1" style={{ backgroundColor: colors.background }}>

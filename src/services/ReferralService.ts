@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { workerApi } from './workerApi';
 import { ReferralIdentityService } from './ReferralIdentityService';
+import type { ReferralCreateResponse } from '../types/worker';
 
 // AsyncStorage key for the pending referral code
 const PENDING_CODE_KEY = '@gitnotes:referral_pending_code';
@@ -210,6 +211,14 @@ export async function clearPendingCode(): Promise<void> {
   await AsyncStorage.removeItem(PENDING_CODE_KEY);
 }
 
+/**
+ * Create a server-authoritative referral link for the current identity.
+ */
+export async function createReferral(): Promise<ReferralCreateResponse> {
+  const proof = await ReferralIdentityService.getIdentityProof();
+  return workerApi.referrals.create({}, proof);
+}
+
 // ── Referral completion ─────────────────────────────────────────────────────
 
 /**
@@ -318,6 +327,7 @@ export const ReferralService = {
   storePendingCode,
   getPendingCode,
   clearPendingCode,
+  createReferral,
   completeReferral,
   hasCompletedFirstRepo,
   resetFirstRepoCompletion,

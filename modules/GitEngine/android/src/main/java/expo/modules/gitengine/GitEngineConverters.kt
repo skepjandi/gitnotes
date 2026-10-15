@@ -5,6 +5,7 @@ package expo.modules.gitengine
 import android.net.Uri
 import uniffi.gitnotes_git2.BranchInfo
 import uniffi.gitnotes_git2.BlobReadResult
+import uniffi.gitnotes_git2.BlobReadErrorKind
 import uniffi.gitnotes_git2.CommitInfo
 import uniffi.gitnotes_git2.ConflictBlobs
 import uniffi.gitnotes_git2.ConflictEntry
@@ -19,6 +20,7 @@ import uniffi.gitnotes_git2.FileStatusKind
 import uniffi.gitnotes_git2.ProgressEvent
 import uniffi.gitnotes_git2.ProgressKind
 import uniffi.gitnotes_git2.PullKind
+import uniffi.gitnotes_git2.PullResult
 import uniffi.gitnotes_git2.PushIntegrateKind
 import uniffi.gitnotes_git2.PushIntegrateResult
 import uniffi.gitnotes_git2.PushResult

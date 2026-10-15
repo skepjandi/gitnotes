@@ -10,6 +10,18 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-10-15
 
+### fix(git-engine): normalize blob-read bridge shape for iOS and Android
+
+**What:** Selecting a note history revision showed `Git engine unavailable` because iOS and Android native `blobReadResultDict` emitted lower-case `kind: content/error` with a flat `code` field, while `GitEngine.ts` expected PascalCase `kind: Content/Error` with a nested `error: { kind, message }` object. Accessing `nativeResult.error.kind` on the flat shape threw a TypeError.
+
+**Fix:** Add a typed `normalizeBlobReadResult()` bridge normalizer in `GitEngine.ts` that accepts both the legacy lower-case/flat-code shape and the canonical PascalCase/nested-error shape. Update iOS `GitEngineModule.swift` and Android `GitEngineConverters.kt` to emit the canonical shape going forward. Add regression tests covering both wire formats.
+
+### fix(editor): auto-select first history entry and use time-outline icon
+
+**What:** Opening note history showed `No preview available` instead of the newest commit preview because no commit was selected. The History action used `git-commit-outline` which was misaligned with the time-series nature of history browsing.
+
+**Fix:** Add an idempotent effect that auto-selects `entries[0].id` when the modal is visible with ready history, entries, and no `selectedCommitId`. Change History icons in `EditorToolbar`, `NoteViewer`, and `NoteHistoryModal` unavailable-state from `git-commit-outline` to `time-outline`.
+
 ### fix(ios): keep UniFFI bindings aligned with the iOS pod
 
 **What:** Clean local iOS builds regenerated Rust artifacts but compiled stale Swift bindings, so the Git file-history native APIs were missing after `expo prebuild`.

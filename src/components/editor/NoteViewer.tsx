@@ -147,7 +147,7 @@ export function NoteViewer({
             }}
             accessibilityLabel="History"
           >
-            <Ionicons name="git-commit-outline" size={18} color={colors.accent} />
+            <Ionicons name="time-outline" size={18} color={colors.accent} />
           </IconButton>
         ) : null}
       </View>

@@ -892,6 +892,54 @@ describe('GitEngine.readBlobAtRef', () => {
       GitEngine.readBlobAtRef('/repo', 'main', 'notes/test.md'),
     ).rejects.toMatchObject({ message: expect.stringContaining('') });
   });
+
+  it('normalizes lowercase content kind from legacy native builds', async () => {
+    const encoder = new TextEncoder();
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'content',
+      oid: 'legacyOid',
+      content: encoder.encode('# Legacy content'),
+      truncated: false,
+      mimeType: 'text/markdown',
+    });
+
+    const result = await GitEngine.readBlobAtRef('/repo', 'main', 'notes/test.md');
+
+    expect(result.kind).toBe('Content');
+    if (result.kind === 'Content') {
+      expect(result.content).toBe('# Legacy content');
+      expect(result.oid).toBe('legacyOid');
+    }
+  });
+
+  it('normalizes flat-code error shape from legacy native builds', async () => {
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'error',
+      code: 'RefNotFound',
+    });
+
+    const result = await GitEngine.readBlobAtRef('/repo', 'nonexistent', 'notes/test.md');
+
+    expect(result.kind).toBe('Error');
+    if (result.kind === 'Error') {
+      expect(result.errorKind).toBe('RefNotFound');
+      expect(result.message).toBe('');
+    }
+  });
+
+  it('normalizes flat-code error with unknown kind', async () => {
+    nativeModule.readBlobAtRef.mockResolvedValue({
+      kind: 'error',
+      code: 'SomeUnknownError',
+    });
+
+    const result = await GitEngine.readBlobAtRef('/repo', 'main', 'notes/test.md');
+
+    expect(result.kind).toBe('Error');
+    if (result.kind === 'Error') {
+      expect(result.errorKind).toBe('SomeUnknownError');
+    }
+  });
 });
 
 describe('GitEngine.fileHistory pagination', () => {

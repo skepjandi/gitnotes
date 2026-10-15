@@ -175,6 +175,15 @@ export function NoteHistoryModal({ visible, history, onClose }: NoteHistoryModal
     }
   }, [visible, loadHistory, currentIndex, dragOffset, savedIndex]);
 
+  // Auto-select first entry when modal is visible with ready history and no selection
+  useEffect(() => {
+    if (!visible || state.status !== 'ready' || selectedCommitId !== null) return;
+    const entries = state.status === 'ready' ? state.entries : [];
+    if (entries.length > 0) {
+      selectCommit(entries[0].id);
+    }
+  }, [visible, state, selectedCommitId, selectCommit]);
+
   // Auto-scroll to selected card when selectedCommitId changes
   useEffect(() => {
     if (!visible || !selectedCommitId || state.status !== 'ready') return;
@@ -264,7 +273,7 @@ export function NoteHistoryModal({ visible, history, onClose }: NoteHistoryModal
     if (state.status === 'unavailable') {
       return (
         <View style={styles.centerState}>
-          <Ionicons name="git-commit-outline" size={40} color={colors.textSecondary} />
+          <Ionicons name="time-outline" size={40} color={colors.textSecondary} />
           <Text style={[styles.stateText, { color: colors.textSecondary }]}>
             {t(`noteHistory.unavailable.${unavailableReason ?? 'default'}`)}
           </Text>

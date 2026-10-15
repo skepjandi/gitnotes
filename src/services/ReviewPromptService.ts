@@ -502,16 +502,8 @@ export async function openStoreListing(): Promise<boolean> {
   const url = getStoreListingUrl();
   if (!url) return false;
   try {
-    const supported = await Linking.canOpenURL(url);
-    if (supported) {
-      await Linking.openURL(url);
-      return true;
-    }
-
-    if (Platform.OS === 'ios' && url !== IOS_WEB_STORE_URL && (await Linking.canOpenURL(IOS_WEB_STORE_URL))) {
-      await Linking.openURL(IOS_WEB_STORE_URL);
-      return true;
-    }
+    await Linking.openURL(url);
+    return true;
   } catch {
     if (Platform.OS === 'ios' && url !== IOS_WEB_STORE_URL) {
       try {
@@ -523,7 +515,6 @@ export async function openStoreListing(): Promise<boolean> {
     }
     return false;
   }
-  return false;
 }
 
 // ── Debug / test helpers ────────────────────────────────────────────────────

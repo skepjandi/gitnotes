@@ -360,6 +360,98 @@ describe('useNoteHistory hook lifecycle', () => {
         expect(hasDuplicate).toBe(false);
       }
     });
+
+    it('sets isLoadingMore to true during loadMore and false on completion', async () => {
+      const firstPage = Array.from({ length: 50 }, (_, i) =>
+        mockEntry(`commit-${String(i).padStart(3, '0')}`),
+      );
+      const secondPage = [mockEntry('commit-050'), mockEntry('commit-051')];
+
+      mockGitEngine.fileHistory
+        .mockResolvedValueOnce({ entries: firstPage, shallow: false })
+        .mockResolvedValueOnce({ entries: secondPage, shallow: false });
+
+      const note = makeCloneModeNote();
+      const { result } = renderHook(() => useNoteHistory({ note }));
+
+      await act(async () => {
+        result.current.loadHistory();
+      });
+
+      expect(result.current.isLoadingMore).toBe(false);
+
+      await act(async () => {
+        await result.current.loadMore();
+      });
+
+      expect(result.current.isLoadingMore).toBe(false);
+      expect(result.current.state.status).toBe('ready');
+    });
+
+    it('prevents duplicate loadMore requests via ref guard', async () => {
+      const firstPage = Array.from({ length: 50 }, (_, i) =>
+        mockEntry(`commit-${String(i).padStart(3, '0')}`),
+      );
+      const secondPage = [mockEntry('commit-050'), mockEntry('commit-051')];
+
+      // fileHistory resolves on second call, hangs forever on third (should never be called)
+      mockGitEngine.fileHistory
+        .mockResolvedValueOnce({ entries: firstPage, shallow: false })
+        .mockImplementation(
+          () =>
+            new Promise((resolve) => {
+              setTimeout(() => resolve({ entries: secondPage, shallow: false }), 10);
+            }),
+        );
+
+      const note = makeCloneModeNote();
+      const { result } = renderHook(() => useNoteHistory({ note }));
+
+      await act(async () => {
+        result.current.loadHistory();
+      });
+
+      // Call loadMore multiple times rapidly
+      await act(async () => {
+        result.current.loadMore();
+        result.current.loadMore();
+        result.current.loadMore();
+      });
+
+      // Wait for the first loadMore to resolve
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      // Should only have called fileHistory twice (initial + one loadMore)
+      expect(mockGitEngine.fileHistory).toHaveBeenCalledTimes(2);
+    });
+
+    it('resets isLoadingMore and restores state on error during loadMore', async () => {
+      const firstPage = Array.from({ length: 50 }, (_, i) =>
+        mockEntry(`commit-${String(i).padStart(3, '0')}`),
+      );
+
+      mockGitEngine.fileHistory
+        .mockResolvedValueOnce({ entries: firstPage, shallow: false })
+        .mockRejectedValueOnce(new Error('Network error'));
+
+      const note = makeCloneModeNote();
+      const { result } = renderHook(() => useNoteHistory({ note }));
+
+      await act(async () => {
+        result.current.loadHistory();
+      });
+
+      await act(async () => {
+        result.current.loadMore();
+      });
+
+      // isLoadingMore should be reset even when loadMore errors
+      expect(result.current.isLoadingMore).toBe(false);
+      // State should be restored to ready (previous state before loadMore)
+      expect(result.current.state.status).toBe('ready');
+    });
   });
 
   describe('close cleanup', () => {

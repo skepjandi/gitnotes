@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
@@ -22,6 +22,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'ExploreCommit'>;
 
 const MAX_LINES_PER_FILE = 300;
+const HISTORY_LOOKUP_LIMIT = 50;
 
 function formatDate(epochSeconds: number): string {
   return new Date(epochSeconds * 1000).toLocaleString();
@@ -63,7 +64,7 @@ export default function ExploreCommitScreen() {
     (async () => {
       try {
         const [history, commitDiffs] = await Promise.all([
-          GitEngine.log(localPath, 500),
+          GitEngine.log(localPath, HISTORY_LOOKUP_LIMIT),
           GitEngine.commitDiff(localPath, commitId),
         ]);
         const found = history.find((candidate) => candidate.id === commitId) ?? null;

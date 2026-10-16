@@ -131,7 +131,12 @@ export function humanizeStreamError(error: unknown): string {
     return `HTTP ${d.status}${tail}`;
   }
 
-  const message = error instanceof Error ? error.message : 'Unknown streaming error';
+  let message = error instanceof Error ? error.message : 'Unknown streaming error';
+  // Redact iOS/macOS shared pasteboard RTFD paths that Apple Intelligence native
+  // layer can leak as error messages when processing rich text content.
+  if (/\/(?:Users\/[^/]+|var\/mobile\/[^/]+)\/.*shared-pasteboard\//.test(message)) {
+    message = 'The AI provider encountered an internal error processing rich text content.';
+  }
   return `Failed to stream chat response: ${message}`;
 }
 

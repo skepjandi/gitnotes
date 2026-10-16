@@ -4,6 +4,7 @@ jest.mock('@/services/AuthService', () => ({
     getActiveSummary: jest.fn(),
     listAccountSummaries: jest.fn(),
     getProviderAuthAvailability: jest.fn(),
+    connectHost: jest.fn(),
   },
 }));
 
@@ -71,5 +72,17 @@ describe('GitHubService OAuth authentication', () => {
 
     await expect(GitHubService.isAuthenticatedAsync()).resolves.toBe(true);
     expect(AuthService.getProviderAuthAvailability).toHaveBeenCalledWith('github-host', 'github');
+  });
+
+  it('hydrates an OAuth token without persisting it as a PAT connection', async () => {
+    await GitHubService.hydrateToken('oauth-token', {
+      id: 2,
+      login: 'github-user',
+      name: 'GitHub User',
+      email: '',
+      avatar_url: '',
+    });
+
+    expect(AuthService.connectHost).not.toHaveBeenCalled();
   });
 });

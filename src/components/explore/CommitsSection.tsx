@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,7 +17,7 @@ import { useTokens } from '@/contexts/ThemeContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 20;
 const FORGEJO_PERMISSION_ERROR = /\b403\b|forbidden|permission denied|not authorized|write access|remote rejected/i;
 
 function formatPushFailure(message: string, provider: string | undefined, repoPath: string): string {

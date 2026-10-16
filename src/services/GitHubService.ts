@@ -411,6 +411,13 @@ class GitHubServiceClass {
     return resolvedUser;
   }
 
+  async hydrateToken(token: string, user: GitHubUser): Promise<void> {
+    this.token = token;
+    this.user = user;
+    setAuthToken(token);
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+  }
+
   async clearToken(): Promise<void> {
     this.token = null;
     this.user = null;

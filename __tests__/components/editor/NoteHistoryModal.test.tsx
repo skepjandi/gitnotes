@@ -107,6 +107,7 @@ const makeHistoryResult = (overrides: Partial<UseNoteHistoryResult> = {}): UseNo
   selectedBlob: null,
   isLoadingBlob: false,
   hasMore: false,
+  isLoadingMore: false,
   identity: null,
   unavailableReason: null,
   isDirty: false,
@@ -589,6 +590,59 @@ describe('NoteHistoryModal', () => {
 
       const previewText = screen.getByTestId('note-history.preview.text');
       expect(previewText.props.selectable).toBe(true);
+    });
+  });
+
+  describe('isLoadingMore indicator', () => {
+    it('does not show loading indicator when isLoadingMore is false', () => {
+      const entries: FileHistoryEntry[] = [
+        { ...sampleEntry, id: 'commit1', summary: 'First commit' },
+        { ...sampleEntry, id: 'commit2', summary: 'Second commit' },
+      ];
+      const history = makeHistoryResult({
+        state: { status: 'ready', entries, shallow: false, hasMore: true },
+        hasMore: true,
+        isLoadingMore: false,
+      });
+      render(<NoteHistoryModal visible={true} history={history} onClose={jest.fn()} />);
+
+      // ActivityIndicator should not be present when isLoadingMore is false
+      expect(screen.queryByTestId(/loading/i)).toBeNull();
+    });
+
+    it('renders load more button when hasMore is true and isLoadingMore is false', () => {
+      const entries: FileHistoryEntry[] = [
+        { ...sampleEntry, id: 'commit1', summary: 'First commit' },
+      ];
+      const loadMore = jest.fn();
+      const history = makeHistoryResult({
+        state: { status: 'ready', entries, shallow: false, hasMore: true },
+        hasMore: true,
+        isLoadingMore: false,
+        loadMore,
+      });
+      render(<NoteHistoryModal visible={true} history={history} onClose={jest.fn()} />);
+
+      const loadMoreBtn = screen.getByTestId('note-history.button.load-more');
+      expect(loadMoreBtn).toBeTruthy();
+    });
+
+    it('load more button is still present when isLoadingMore is true', () => {
+      const entries: FileHistoryEntry[] = [
+        { ...sampleEntry, id: 'commit1', summary: 'First commit' },
+      ];
+      const loadMore = jest.fn();
+      const history = makeHistoryResult({
+        state: { status: 'ready', entries, shallow: false, hasMore: true },
+        hasMore: true,
+        isLoadingMore: true,
+        loadMore,
+      });
+      render(<NoteHistoryModal visible={true} history={history} onClose={jest.fn()} />);
+
+      // Manual load more button should still be present
+      const loadMoreBtn = screen.getByTestId('note-history.button.load-more');
+      expect(loadMoreBtn).toBeTruthy();
     });
   });
 });

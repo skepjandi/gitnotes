@@ -4,7 +4,7 @@ import { Alert } from 'react-native';
 
 import type { CommitInfo } from '@/services/git/engine/GitEngine';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 20;
 
 const makeCommit = (index: number): CommitInfo => ({
   id: `commit-${index}`,

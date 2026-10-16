@@ -4,7 +4,7 @@
  */
 import type { LanguageModel, ModelMessage } from 'ai';
 import type { ChatMessage } from '@/models/Chat';
-import { useChatScreenController } from '@/components/chat/useChatScreenController';
+import { hasMeaningfulAssistantText, useChatScreenController } from '@/components/chat/useChatScreenController';
 import { streamChatResponse, initializeModel } from '@/services/AIService';
 import { executeToolCall } from '@/services/ai/actionExecutor';
 import { useChatStore } from '@/stores/chatStore';
@@ -476,7 +476,7 @@ describe('useChatScreenController — first-message persistence', () => {
     });
   });
 
-  it('surfaces a completed-response save failure after clearing streaming state', async () => {
+  it('keeps a completed response successful when the final save fails', async () => {
     const model = {} as LanguageModel;
     mockInitializeModel.mockResolvedValueOnce(model);
     ChatStorageService.saveThread
@@ -493,7 +493,61 @@ describe('useChatScreenController — first-message persistence', () => {
       await result.current.handleSend('Hello');
     });
 
-    expect(result.current.localError).toBe('disk full');
+    expect(result.current.localError).toBeNull();
     expect(chatState.setStreaming).toHaveBeenLastCalledWith(false);
+  });
+});
+
+describe('useChatScreenController — hasMeaningfulAssistantText regression', () => {
+  // Apple Intelligence can leak iOS/macOS shared pasteboard RTFD file paths as
+  // text deltas when processing rich text. These must NOT be treated as meaningful
+  // assistant output — they are internal system paths that must not reach the UI.
+  it('returns false for macOS shared-pasteboard RTFD path', () => {
+    const macOSPath =
+      '/Users/vidwadeseram/Library/Group Containers/group.com.apple.coreservices.useractivityd/shared-pasteboard/items/A1B2C3D4-E5F6-7890-ABCD-EF1234567890.rtfd';
+    expect(hasMeaningfulAssistantText(macOSPath)).toBe(false);
+  });
+
+  it('returns false for iOS device shared-pasteboard RTFD path', () => {
+    const iOSPath =
+      '/var/mobile/containers/shared-pasteboard/group.com.apple.coreservices.useractivityd/shared-pasteboard/items/E5F67890-ABCD-1234-EF56-7890ABCDEF12.rtfd';
+    expect(hasMeaningfulAssistantText(iOSPath)).toBe(false);
+  });
+
+  it('returns true for normal assistant text', () => {
+    expect(hasMeaningfulAssistantText('Here is your summary:')).toBe(true);
+    expect(hasMeaningfulAssistantText('The notes are saved.')).toBe(true);
+  });
+
+  it('returns false for empty and placeholder text', () => {
+    expect(hasMeaningfulAssistantText('')).toBe(false);
+    expect(hasMeaningfulAssistantText('   ')).toBe(false);
+    expect(hasMeaningfulAssistantText('show')).toBe(false);
+    expect(hasMeaningfulAssistantText('HIDE')).toBe(false);
+  });
+
+  it('treats an Apple RTFD-path-only response as empty and surfaces the error', async () => {
+    const model = {} as LanguageModel;
+    mockInitializeModel.mockResolvedValueOnce(model);
+    const macOSPath =
+      '/Users/vidwadeseram/Library/Group Containers/group.com.apple.coreservices.useractivityd/shared-pasteboard/items/A1B2C3D4-E5F6-7890-ABCD-EF1234567890.rtfd';
+
+    mockStreamChatResponse.mockImplementation(async function* (): AsyncGenerator<string> {
+      yield macOSPath;
+    });
+
+    setupStores({ activeThread });
+    chatState.saveThread.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useChatScreenController(THREAD_ID));
+    const sendPromise = result.current.handleSend('Summarize this note');
+    await act(async () => {
+      await sendPromise;
+    });
+
+    const assistantMsgs = threadMessages.filter(
+      (m) => m.role === 'assistant' && m.content && m.content.includes('vidwadeseram'),
+    );
+    expect(assistantMsgs.length).toBe(0);
   });
 });

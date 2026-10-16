@@ -145,9 +145,26 @@ function buildFallbackToolResponse(toolName: string, rawResult: string, t: TFunc
   return null;
 }
 
-function hasMeaningfulAssistantText(value: string): boolean {
+/**
+ * Detects iOS/macOS shared pasteboard RTFD file paths that the Apple Intelligence
+ * native layer can leak as text deltas when processing rich text content.
+ * These are internal system paths and must never be displayed as assistant output.
+ *
+ * Pattern: /Users/<user>/Library/Group Containers/group.com.apple.coreservices.useractivityd/shared-pasteboard/items/<uuid>.rtfd
+ * or /var/mobile/... (iOS device paths)
+ */
+function isIosSharedPasteboardPath(value: string): boolean {
+  const trimmed = value.trim();
+  // Match macOS: /Users/.../Library/Group Containers/group.com.apple.coreservices.useractivityd/shared-pasteboard/...
+  // Match iOS device: /var/mobile/.../shared-pasteboard/...
+  return /\/(?:Users\/[^/]+|var\/mobile\/[^/]+)\/.*shared-pasteboard\//.test(trimmed);
+}
+
+export function hasMeaningfulAssistantText(value: string): boolean {
   const trimmed = value.trim();
   if (!trimmed) return false;
+  // Reject iOS/macOS shared pasteboard paths leaked from Apple Intelligence native layer
+  if (isIosSharedPasteboardPath(trimmed)) return false;
   const normalized = trimmed.toLowerCase();
   return normalized !== 'show' && normalized !== 'hide';
 }
@@ -655,9 +672,7 @@ export function useChatScreenController(threadId: string) {
         setStreaming(false);
         setStreamStartedAt(0);
         await saveActiveThread().catch((err) => {
-          const message = err instanceof Error ? err.message : String(err);
           console.warn('[ChatScreen] saveActiveThread failed:', err);
-          setLocalError(message);
         });
       } catch (error) {
         if (pendingFlush) clearTimeout(pendingFlush);

@@ -41,6 +41,8 @@ export interface UseNoteHistoryResult {
   isLoadingBlob: boolean;
   /** Whether more entries can be loaded */
   hasMore: boolean;
+  /** Whether a load-more pagination is in progress */
+  isLoadingMore: boolean;
   /** The resolved identity, or null if not available */
   identity: NoteHistoryIdentity | null;
   /** Reason if unavailable, null otherwise */
@@ -78,12 +80,15 @@ export function useNoteHistory(
   const [selectedBlob, setSelectedBlob] = useState<BlobReadOutcome | null>(null);
   const [isLoadingBlob, setIsLoadingBlob] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Refs for cleanup / stale request handling
   const historyAbortRef = useRef<AbortionRef | null>(null);
   const blobAbortRef = useRef<AbortionRef | null>(null);
   const entriesRef = useRef<FileHistoryEntry[]>([]);
   const skipRef = useRef(0);
+  // Guard against duplicate loadMore requests
+  const isLoadingMoreRef = useRef(false);
 
   // Reset when note changes
   useEffect(() => {
@@ -94,8 +99,10 @@ export function useNoteHistory(
     setSelectedBlob(null);
     setIsLoadingBlob(false);
     setHasMore(false);
+    setIsLoadingMore(false);
     entriesRef.current = [];
     skipRef.current = 0;
+    isLoadingMoreRef.current = false;
   }, [note?.id]);
 
   /**
@@ -106,6 +113,8 @@ export function useNoteHistory(
 
     // Cancel any in-flight request
     historyAbortRef.current?.abort();
+    isLoadingMoreRef.current = false;
+    setIsLoadingMore(false);
     const abort = new AbortionRef();
     historyAbortRef.current = abort;
 
@@ -199,6 +208,10 @@ export function useNoteHistory(
    */
   const loadMore = useCallback(async () => {
     if (!identity || state.status !== 'ready' || !hasMore) return;
+    // Guard against duplicate loadMore requests
+    if (isLoadingMoreRef.current) return;
+    isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
 
     // Cancel any in-flight request
     historyAbortRef.current?.abort();
@@ -206,9 +219,19 @@ export function useNoteHistory(
     historyAbortRef.current = abort;
 
     const currentState = state;
-    if (currentState.status !== 'ready') return;
+    if (currentState.status !== 'ready') {
+      isLoadingMoreRef.current = false;
+      setIsLoadingMore(false);
+      return;
+    }
 
-    setState({ ...currentState, status: 'loading' });
+    // Keep current entries visible during pagination - do not switch to loading state
+    setState({
+      status: 'ready',
+      entries: entriesRef.current,
+      shallow: currentState.shallow,
+      hasMore: currentState.hasMore,
+    });
 
     try {
       const historyResult = await loadNoteFileHistory(
@@ -216,7 +239,11 @@ export function useNoteHistory(
         { limit: PAGE_SIZE, skip: skipRef.current },
       );
 
-      if (abort.aborted) return;
+      if (abort.aborted) {
+        isLoadingMoreRef.current = false;
+        setIsLoadingMore(false);
+        return;
+      }
 
       // Append deduplicated entries
       const existingIds = new Set(entriesRef.current.map((e) => e.id));
@@ -227,6 +254,8 @@ export function useNoteHistory(
       skipRef.current = entriesRef.current.length;
 
       setHasMore(historyResult.hasMore);
+      isLoadingMoreRef.current = false;
+      setIsLoadingMore(false);
 
       setState({
         status: 'ready',
@@ -238,6 +267,8 @@ export function useNoteHistory(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     catch (_err) {
       if (abort.aborted) return;
+      isLoadingMoreRef.current = false;
+      setIsLoadingMore(false);
       // Restore previous state on error
       setState(currentState);
     }
@@ -259,8 +290,10 @@ export function useNoteHistory(
     setSelectedBlob(null);
     setIsLoadingBlob(false);
     setHasMore(false);
+    setIsLoadingMore(false);
     entriesRef.current = [];
     skipRef.current = 0;
+    isLoadingMoreRef.current = false;
   }, []);
 
   // Cleanup on unmount
@@ -277,6 +310,7 @@ export function useNoteHistory(
     selectedBlob,
     isLoadingBlob,
     hasMore,
+    isLoadingMore,
     identity,
     unavailableReason,
     isDirty,

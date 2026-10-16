@@ -39,6 +39,8 @@ const CARD_WIDTH = 120;
 const CARD_GAP = 8;
 const TOTAL_CARD = CARD_WIDTH + CARD_GAP;
 const SPRING_CONFIG = { damping: 22, stiffness: 320 };
+// Lookahead distance from tail before triggering loadMore
+const LOAD_MORE_LOOKAHEAD = 5;
 
 interface RevisionCardProps {
   entry: FileHistoryEntry;
@@ -143,6 +145,7 @@ export function NoteHistoryModal({ visible, history, onClose }: NoteHistoryModal
     selectedBlob,
     isLoadingBlob,
     hasMore,
+    isLoadingMore,
     unavailableReason,
     isDirty,
     loadHistory,
@@ -229,7 +232,7 @@ export function NoteHistoryModal({ visible, history, onClose }: NoteHistoryModal
       const entries = state.status === 'ready' ? state.entries : [];
       const totalCards = entries.length;
 
-      // Calculate which card we landed on
+      // Calculate which card we landed on, clamped to loaded entries
       const projectedIndex = Math.round(
         Math.max(0, Math.min(totalCards - 1, (savedIndex.value * TOTAL_CARD + event.translationX) / TOTAL_CARD)),
       );
@@ -242,6 +245,16 @@ export function NoteHistoryModal({ visible, history, onClose }: NoteHistoryModal
         if (commitId && commitId !== selectedCommitId) {
           handleSelectCommit(commitId);
         }
+      }
+
+      // Trigger loadMore when sliding near the loaded tail
+      if (
+        hasMore &&
+        !isLoadingMore &&
+        totalCards > 0 &&
+        projectedIndex >= totalCards - LOAD_MORE_LOOKAHEAD
+      ) {
+        loadMore();
       }
     });
 
@@ -378,6 +391,13 @@ export function NoteHistoryModal({ visible, history, onClose }: NoteHistoryModal
                 ? `${Math.max(1, selectedIndex + 1)} / ${totalCards}`
                 : '0 / 0'}
             </Text>
+            {isLoadingMore && (
+              <ActivityIndicator
+                size="small"
+                color={colors.primary}
+                style={styles.positionLoadingIndicator}
+              />
+            )}
           </View>
           {/* Load more */}
           {hasMore && (
@@ -633,8 +653,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   positionIndicator: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 6,
+  },
+  positionLoadingIndicator: {
+    marginLeft: 8,
   },
   positionText: {
     fontSize: 12,

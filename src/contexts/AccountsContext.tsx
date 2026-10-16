@@ -79,7 +79,7 @@ const AccountsContext = createContext<AccountsContextValue | undefined>(undefine
 
 const EMPTY_AUTH: AuthState = { isAuthenticated: false, user: null, token: null };
 
-type GhSetTokenUser = Parameters<typeof GitHubService.setToken>[1];
+type GhSetTokenUser = NonNullable<Parameters<typeof GitHubService.setToken>[1]>;
 
 function flattenAccounts(summaries: AccountSummary[]): StoredAccount[] {
   return summaries.map((s) => s.account);
@@ -160,7 +160,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
           if (active && token) {
             const host = active.hosts[0];
             if (host) {
-              await GitHubService.setToken(token, {
+              await GitHubService.hydrateToken(token, {
                 id: host.hostUserId,
                 login: host.hostLogin,
                 name: host.name,
@@ -179,7 +179,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
           if (githubHost) {
             const tok = await AuthService.getToken();
             if (tok) {
-              await GitHubService.setToken(tok, {
+              await GitHubService.hydrateToken(tok, {
                 id: githubHost.hostUserId,
                 login: githubHost.hostLogin,
                 name: githubHost.name,

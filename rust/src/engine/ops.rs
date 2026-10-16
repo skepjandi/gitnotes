@@ -476,8 +476,11 @@ pub fn file_history(
         let mut revwalk = repo.revwalk()?;
         revwalk.set_sorting(Sort::TIME | Sort::TOPOLOGICAL)?;
         revwalk.push(oid)?;
-        let mut out = Vec::new();
-        let mut shallow = false;
+        let page_limit = limit.max(1) as usize;
+        let page_end = (skip as usize).saturating_add(page_limit);
+        let mut out = Vec::with_capacity(page_limit);
+        let mut matching_count = 0usize;
+        let mut shallow = repo.is_shallow();
         for oid_result in revwalk {
             let oid = match oid_result {
                 Ok(o) => o,
@@ -489,36 +492,40 @@ pub fn file_history(
             };
             let commit = repo.find_commit(oid)?;
             if file_history_commit_touches_path(&repo, &commit, file_path)? {
-                out.push(FileHistoryEntry {
-                    id: commit.id().to_string(),
-                    short_id: commit.id().to_string().chars().take(7).collect(),
-                    message: commit.message().unwrap_or_default().to_string(),
-                    summary: commit
-                        .summary()
-                        .ok()
-                        .flatten()
-                        .unwrap_or_default()
-                        .to_string(),
-                    author_name: commit
-                        .author()
-                        .name()
-                        .map(str::to_string)
-                        .unwrap_or_default(),
-                    author_email: commit
-                        .author()
-                        .email()
-                        .map(str::to_string)
-                        .unwrap_or_default(),
-                    author_time: commit.time().seconds(),
-                    committer_time: commit.committer().when().seconds(),
-                    parent_count: commit.parent_count() as u32,
-                    parents: commit.parent_ids().map(|p| p.to_string()).collect(),
-                });
+                matching_count += 1;
+                if matching_count > skip as usize {
+                    let id = commit.id().to_string();
+                    out.push(FileHistoryEntry {
+                        id: id.clone(),
+                        short_id: id.chars().take(7).collect(),
+                        message: commit.message().unwrap_or_default().to_string(),
+                        summary: commit
+                            .summary()
+                            .ok()
+                            .flatten()
+                            .unwrap_or_default()
+                            .to_string(),
+                        author_name: commit
+                            .author()
+                            .name()
+                            .map(str::to_string)
+                            .unwrap_or_default(),
+                        author_email: commit
+                            .author()
+                            .email()
+                            .map(str::to_string)
+                            .unwrap_or_default(),
+                        author_time: commit.time().seconds(),
+                        committer_time: commit.committer().when().seconds(),
+                        parent_count: commit.parent_count() as u32,
+                        parents: commit.parent_ids().map(|p| p.to_string()).collect(),
+                    });
+                    if matching_count >= page_end {
+                        break;
+                    }
+                }
             }
         }
-        let skipped = out.len().min(skip as usize);
-        out.drain(..skipped);
-        out.truncate(limit.max(1) as usize);
         Ok(FileHistoryResult {
             entries: out,
             shallow,
@@ -537,7 +544,9 @@ fn file_history_commit_touches_path(
     }
     let tree = commit.tree()?;
     let parent_tree = commit.parent(0)?.tree()?;
-    let diff = repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), None)?;
+    let mut diff_options = DiffOptions::new();
+    diff_options.pathspec(file_path);
+    let diff = repo.diff_tree_to_tree(Some(&parent_tree), Some(&tree), Some(&mut diff_options))?;
     let mut touches = false;
     diff.foreach(
         &mut |delta, _| {
@@ -1557,6 +1566,21 @@ mod tests {
         assert_eq!(result.entries.len(), 2);
         assert_eq!(result.entries[0].message, "changed");
         assert_eq!(result.entries[1].message, "baseline");
+    }
+
+    #[test]
+    fn file_history_applies_skip_and_limit_before_exhausting_history() {
+        let dir = scratch_repo("file-history-pagination");
+        commit_file(&dir, "README", "first\n", "first");
+        commit_file(&dir, "other", "unrelated\n", "unrelated");
+        commit_file(&dir, "README", "second\n", "second");
+        commit_file(&dir, "README", "third\n", "third");
+
+        let result = file_history(&dir, "HEAD", "README", 1, 1).unwrap();
+
+        assert_eq!(result.entries.len(), 1);
+        assert_eq!(result.entries[0].message, "second");
+        assert!(!result.shallow);
     }
 
     #[test]

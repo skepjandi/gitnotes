@@ -10,6 +10,10 @@ export interface ToggleProps {
   onValueChange: (next: boolean) => void;
   disabled?: boolean;
   testID?: string;
+  /** Exposes the control as an assistive-technology switch (with checked state). */
+  accessibilityRole?: 'switch';
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 const TRACK_WIDTH = 52;
@@ -17,7 +21,7 @@ const TRACK_HEIGHT = 30;
 const THUMB = 22;
 
 export function Toggle(props: ToggleProps) {
-  const { value, onValueChange, disabled, testID } = props;
+  const { value, onValueChange, disabled, testID, accessibilityRole, accessibilityLabel, accessibilityHint } = props;
   const { colors } = useTokens();
   const offset = useSharedValue(value ? 1 : 0);
 
@@ -45,6 +49,10 @@ export function Toggle(props: ToggleProps) {
       onPress={handlePress}
       disabled={disabled}
       hitSlop={8}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={accessibilityRole === 'switch' ? { checked: value } : undefined}
       style={{ opacity: disabled ? 0.5 : 1 }}
     >
       <Surface

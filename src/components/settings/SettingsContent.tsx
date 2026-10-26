@@ -194,6 +194,10 @@ onRemoveAccount: (id: string, login: string) => void;
   referralProgress: number;
   referralUnlockedCount: number;
   onOpenRewardCatalog: () => void;
+  // Telemetry opt-out
+  telemetryEnabled: boolean;
+  onToggleTelemetry: (next: boolean) => void;
+  telemetrySaveError: string | null;
 };
 
 function formatLfsBytes(bytes: number): string {
@@ -307,6 +311,9 @@ export function SettingsContent(props: SettingsContentProps) {
     referralProgress,
     referralUnlockedCount,
     onOpenRewardCatalog,
+    telemetryEnabled,
+    onToggleTelemetry,
+    telemetrySaveError,
   } = props;
   const { spacing, type } = useTokens();
   const { t } = useTranslation();
@@ -1324,6 +1331,43 @@ export function SettingsContent(props: SettingsContentProps) {
         <GroupRow testID="settings.button.reset-onboarding" onPress={onResetOnboarding} trailing={<HintIcon hintKey="hints.settings.resetOnboarding" testID="hint.reset-onboarding" />}>
           <Text style={[styles.settingLabel, { color: colors.text }]}>{t('settings.resetOnboarding')}</Text>
         </GroupRow>
+      </Group>
+
+      <Group title={t('settings.privacy')}>
+        <GroupRow
+          trailing={
+            <Toggle
+              testID="settings.toggle.telemetry"
+              value={telemetryEnabled}
+              onValueChange={onToggleTelemetry}
+              accessibilityRole="switch"
+              accessibilityLabel={t('settings.telemetry.label', { defaultValue: 'Share optional telemetry' })}
+              accessibilityHint={t('settings.telemetry.hint', {
+                defaultValue: 'Covers EAS diagnostics and GitNotēs usage counters. Turning this off stops both.',
+              })}
+            />
+          }
+        >
+          <View testID="settings.row.telemetry">
+            <Text style={[styles.settingLabel, { color: colors.text }]}>
+              {t('settings.telemetry.label', { defaultValue: 'Share optional telemetry' })}
+            </Text>
+            <Text style={[styles.settingValue, { color: colors.textSecondary, fontSize: 12, marginTop: 2 }]}>
+              {t('settings.telemetry.description', {
+                defaultValue: 'Covers EAS diagnostics and GitNotēs usage counters. Turning this off stops both.',
+              })}
+            </Text>
+          </View>
+        </GroupRow>
+        {telemetrySaveError ? (
+          <GroupRow>
+            <View testID="settings.error.telemetry">
+              <Text style={[styles.settingValue, { color: colors.error, fontSize: 12 }]}>
+                {telemetrySaveError}
+              </Text>
+            </View>
+          </GroupRow>
+        ) : null}
       </Group>
 
       <Group title={t('settings.artificialIntelligence')}>

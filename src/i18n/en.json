@@ -391,6 +391,13 @@
     "clearAllNotes": "Clear All Notes",
     "clearAllConfirm": "Are you sure you want to clear all notes? This action cannot be undone.",
     "resetOnboarding": "Reset Onboarding",
+    "privacy": "Privacy",
+    "telemetry": {
+      "label": "Share optional telemetry",
+      "description": "Covers EAS diagnostics and GitNotēs usage counters. Turning this off stops both.",
+      "hint": "Covers EAS diagnostics and GitNotēs usage counters. Turning this off stops both.",
+      "saveFailed": "Couldn't save your privacy choice. It stays off for this session."
+    },
     "quickSetup": "Quick Setup",
     "about": "About",
     "version": "Version",

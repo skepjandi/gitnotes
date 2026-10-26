@@ -49,7 +49,7 @@ describe("Worker Contract: Field Names", () => {
   });
 
   describe("GitHubAppInstallResponse fields", () => {
-    it("must have exactly the expected fields from Rust contract", () => {
+    it("must have exactly the expected fields from Worker contract", () => {
       const response = GITHUB_APP_INSTALL_RESPONSE_FIXTURE;
       const actualFields = Object.keys(response).sort();
       const expectedFields = [...GITHUB_APP_INSTALL_RESPONSE_FIELDS].sort();
@@ -218,6 +218,7 @@ describe("Worker Contract: Snakecase Field Names", () => {
     expect(response).toHaveProperty("app_slug");
     expect(response).toHaveProperty("account_login");
     expect(response).toHaveProperty("account_id");
+    expect(response).toHaveProperty("account_avatar_url");
     expect(response).toHaveProperty("token");
     expect(response).toHaveProperty("expires_at");
     expect(response).toHaveProperty("renewal_grant_token");

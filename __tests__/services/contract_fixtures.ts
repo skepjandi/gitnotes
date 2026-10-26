@@ -69,6 +69,7 @@ export const GITHUB_APP_INSTALL_RESPONSE_FIXTURE: GitHubAppInstallResponse = {
   app_slug: "test-app",
   account_login: "testuser",
   account_id: 54321,
+  account_avatar_url: "https://avatars.githubusercontent.com/u/54321?v=4",
   token: "ghs_install_token",
   expires_at: Date.now() + 3600000, // 1 hour from now (Unix ms)
   renewal_grant_token: "grant_token",
@@ -82,6 +83,7 @@ export const GITHUB_APP_RENEWAL_RESPONSE_FIXTURE: GitHubAppRenewalResponse = {
   app_slug: "test-app",
   account_login: "testuser",
   account_id: 54321,
+  account_avatar_url: "https://avatars.githubusercontent.com/u/54321?v=4",
   token: "ghs_renewed_token",
   expires_at: Date.now() + 3600000,
   renewal_grant_token: "new_grant_token",
@@ -151,7 +153,7 @@ export const OAUTH_EXCHANGE_RESPONSE_FIELDS = [
 ] as const;
 
 /**
- * GitHub App response field names - verified against Rust GitHubAppInstallResponse.
+ * GitHub App response field names returned by the Worker.
  */
 export const GITHUB_APP_INSTALL_RESPONSE_FIELDS = [
   "installation_id",
@@ -159,6 +161,7 @@ export const GITHUB_APP_INSTALL_RESPONSE_FIELDS = [
   "app_slug",
   "account_login",
   "account_id",
+  "account_avatar_url",
   "token",
   "expires_at",
   "renewal_grant_token",

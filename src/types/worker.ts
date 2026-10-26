@@ -247,6 +247,7 @@ export interface GitHubAppInstallResponse {
   app_slug: string;
   account_login: string;
   account_id: number;
+  account_avatar_url: string;
   token: string;
   expires_at: number;
   renewal_grant_token: string;

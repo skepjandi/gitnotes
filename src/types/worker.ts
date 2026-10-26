@@ -13,18 +13,11 @@ import { z } from "zod";
 // -----------------------------------------------------------------------------
 
 /**
- * Production base URL for the Worker API.
- * Local overrides supported via EXPO_PUBLIC_GITNOTES_BACKEND_URL env var.
- *
- * The deployed Worker API is served at worker.gitnotes.org.
+ * Production base URL for the Worker API. Expo environment overrides must use
+ * its public-variable prefix so they are statically inlined into client code.
  */
 export const WORKER_BASE_URL = "https://worker.gitnotes.org/api/v1";
-
-/**
- * Environment variable name for backend URL override.
- * Supports Expo build-time environment substitution.
- */
-export const WORKER_BACKEND_URL_ENV = "EXPO_PUBLIC_GITNOTES_BACKEND_URL";
+export const WORKER_BACKEND_URL_ENV = "EXPO_PUBLIC_GITNOTES_WORKER_BASE_URL";
 
 /**
  * Environment variable name for GitHub OAuth client ID.

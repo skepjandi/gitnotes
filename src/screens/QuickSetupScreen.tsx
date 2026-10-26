@@ -28,8 +28,8 @@ type QuickSetupRouteProp = RouteProp<RootStackParamList, 'QuickSetup'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 function resolveBackendUrl(): string {
-  const configured = process.env.EXPO_PUBLIC_GITNOTES_BACKEND_URL;
-  const base = configured ?? WORKER_BASE_URL;
+  const configured = process.env.EXPO_PUBLIC_GITNOTES_WORKER_BASE_URL?.trim();
+  const base = configured || WORKER_BASE_URL;
   return base.replace(/\/api\/v1\/?$/, '');
 }
 

@@ -21,7 +21,6 @@ global.fetch = mockFetch;
 describe('workerApi', () => {
   beforeEach(() => {
     mockFetch.mockReset();
-    // Reset env var
     delete process.env[WORKER_BACKEND_URL_ENV];
   });
 
@@ -30,7 +29,7 @@ describe('workerApi', () => {
       expect(workerApi.getBackendUrl()).toBe(WORKER_BASE_URL);
     });
 
-    it('returns local override when EXPO_PUBLIC_GITNOTES_BACKEND_URL is set', () => {
+    it('returns local override when EXPO_PUBLIC_GITNOTES_WORKER_BASE_URL is set', () => {
       process.env[WORKER_BACKEND_URL_ENV] = 'http://localhost:8787/api/v1';
       expect(workerApi.getBackendUrl()).toBe('http://localhost:8787/api/v1');
     });

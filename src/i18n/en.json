@@ -1215,5 +1215,11 @@
     "badge": "PRO",
     "lockedTitle": "Pro Feature",
     "lockedBody": "This feature requires GitNotēs Pro. Upgrade to unlock unlimited accounts, repos, AI, and more."
+  },
+  "privacyNotice": {
+    "title": "Privacy policy updated",
+    "body": "In releases that include telemetry, one Settings switch controls Expo diagnostics and Worker usage counters. Diagnostics use a pseudonymous installation identifier; its legal classification must be reviewed by the operator. App code does not intentionally attach note, repository, or authentication data, but unhandled error messages or stacks may contain sensitive values embedded by app code. If off before SDK import, the SDK is not imported. After import, it cannot be unloaded; dispatch is disabled, Worker requests stop, and local error capture may continue until process exit. Previously collected counters are not erased. Expo and Cloudflare process data as service providers.",
+    "readPolicy": "Read the policy",
+    "dismiss": "Got it"
   }
 }

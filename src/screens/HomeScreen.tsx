@@ -35,6 +35,7 @@ import { ShareFormat } from '../services/ShareService';
 import { NoteSyncQueueService } from '../services/cloneSyncServiceImpl';
 import { useTranslation } from 'react-i18next';
 import { DailyQuoteCard } from '../components/home/DailyQuoteCard';
+import { PrivacyNoticeCallout } from '../components/privacy/PrivacyNoticeCallout';
 import { useDailyQuote } from '../hooks/useDailyQuote';
 import { useProGate } from '../hooks/useProGate';
 
@@ -290,6 +291,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView edges={[]} className="flex-1" style={{ backgroundColor: colors.background }}>
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingTop: headerHeight, paddingBottom: tabBarHeight + 20 }} showsVerticalScrollIndicator={false}>
+      <PrivacyNoticeCallout />
       <DailyQuoteCard quote={quote} isLoading={quoteLoading} error={quoteError} onRefresh={quoteRefresh} />
       <View className="gap-3 mt-2 mb-6">
         <View className="flex-row items-stretch gap-3 overflow-hidden">

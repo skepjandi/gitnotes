@@ -241,6 +241,7 @@ type BlobReadOutcome = BlobReadSuccess | BlobReadFailure;
 | `RenderStyleService.ts` | Manages render style preferences (markdown vs rich text vs plaintext). |
 | `FeatureFlags.ts` | Feature flag provider — enables/disables features per user, cohort, or experiment. |
 | `http.ts` | GitHub API axios instance — handles auth headers (Bearer token), timeouts (120s), and request auth overrides for the GitHub API. |
+| `PrivacyNoticeService.ts` | Tracks which material privacy-policy version the user has already seen, so the in-app notice appears once per version. Persists the dismissal locally under `@gitnotes:privacy_notice`. `shouldShowNotice()` stays true while the stored dismissal version differs from `CURRENT_POLICY_VERSION`, and stays true when the read fails, so a storage problem can never hide a policy change. `dismissNotice()` records the current version; a failed write leaves the notice visible on the next launch. Consumed by `PrivacyNoticeCallout`. |
 
 ## Worker API — OAuth/App Boundary (`src/services/`)
 

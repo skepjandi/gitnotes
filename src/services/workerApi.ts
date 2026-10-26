@@ -3,7 +3,7 @@
  *
  * Provides typed HTTP calls to the Cloudflare Worker backend at
  * https://worker.gitnotes.org/api/v1 (production) with local override support
- * via EXPO_PUBLIC_GITNOTES_BACKEND_URL.
+ * via EXPO_PUBLIC_GITNOTES_WORKER_BASE_URL.
  *
  * Error handling follows the Worker contract: non-2xx responses return
  * {@link WorkerApiError} with snake_case error codes.
@@ -11,7 +11,6 @@
 
 import {
   WORKER_BASE_URL,
-  WORKER_BACKEND_URL_ENV,
   WorkerApiError,
   WorkerErrorResponseSchema,
   type WorkerErrorCode,
@@ -42,13 +41,10 @@ import {
 
 /**
  * Get the configured backend URL.
- * Uses EXPO_PUBLIC_GITNOTES_BACKEND_URL if set, otherwise defaults to production URL.
- * Expo's build-time environment substitution allows this to be overridden per build.
  */
 function getBackendUrl(): string {
-  // Expo exposes public env vars on process.env
-  const envUrl = process.env[WORKER_BACKEND_URL_ENV];
-  return envUrl && envUrl.length > 0 ? envUrl : WORKER_BASE_URL;
+  const envUrl = process.env.EXPO_PUBLIC_GITNOTES_WORKER_BASE_URL?.trim();
+  return envUrl || WORKER_BASE_URL;
 }
 
 /**

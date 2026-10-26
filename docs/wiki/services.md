@@ -248,7 +248,7 @@ type BlobReadOutcome = BlobReadSuccess | BlobReadFailure;
 
 | File | Purpose |
 |------|---------|
-| `workerApi.ts` | Typed HTTP client for the Cloudflare Worker backend. Uses `EXPO_PUBLIC_GITNOTES_BACKEND_URL` with production fallback `https://worker.gitnotes.org/api/v1`. |
+| `workerApi.ts` | Typed HTTP client for the Cloudflare Worker backend. Uses `EXPO_PUBLIC_GITNOTES_WORKER_BASE_URL` with production fallback `https://worker.gitnotes.org/api/v1`. |
 | `GitHubOAuthService.ts` | GitHub OAuth PKCE flow — generates verifier/challenge, initiates via backend, opens authorization URL in system browser, exchanges codes, stores credentials. Default scope: `['read:user', 'user:email', 'repo']`. |
 | `GitHubAppService.ts` | GitHub App installation flow — generates signed JWS handoffs, exchanges installation tokens, renews via one-time grant tokens. |
 
@@ -256,7 +256,7 @@ type BlobReadOutcome = BlobReadSuccess | BlobReadFailure;
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `EXPO_PUBLIC_GITNOTES_BACKEND_URL` | Worker API base URL | `https://worker.gitnotes.org/api/v1` |
+| `EXPO_PUBLIC_GITNOTES_WORKER_BASE_URL` | Worker API base URL, inlined into the app bundle at build time | `https://worker.gitnotes.org/api/v1` |
 | `EXPO_PUBLIC_GITHUB_OAUTH_CLIENT_ID` | GitHub OAuth app client ID (public, non-secret) | — |
 
 **Callbacks (fixed deep links):**

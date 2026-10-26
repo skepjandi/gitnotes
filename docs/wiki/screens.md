@@ -91,6 +91,7 @@ The canonical route param types are in `src/navigation/types.ts`:
 - `DailyQuoteCard` — philosopher quote from `DailyQuoteService`
 - `QuickAccessShelf` — pinned/favorite notes
 - `FloatingGitButton` — floating sync button
+- `PrivacyNoticeCallout` — next-launch notice for material privacy-policy changes, shown once per policy version
 
 ---
 

@@ -1210,5 +1210,11 @@
     "badge": "PRO",
     "lockedTitle": "Fonctionnalité Pro",
     "lockedBody": "Cette fonctionnalité nécessite GitNotēs Pro. Passez à Pro pour débloquer comptes, dépôts, IA et plus, sans limite."
+  },
+  "privacyNotice": {
+    "title": "Politique de confidentialité mise à jour",
+    "body": "Dans les versions incluant la télémétrie, un seul réglage contrôle les diagnostics Expo et les compteurs d’utilisation du Worker. Les diagnostics utilisent un identifiant d’installation pseudonyme ; l’opérateur doit vérifier sa classification juridique. Le code de l’application n’associe pas intentionnellement de notes, données de dépôt ou données d’authentification, mais les erreurs non interceptées peuvent contenir des valeurs sensibles intégrées par le code. Désactivé avant l’importation du SDK, celui-ci n’est pas importé. Après son importation, il ne peut pas être déchargé ; l’envoi est désactivé et les requêtes Worker cessent, mais la capture locale des erreurs peut continuer jusqu’à la fin du processus. Les compteurs déjà collectés ne sont pas effacés. Expo et Cloudflare traitent les données en tant que prestataires.",
+    "readPolicy": "Lire la politique",
+    "dismiss": "J’ai compris"
   }
 }

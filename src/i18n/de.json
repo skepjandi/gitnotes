@@ -1210,5 +1210,11 @@
     "badge": "PRO",
     "lockedTitle": "Pro-Funktion",
     "lockedBody": "Diese Funktion erfordert GitNotēs Pro. Upgrade, um unbegrenzte Konten, Repos, KI und mehr freizuschalten."
+  },
+  "privacyNotice": {
+    "title": "Datenschutzerklärung aktualisiert",
+    "body": "In Versionen mit Telemetrie steuert ein Schalter in den Einstellungen Expo-Diagnosedaten und Nutzungszähler des Workers. Diagnosedaten verwenden eine pseudonyme Installationskennung; ihre rechtliche Einstufung muss vom Betreiber geprüft werden. Notizen, Repository- oder Authentifizierungsdaten werden vom App-Code nicht absichtlich angehängt, doch unbehandelte Fehlermeldungen oder Stacktraces können eingebettete sensible Werte enthalten. Vor dem SDK-Import bedeutet „aus“, dass das SDK nicht importiert wird. Nach dem Import kann es nicht entladen werden; der Versand wird deaktiviert, Worker-Anfragen stoppen, und lokale Fehlererfassung kann bis zum Prozessende weiterlaufen. Bereits erfasste Zähler werden nicht gelöscht. Expo und Cloudflare verarbeiten Daten als Dienstleister.",
+    "readPolicy": "Erklärung lesen",
+    "dismiss": "Verstanden"
   }
 }

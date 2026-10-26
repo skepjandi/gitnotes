@@ -23,6 +23,7 @@ import { GitHubService } from '../services/GitHubService';
 import { type GitHostRepository, type GitHostRepositoryResult } from '../services/git/GitHost';
 import { RepoFileSyncService } from '../services/RepoFileSyncService';
 import { TemplateRepoPreferenceService, type TemplateRepoPreference } from '../services/TemplateRepoPreferenceService';
+import { telemetryPreferenceService } from '../services/TelemetryPreferenceService';
 import { serializeTemplate, templateSlug } from '../services/TemplateMarkdownService';
 import { NoteSyncQueueService } from '../services/cloneSyncServiceImpl';
 
@@ -215,6 +216,8 @@ export default function SettingsScreen() {
   const [editingProvider, setEditingProvider] = useState<AIProviderConfig | undefined>();
   const [syncingRepo, setSyncingRepo] = useState<string | null>(null);
   const [templatesRepoPref, setTemplatesRepoPref] = useState<TemplateRepoPreference | null>(null);
+  const [telemetryEnabled, setTelemetryEnabled] = useState(false);
+  const [telemetrySaveError, setTelemetrySaveError] = useState<string | null>(null);
   const [showTemplatesRepoPicker, setShowTemplatesRepoPicker] = useState(false);
   const [cloningRepo, setCloningRepo] = useState<string | null>(null);
   const [cloneProgress, setCloneProgress] = useState<CloneProgress | null>(null);
@@ -316,6 +319,27 @@ export default function SettingsScreen() {
   useEffect(() => {
     TemplateRepoPreferenceService.get().then(setTemplatesRepoPref);
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = telemetryPreferenceService.subscribe((preference) => {
+      setTelemetryEnabled(preference === 'enabled');
+    });
+    void telemetryPreferenceService.load();
+    return unsubscribe;
+  }, []);
+
+  const handleToggleTelemetry = useCallback(
+    (next: boolean) => {
+      setTelemetrySaveError(null);
+      // setEnabled closes the gate synchronously before awaiting the storage
+      // write, so a delayed write can never leave telemetry on.
+      void telemetryPreferenceService.setEnabled(next).catch(() => {
+        setTelemetryEnabled(false);
+        setTelemetrySaveError(t('settings.telemetry.saveFailed'));
+      });
+    },
+    [t],
+  );
 
   // Hydrate app icon state on mount
   useEffect(() => {
@@ -1627,6 +1651,9 @@ export default function SettingsScreen() {
         referralUnlockedCount={referralUnlockedCount}
         onOpenRewardCatalog={handleOpenRewardCatalog}
         onQuickSetup={() => navigation.navigate('QuickSetup', undefined)}
+        telemetryEnabled={telemetryEnabled}
+        onToggleTelemetry={handleToggleTelemetry}
+        telemetrySaveError={telemetrySaveError}
       />
       <SettingsModals
         colors={colors}

@@ -3,6 +3,10 @@ import { useCanvasStore } from '../../stores/canvasStore';
 import { useNoteStore } from '../../stores/noteStore';
 import { useTodoStore } from '../../stores/todoStore';
 import { GitSyncGate, type CycleSource } from './GitSyncGate';
+import { parseRepoPath } from '../../utils/gitPathParser';
+import { StorageService } from '../StorageService';
+import { telemetryService } from '../TelemetryService';
+import type { PullResult } from '../RepoPullService';
 
 /**
  * Single manual-sync entry point ("sync now") for user-facing pulls:
@@ -76,18 +80,18 @@ async function refreshAllStores(): Promise<void> {
   ]);
 }
 
-async function runSyncCycle(repos: string[] | undefined, source: CycleSource): Promise<void> {
+async function runSyncCycle(repos: string[] | undefined, source: CycleSource): Promise<PullResult> {
   // ONE cycle acquisition spans the push-settle wait + pull + refresh.
   const releaseCycle = await GitSyncGate.acquireCycle(source);
   try {
     await waitForPushesToSettle(repos);
     if (repos?.length === 1) {
-      await pullFromSingleRepo(repos[0]);
+      return await pullFromSingleRepo(repos[0]);
     } else {
       // A multi-repo selection falls back to the all-repos pull — the
       // pull service has no subset path, and pulling everything is the
       // safe superset of any selection.
-      await pullAllFromRepos();
+      return await pullAllFromRepos();
     }
   } finally {
     // Refresh even when the pull failed so the UI reflects whatever made
@@ -101,6 +105,20 @@ async function runSyncCycle(repos: string[] | undefined, source: CycleSource): P
   }
 }
 
+async function recordManualHostActions(repoPaths: string[] | undefined, repoCount: number): Promise<void> {
+  const savedRepos = await StorageService.getSavedRepositories();
+  const selectedRepos = repoPaths?.length === 1
+    ? savedRepos.filter((repo) => repo.path === repoPaths[0])
+    : savedRepos;
+  let recorded = 0;
+  for (const repo of selectedRepos) {
+    if (!parseRepoPath(repo.path)) continue;
+    telemetryService.trackGitHostAction(repo.provider ?? 'github');
+    recorded += 1;
+    if (recorded === repoCount) break;
+  }
+}
+
 export async function syncNow(options?: SyncNowOptions): Promise<SyncNowResult> {
   if (running) {
     return { ok: false, error: 'already-running' };
@@ -108,13 +126,17 @@ export async function syncNow(options?: SyncNowOptions): Promise<SyncNowResult> 
   running = true;
 
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const source = options?.source ?? 'manual';
   try {
-    await Promise.race([
-      runSyncCycle(options?.repos, options?.source ?? 'manual'),
+    const result = await Promise.race([
+      runSyncCycle(options?.repos, source),
       new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => reject(new Error('Sync timed out')), SYNC_TIMEOUT_MS);
       }),
     ]);
+    if (source === 'manual' && result.repos > 0) {
+      void recordManualHostActions(options?.repos, result.repos);
+    }
     return { ok: true };
   } catch (error) {
     console.warn('[Sync] syncNow failed:', error);

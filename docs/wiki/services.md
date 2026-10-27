@@ -227,6 +227,7 @@ type BlobReadOutcome = BlobReadSuccess | BlobReadFailure;
 | `OnboardingService.ts` | Manages first-run onboarding flow — repo selection, initial clone, preferences. |
 | `StorageService.ts` | Wraps AsyncStorage for app preferences and local settings. |
 | `TelemetryPreferenceService.ts` | Persists the optional telemetry preference and exposes a fail-closed session gate. Missing preferences default to enabled only after a successful read; storage errors default to disabled, opt-out closes the in-memory gate before persistence, and an unsuccessful write leaves the choice disabled for the current session. |
+| `TelemetryService.ts` | Loads Expo EAS Observe only after consent is hydrated, configures startup and React Navigation metrics, and sends only fixed app-open/Git-host aggregate events to the Worker. Telemetry failures never block app or Git operations. Release builds send diagnostics for all opted-in installations by default; verify the EAS event quota and billing controls before release because the app cannot enforce an account spend cap. |
 | `RevenueCatService.ts` | RevenueCat SDK wrapper — configures StoreKit 2, handles purchases, entitlements, customer info. |
 | `PushNotificationService.ts` | Registers for and handles push notifications from GitHub (PR mentions, sync alerts). |
 | `NotificationService.ts` | Local notification scheduling and delivery — reminders, sync reminders, conflict alerts. |

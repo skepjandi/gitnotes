@@ -6,6 +6,7 @@ import { StorageService } from './StorageService';
 import { resolveBranch } from './git/branchResolver';
 import { parseRepoPath } from '../utils/gitPathParser';
 import { GitFsService, remoteUrlForHost } from './git/GitFsService';
+import { telemetryService } from './TelemetryService';
 import {
   DEV_BUNDLE_LOAD_RETRY_MESSAGE,
   isDevBundleLoadError,
@@ -149,9 +150,12 @@ async function runImport(
 
     const headOid = await GitFsService.getCommitOid({ repoPath, ref: `refs/heads/${branch}` });
     if (headOid === null) {
+      telemetryService.trackGitHostAction(repo?.provider ?? 'github');
       return { ok: true, counts: EMPTY_REPO_COUNTS };
     }
-    return { ok: true, counts: await pullFromSingleRepo(repoPath, onProgress) };
+    const counts = await pullFromSingleRepo(repoPath, onProgress);
+    telemetryService.trackGitHostAction(repo?.provider ?? 'github');
+    return { ok: true, counts };
   } catch (error) {
     const classified = classifyImportError(error);
     if (isDevBundleLoadError(error)) {

@@ -394,8 +394,8 @@
     "privacy": "Privacy",
     "telemetry": {
       "label": "Share optional telemetry",
-      "description": "Covers EAS diagnostics and GitNotēs usage counters. Turning this off stops both.",
-      "hint": "Covers EAS diagnostics and GitNotēs usage counters. Turning this off stops both.",
+      "description": "EAS reports optional startup/per-screen performance and unhandled errors. Its pseudonymous install ID and captured error messages/stacks may be sensitive. Anonymous usage counters are also sent. Off stops future dispatch; local capture can continue until app close.",
+      "hint": "Off stops future sends. If enabled after launch without EAS loaded, startup metrics begin next launch.",
       "saveFailed": "Couldn't save your privacy choice. It stays off for this session."
     },
     "quickSetup": "Quick Setup",

@@ -52,6 +52,13 @@ import { LastSelectionPreferenceService } from './src/services/LastSelectionPref
 import * as PushNotificationService from './src/services/PushNotificationService';
 import { bootstrapEntitlement } from './src/bootstrap/bootstrapEntitlement';
 import { hideDevMenuFloatingActionButton } from './src/utils/devMenuFab';
+import { TelemetryBootstrap } from './src/components/TelemetryBootstrap';
+
+export type AppRootProps = {
+  observeNavigationContainer?: typeof import('expo-observe/integrations/react-navigation').ObserveNavigationContainer;
+  observeInteractiveMarker?: typeof import('expo-observe').ObserveInteractiveMarker;
+  onNavigationReady?: () => void;
+};
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,7 +73,11 @@ if (__DEV__) {
   hideDevMenuFloatingActionButton();
 }
 
-export default function App() {
+export function AppRoot({
+  observeNavigationContainer,
+  observeInteractiveMarker,
+  onNavigationReady,
+}: AppRootProps) {
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
   const systemColorScheme = useColorScheme();
   useForegroundSyncAlert();
@@ -223,6 +234,9 @@ export default function App() {
                             <StatusBar style="auto" />
                             <StartupSyncGate>
                               <AppNavigator
+              observeNavigationContainer={observeNavigationContainer}
+              observeInteractiveMarker={observeInteractiveMarker}
+              onNavigationReady={onNavigationReady}
               showOnboarding={showOnboarding}
               onOnboardingComplete={handleOnboardingComplete}
               onOnboardingSkip={handleOnboardingSkip}
@@ -246,4 +260,8 @@ export default function App() {
     </SafeAreaProvider>
     </QueryClientProvider>
   );
+}
+
+export default function App() {
+  return <TelemetryBootstrap AppRoot={AppRoot} />;
 }

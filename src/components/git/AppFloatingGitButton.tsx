@@ -14,6 +14,7 @@ import FloatingGitButton from './FloatingGitButton';
 import type { ReleaseSegment } from './useFloatingGitButtonAffordances';
 import type { RootStackParamList } from '@/navigation/types';
 import { getFloatingGitNavigationTarget } from './floatingGitButtonNavigation';
+import { telemetryService } from '@/services/TelemetryService';
 
 const HINT_SEEN_KEY = '@gitnotes:gitbutton_hint_seen';
 
@@ -153,6 +154,11 @@ export default function AppFloatingGitButton() {
         });
         const pushResult = successfulRepos.length > 0 ? await pushAll(successfulRepos) : { outcomes: [], totalActed: 0, failures: [], ok: true };
         pushFailedCount = pushResult.failures.length;
+        for (const repo of successfulRepos) {
+          if (pushResult.outcomes.find((outcome) => outcome.repoId === repo.id)?.ok) {
+            telemetryService.trackGitHostAction(repo.provider ?? 'github');
+          }
+        }
 
         if (pushFailedCount === successfulRepos.length) {
           toast.show({

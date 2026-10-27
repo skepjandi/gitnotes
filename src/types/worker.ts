@@ -281,6 +281,17 @@ export interface HealthResponse {
   version: string;
 }
 
+export const USAGE_HOSTS = ["github", "gitlab", "gitea", "forgejo", "other"] as const;
+export type UsageHost = (typeof USAGE_HOSTS)[number];
+
+export type UsageEventRequest =
+  | { readonly event: "app_open" }
+  | { readonly event: "git_host_action"; readonly host: UsageHost };
+
+export interface UsageEventResponse {
+  readonly accepted: true;
+}
+
 // -----------------------------------------------------------------------------
 // Referral Types
 // -----------------------------------------------------------------------------

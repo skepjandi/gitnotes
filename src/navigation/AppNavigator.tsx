@@ -1,7 +1,12 @@
 import 'react-native-gesture-handler';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, View } from 'react-native';
-import { NavigationContainer, DarkTheme, DefaultTheme, useNavigationContainerRef } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DarkTheme,
+  DefaultTheme,
+  type NavigationContainerRefWithCurrent,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { LinkingOptions } from '@react-navigation/native';
@@ -45,6 +50,24 @@ import { useFloatingGitButtonStore } from '../stores/floatingGitButtonStore';
 import { ReferralService } from '../services/ReferralService';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+type AppNavigationRef = NonNullable<
+  NavigationContainerRefWithCurrent<RootStackParamList>['current']
+>;
+
+function isAppNavigationRef(value: unknown): value is AppNavigationRef {
+  if (typeof value !== 'object' || value === null) return false;
+  return [
+    'addListener',
+    'canGoBack',
+    'dispatch',
+    'getCurrentRoute',
+    'getRootState',
+    'goBack',
+    'isReady',
+    'navigate',
+    'reset',
+  ].every((method) => typeof Reflect.get(value, method) === 'function');
+}
 
 const getLinkingConfig = (): LinkingOptions<RootStackParamList> => {
   const baseConfig: LinkingOptions<RootStackParamList> = {
@@ -84,11 +107,24 @@ interface AppNavigatorProps {
   showOnboarding?: boolean;
   onOnboardingComplete?: () => void;
   onOnboardingSkip?: () => void;
+  observeNavigationContainer?: typeof import('expo-observe/integrations/react-navigation').ObserveNavigationContainer;
+  observeInteractiveMarker?: typeof import('expo-observe').ObserveInteractiveMarker;
+  onNavigationReady?: () => void;
 }
 
-export default function AppNavigator({ showOnboarding, onOnboardingComplete, onOnboardingSkip }: AppNavigatorProps) {
+export default function AppNavigator({
+  showOnboarding,
+  onOnboardingComplete,
+  onOnboardingSkip,
+  observeNavigationContainer,
+  observeInteractiveMarker,
+  onNavigationReady,
+}: AppNavigatorProps) {
   const { isDark, colors } = useTheme();
-  const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  const navigationRef = useRef<AppNavigationRef | null>(null);
+  const setNavigationRef = useCallback((value: unknown) => {
+    navigationRef.current = isAppNavigationRef(value) ? value : null;
+  }, []);
   const chatRepoOwner = useAIStore((state) => state.chatRepoOwner);
   const chatRepoName = useAIStore((state) => state.chatRepoName);
   const showChatRepoPicker = useAIHubStore((state) => state.pickerVisible);
@@ -136,16 +172,16 @@ export default function AppNavigator({ showOnboarding, onOnboardingComplete, onO
   const hasNavigatedToInterstitial = React.useRef(false);
   useEffect(() => {
     if (!interstitialEligible || isPro || hasNavigatedToInterstitial.current) return;
-    if (!navigationRef.isReady()) return;
+    if (!navigationRef.current?.isReady()) return;
     hasNavigatedToInterstitial.current = true;
     markInterstitialShown();
-    navigationRef.navigate('Paywall');
+    navigationRef.current.navigate('Paywall');
   }, [interstitialEligible, isPro, markInterstitialShown, navigationRef, navigationReady]);
 
   useEffect(() => {
     if (showOnboarding) return;
-    if (navigationRef.isReady()) {
-      navigationRef.reset({
+    if (navigationRef.current?.isReady()) {
+      navigationRef.current.reset({
         index: 0,
         routes: [{ name: 'MainTabs' }],
       });
@@ -165,9 +201,10 @@ export default function AppNavigator({ showOnboarding, onOnboardingComplete, onO
     },
   };
   const hasChatRepo = Boolean(chatRepoOwner && chatRepoName);
+  const Navigation = observeNavigationContainer ?? NavigationContainer;
 
   const handleStateChange = useCallback(() => {
-    const routeName = navigationRef.getCurrentRoute()?.name;
+    const routeName = navigationRef.current?.getCurrentRoute()?.name;
     setCurrentRouteName(routeName);
 
     if (routeName === 'ChatThreadList' && !hasChatRepo) {
@@ -178,8 +215,8 @@ export default function AppNavigator({ showOnboarding, onOnboardingComplete, onO
   const handleCloseChatRepoPicker = useCallback(() => {
     closeChatRepoPicker();
 
-    if (navigationRef.isReady() && navigationRef.getCurrentRoute()?.name === 'ChatThreadList' && !hasChatRepo && navigationRef.canGoBack()) {
-      navigationRef.goBack();
+    if (navigationRef.current?.isReady() && navigationRef.current.getCurrentRoute()?.name === 'ChatThreadList' && !hasChatRepo && navigationRef.current.canGoBack()) {
+      navigationRef.current.goBack();
     }
   }, [hasChatRepo, navigationRef, closeChatRepoPicker]);
 
@@ -190,25 +227,40 @@ export default function AppNavigator({ showOnboarding, onOnboardingComplete, onO
   const handleGoToSettings = useCallback(() => {
     closeChatRepoPicker();
 
-    if (navigationRef.isReady()) {
-      navigationRef.navigate('MainTabs', { screen: 'SettingsTab' });
+    if (navigationRef.current?.isReady()) {
+      navigationRef.current.navigate('MainTabs', { screen: 'SettingsTab' });
     }
   }, [navigationRef, closeChatRepoPicker]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer
+      <Navigation
         linking={linking}
         theme={navigationTheme}
-        ref={navigationRef}
+        ref={setNavigationRef}
         onReady={() => {
           handleStateChange();
           setNavigationReady(true);
+          onNavigationReady?.();
         }}
         onStateChange={handleStateChange}
       >
         <View style={{ flex: 1 }}>
-          <Stack.Navigator initialRouteName={showOnboarding ? 'Onboarding' : 'MainTabs'}>
+          <Stack.Navigator
+            initialRouteName={showOnboarding ? 'Onboarding' : 'MainTabs'}
+            screenLayout={
+              observeInteractiveMarker
+                ? ({ route, children }) => (
+                    <>
+                      {children}
+                      {navigationReady && route.name !== 'MainTabs'
+                        ? React.createElement(observeInteractiveMarker)
+                        : null}
+                    </>
+                  )
+                : undefined
+            }
+          >
             <Stack.Screen
               name="Onboarding"
               options={{ headerShown: false }}
@@ -230,11 +282,14 @@ export default function AppNavigator({ showOnboarding, onOnboardingComplete, onO
                 />
               )}
             </Stack.Screen>
-            <Stack.Screen 
-              name="MainTabs" 
-              component={TabNavigator}
-              options={{ headerShown: false }}
-            />
+            <Stack.Screen name="MainTabs" options={{ headerShown: false }}>
+              {() => (
+                <TabNavigator
+                  observeInteractiveMarker={observeInteractiveMarker}
+                  navigationReady={navigationReady}
+                />
+              )}
+            </Stack.Screen>
             <Stack.Screen 
               name="NoteEditor" 
               component={NoteEditorScreen}
@@ -368,7 +423,7 @@ export default function AppNavigator({ showOnboarding, onOnboardingComplete, onO
             <AppFloatingGitButton />
           ) : null}
         </View>
-      </NavigationContainer>
+      </Navigation>
         <ChatRepoPickerModal
           visible={showChatRepoPicker}
           onClose={handleCloseChatRepoPicker}

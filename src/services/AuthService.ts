@@ -26,6 +26,7 @@ import {
   hasEmptyRepositorySelection,
 } from './git/contracts';
 import { canCreateAdditionalIdentity } from './TierLimits';
+import { telemetryService } from './TelemetryService';
 
 export interface GitHubUser {
   id: number;
@@ -513,6 +514,7 @@ export class AuthService {
       );
     }
 
+    telemetryService.trackGitHostAction(input.provider);
     return { ok: true, account, host: toHostSummary(host) };
   }
 

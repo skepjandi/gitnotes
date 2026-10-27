@@ -4399,6 +4399,13 @@ expo-alternate-app-icons@^8.0.0:
   resolved "https://registry.yarnpkg.com/expo-alternate-app-icons/-/expo-alternate-app-icons-8.0.0.tgz#c53fa4c2caa5934d7bb0161240de9b73292e8a63"
   integrity sha512-iqvcxu3fNPtOtZ/y0/VPlxol9WUhkvbj7VI6SMwSAEAgOZ1D5k7KvF54U0oLC/i0k+HL0YOaIuZcLJuLaphIIw==
 
+expo-app-metrics@~57.0.23:
+  version "57.0.23"
+  resolved "https://registry.yarnpkg.com/expo-app-metrics/-/expo-app-metrics-57.0.23.tgz#6cec8bbdb21f8e89d4d6b554662f9b3a4cf7ffd2"
+  integrity sha512-2CCy9GEV3kDJHQvOTr1gkY64hBnWNa5FFpkffD2sJ6OHJ8YPNywAw5hAnSOeQBFokVMMs0bC9C4et/DkkvZJOA==
+  dependencies:
+    expo-updates-interface "~57.0.2"
+
 expo-application@~57.0.3:
   version "57.0.3"
   resolved "https://registry.yarnpkg.com/expo-application/-/expo-application-57.0.3.tgz#92d3f386e5a02b978c377a24e7eb32d1fcee1edb"
@@ -4493,6 +4500,11 @@ expo-document-picker@~57.0.2:
   version "57.0.2"
   resolved "https://registry.yarnpkg.com/expo-document-picker/-/expo-document-picker-57.0.2.tgz#d972b544ad121ef07c4cc6ee62d8b1e95c110d86"
   integrity sha512-vVBbBNg0piMJUIxjB+DR6JaZZpcSl90ZUoywLA/EgNHTfRkZW+9axP97UxM2a0Zm0W6WfH3cLzzGAEfP9OKGwg==
+
+expo-eas-client@~57.0.5:
+  version "57.0.5"
+  resolved "https://registry.yarnpkg.com/expo-eas-client/-/expo-eas-client-57.0.5.tgz#46c144c50699aba9f46799056b30cd3f0d1bc647"
+  integrity sha512-7Ut6TbaYZDURHZkhKRGZdLgq4EE7sHc6VrKAcU0Pzj1Bd+Nsb/XseViYuch2+X/+RvQMlzu8Eyf4YvBVpDCivQ==
 
 expo-file-system@~57.0.7:
   version "57.0.7"
@@ -4595,6 +4607,14 @@ expo-notifications@~57.0.18:
     badgin "^1.1.5"
     expo-application "~57.0.3"
     expo-constants "~57.0.18"
+
+expo-observe@~57.0.26:
+  version "57.0.26"
+  resolved "https://registry.yarnpkg.com/expo-observe/-/expo-observe-57.0.26.tgz#e25117625fe93083b3a2c25c58caceaae4436daa"
+  integrity sha512-OFB8JxU5AmHJMNqTkIef6M/zxCCPW90Gf0ZRmd0mA/3UeGM5WcTqPO6KskJdOltArCVBuCt3XtlwVHV+fYcLKQ==
+  dependencies:
+    expo-app-metrics "~57.0.23"
+    expo-eas-client "~57.0.5"
 
 expo-print@~57.0.2:
   version "57.0.2"

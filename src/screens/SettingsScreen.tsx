@@ -24,6 +24,7 @@ import { type GitHostRepository, type GitHostRepositoryResult } from '../service
 import { RepoFileSyncService } from '../services/RepoFileSyncService';
 import { TemplateRepoPreferenceService, type TemplateRepoPreference } from '../services/TemplateRepoPreferenceService';
 import { telemetryPreferenceService } from '../services/TelemetryPreferenceService';
+import { telemetryService } from '../services/TelemetryService';
 import { serializeTemplate, templateSlug } from '../services/TemplateMarkdownService';
 import { NoteSyncQueueService } from '../services/cloneSyncServiceImpl';
 
@@ -451,7 +452,8 @@ export default function SettingsScreen() {
     const throttled = createThrottledEmitter((phase, loaded, total) => setCloneProgress({ repoName: repo.name, phase, loaded, total }));
     try {
       const branch = repo.branch || 'main';
-      if (!(await GitFsService.isCloned({ repoPath: repo.path }))) {
+      const cloned = !(await GitFsService.isCloned({ repoPath: repo.path }));
+      if (cloned) {
         await GitFsService.clone({
           repoPath: repo.path,
           branch,
@@ -467,6 +469,7 @@ export default function SettingsScreen() {
         await GitFsService.removeRepo({ repoPath: repo.path }).catch(() => undefined);
         return;
       }
+      if (cloned) telemetryService.trackGitHostAction(repo.provider ?? 'github');
       throttled.flush();
       setCloneProgress(null);
       void refreshLfsPending([repo.path]);
@@ -662,6 +665,9 @@ export default function SettingsScreen() {
     setSyncingRepo(repo.path);
     try {
       const result = await RepoFileSyncService.syncRepoFiles(repo.path);
+      if (result.errors.length === 0) {
+        telemetryService.trackGitHostAction('github');
+      }
       HapticService.success();
       if (result.created > 0) {
         await refreshNotes();

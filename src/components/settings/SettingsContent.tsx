@@ -1343,7 +1343,7 @@ export function SettingsContent(props: SettingsContentProps) {
               accessibilityRole="switch"
               accessibilityLabel={t('settings.telemetry.label', { defaultValue: 'Share optional telemetry' })}
               accessibilityHint={t('settings.telemetry.hint', {
-                defaultValue: 'Covers EAS diagnostics and GitNotēs usage counters. Turning this off stops both.',
+                defaultValue: 'Off stops future sends. If enabled after launch without EAS loaded, startup metrics begin next launch.',
               })}
             />
           }
@@ -1354,7 +1354,7 @@ export function SettingsContent(props: SettingsContentProps) {
             </Text>
             <Text style={[styles.settingValue, { color: colors.textSecondary, fontSize: 12, marginTop: 2 }]}>
               {t('settings.telemetry.description', {
-                defaultValue: 'Covers EAS diagnostics and GitNotēs usage counters. Turning this off stops both.',
+                defaultValue: 'EAS reports optional startup/per-screen performance and unhandled errors. Its pseudonymous install ID and captured error messages/stacks may be sensitive. Anonymous usage counters are also sent. Off stops future dispatch; local capture can continue until app close.',
               })}
             </Text>
           </View>

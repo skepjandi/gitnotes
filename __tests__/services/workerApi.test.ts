@@ -79,6 +79,44 @@ describe('workerApi', () => {
     });
   });
 
+  describe('usage.recordEvent', () => {
+    it('posts app_open without adding device or time fields', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve('{"accepted":true}'),
+      });
+
+      await workerApi.usage.recordEvent({ event: 'app_open' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        `${WORKER_BASE_URL}/usage/events`,
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ event: 'app_open' }),
+        })
+      );
+    });
+
+    it('posts only an allow-listed Git host with git_host_action', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve('{"accepted":true}'),
+      });
+
+      await workerApi.usage.recordEvent({ event: 'git_host_action', host: 'forgejo' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        `${WORKER_BASE_URL}/usage/events`,
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ event: 'git_host_action', host: 'forgejo' }),
+        })
+      );
+    });
+  });
+
   describe('oauth.initiate', () => {
     it('calls POST /oauth/initiate with correct body', async () => {
       const mockResponse = {

@@ -25,6 +25,11 @@ import { TabBar } from '../components/ui';
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
 
+type TabNavigatorProps = {
+  observeInteractiveMarker?: typeof import('expo-observe').ObserveInteractiveMarker;
+  navigationReady?: boolean;
+};
+
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
 const TAB_ICONS: Record<string, { focused: IoniconName; outline: IoniconName; labelKey: string }> = {
@@ -137,7 +142,10 @@ const railStyles = StyleSheet.create({
   },
 });
 
-export default function TabNavigator() {
+export default function TabNavigator({
+  observeInteractiveMarker,
+  navigationReady,
+}: TabNavigatorProps) {
   const { isTablet } = useResponsive();
   const { style, colors } = useTheme();
   const { t } = useTranslation();
@@ -153,6 +161,16 @@ export default function TabNavigator() {
 
 return (
     <Tab.Navigator
+      screenLayout={
+        observeInteractiveMarker
+          ? ({ children }) => (
+              <>
+                {children}
+                {navigationReady ? React.createElement(observeInteractiveMarker) : null}
+              </>
+            )
+          : undefined
+      }
       tabBar={
         isPaywallVisible
           ? () => null

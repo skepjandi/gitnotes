@@ -29,6 +29,8 @@ import {
   type GitHubAppRenewalRequest,
   type GitHubAppRenewalResponse,
   type HealthResponse,
+  type UsageEventRequest,
+  type UsageEventResponse,
   type ReferralCreateRequest,
   type ReferralCreateResponse,
   type ReferralCompleteRequest,
@@ -152,6 +154,15 @@ export const workerApi = {
    */
   async health(signal?: AbortSignal): Promise<HealthResponse> {
     return request<HealthResponse>("/health", "GET", undefined, signal);
+  },
+
+  usage: {
+    /**
+     * Record one allow-listed aggregate usage event.
+     */
+    async recordEvent(event: UsageEventRequest, signal?: AbortSignal): Promise<UsageEventResponse> {
+      return request<UsageEventResponse>("/usage/events", "POST", event, signal);
+    },
   },
 
   /**

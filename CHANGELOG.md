@@ -8,6 +8,20 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-10-29
+
+### fix(settings): reflect system appearance in dark-mode toggle
+
+**What:** The app followed the device's dark appearance, but Settings showed the dark-mode toggle as off when theme mode was `system`.
+
+**Fix:** Drive the toggle from the resolved appearance so its state matches the active system theme.
+
+### fix(onboarding): hide floating Git button during setup
+
+**What:** The app-wide floating Git button appeared over first-run onboarding screens.
+
+**Fix:** Keep the button hidden until onboarding is complete.
+
 ## 2026-10-15
 
 ### fix(ios): open reviews in the App Store

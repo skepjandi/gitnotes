@@ -61,6 +61,7 @@ yarn eslint . --ext .ts,.tsx  # Linting
 - Use `@testing-library/react-native` for component tests.
 - Use `jest.mock()` for service dependencies, `Date.now()` mocking for cache tests.
 - Run `yarn jest __tests__/specific-file.test.ts --no-coverage --forceExit` for targeted testing.
+- Do not use screenshots or LLM visual inspection as test evidence. Verify behavior programmatically with unit, component, or integration tests where appropriate; leave manual feature testing to the user and state clearly what remains unverified in the PR.
 
 ## Self-Documenting Code
 

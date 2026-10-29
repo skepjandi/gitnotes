@@ -12,6 +12,8 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const originalDevReferralProgress = process.env.EXPO_PUBLIC_DEV_REFERRAL_PROGRESS;
+
 // ── Mock reset helper ─────────────────────────────────────────────────────────
 
 function resetAsyncStorage() {
@@ -25,6 +27,7 @@ function resetAsyncStorage() {
 const asyncStorageStore: Record<string, string> = {};
 
 beforeEach(() => {
+  delete process.env.EXPO_PUBLIC_DEV_REFERRAL_PROGRESS;
   Object.keys(asyncStorageStore).forEach((k) => delete asyncStorageStore[k]);
   resetAsyncStorage();
   AsyncStorage.getItem.mockImplementation(async (key: string) => asyncStorageStore[key] ?? null);
@@ -34,6 +37,14 @@ beforeEach(() => {
   AsyncStorage.removeItem.mockImplementation(async (key: string) => {
     delete asyncStorageStore[key];
   });
+});
+
+afterAll(() => {
+  if (originalDevReferralProgress === undefined) {
+    delete process.env.EXPO_PUBLIC_DEV_REFERRAL_PROGRESS;
+  } else {
+    process.env.EXPO_PUBLIC_DEV_REFERRAL_PROGRESS = originalDevReferralProgress;
+  }
 });
 
 // ── Mock workerApi ─────────────────────────────────────────────────────────────
@@ -88,8 +99,7 @@ function mockStatusResponse(progress: number, milestones: number[]) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
-// RED phase: these tests characterize the BROKEN behavior — they FAIL on the
-// current code because RewardEntitlementService has no identity scoping.
+// Regression coverage for identity-scoped reward entitlement cache behavior.
 // ════════════════════════════════════════════════════════════════════════════════
 
 describe('RewardEntitlementService account-scope cache isolation', () => {
@@ -97,7 +107,7 @@ describe('RewardEntitlementService account-scope cache isolation', () => {
     await RewardEntitlementService.clearCache();
   });
 
-  it('RED: account A status does not leak into account B getStatus()', async () => {
+  it('account A status does not leak into account B getStatus()', async () => {
     mockGetIdentityScope
       .mockResolvedValueOnce(SCOPE_A_GITHUB)
       .mockResolvedValueOnce(SCOPE_B_GITHUB);
@@ -119,7 +129,7 @@ describe('RewardEntitlementService account-scope cache isolation', () => {
     expect(cachedForB?.progress).not.toBe(3);
   });
 
-  it('RED: late response from account A does not overwrite account B cache', async () => {
+  it('late response from account A does not overwrite account B cache', async () => {
     // Account A fetch starts but resolves LATE (after switch to B)
     let resolveA: (v: unknown) => void;
     const promiseA = new Promise((resolve) => {
@@ -154,7 +164,7 @@ describe('RewardEntitlementService account-scope cache isolation', () => {
     expect(afterLateA?.progress).toBe(5); // Should still be B's progress, not A's
   });
 
-  it('RED: clearCache() removes AsyncStorage entry for current scope', async () => {
+  it('clearCache() removes AsyncStorage entry for current scope', async () => {
     mockGetIdentityScope.mockResolvedValue(SCOPE_A_GITHUB);
     mockReferralsStatus.mockResolvedValue(mockStatusResponse(3, [3]));
 
@@ -171,7 +181,7 @@ describe('RewardEntitlementService account-scope cache isolation', () => {
     expect(cacheKeys.length).toBe(0);
   });
 
-  it('RED: different identity kinds (github vs installation) use separate caches', async () => {
+  it('different identity kinds (github vs installation) use separate caches', async () => {
     mockGetIdentityScope
       .mockResolvedValueOnce(SCOPE_A_GITHUB)
       .mockResolvedValueOnce(SCOPE_INSTALL_A);
@@ -192,7 +202,7 @@ describe('RewardEntitlementService account-scope cache isolation', () => {
     expect(cached?.progress).not.toBe(7);
   });
 
-  it('RED: resetMemory() preserves per-identity AsyncStorage cache while clearing in-memory state', async () => {
+  it('resetMemory() preserves per-identity AsyncStorage cache while clearing in-memory state', async () => {
     mockGetIdentityScope.mockResolvedValueOnce(SCOPE_A_GITHUB);
     mockReferralsStatus.mockResolvedValueOnce(mockStatusResponse(3, [3]));
     await RewardEntitlementService.fetchStatus();
@@ -209,7 +219,7 @@ describe('RewardEntitlementService account-scope cache isolation', () => {
     expect(inMemoryAfterReset).toBeUndefined();
   });
 
-  it('RED: account A offline cache is preserved and restored when switching A→B→A', async () => {
+  it('account A offline cache is preserved and restored when switching A→B→A', async () => {
     mockGetIdentityScope.mockResolvedValueOnce(SCOPE_A_GITHUB);
     mockReferralsStatus.mockResolvedValueOnce(mockStatusResponse(3, [3]));
     await RewardEntitlementService.fetchStatus();
@@ -225,7 +235,7 @@ describe('RewardEntitlementService account-scope cache isolation', () => {
 });
 
 describe('SettingsScreen referral effect account-switch behavior', () => {
-  it('RED: SettingsScreen refresh effect has activeAccountId in dependency array', () => {
+  it('SettingsScreen refresh effect has activeAccountId in dependency array', () => {
     const path = require('path');
     const fs = require('fs');
     const worktreeRoot = path.resolve(__dirname, '../..');
@@ -245,7 +255,7 @@ describe('SettingsScreen referral effect account-switch behavior', () => {
     expect(effectBlock).not.toMatch(/\[\s*\]\s*;.*Hydrate referral status/);
   });
 
-  it('RED: SettingsScreen referral effect has disposed guard in cleanup and before setState calls', () => {
+  it('SettingsScreen referral effect has disposed guard in cleanup and before setState calls', () => {
     const path = require('path');
     const fs = require('fs');
     const worktreeRoot = path.resolve(__dirname, '../..');
@@ -274,7 +284,7 @@ describe('Generation guard — stale scope lookup race', () => {
     await RewardEntitlementService.clearCache();
   });
 
-  it('RED: slow A scope lookup resolves after resetMemory + B fetch; A must not corrupt B cache', async () => {
+  it('slow A scope lookup resolves after resetMemory + B fetch; A must not corrupt B cache', async () => {
     jest.useFakeTimers();
     mockGetIdentityScope.mockReset();
     mockReferralsStatus.mockReset();

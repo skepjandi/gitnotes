@@ -83,6 +83,7 @@ type SettingsContentProps = {
   headerHeight: number;
   tabBarHeight: number;
   theme: 'light' | 'dark' | 'system';
+  isDark: boolean;
   uiStyle: ThemeStyle;
   accounts: Account[];
   activeAccountId: string | null;
@@ -221,6 +222,7 @@ export function SettingsContent(props: SettingsContentProps) {
     headerHeight,
     tabBarHeight,
     theme,
+    isDark,
     uiStyle,
     activeAccountId,
     accountSummaries,
@@ -552,7 +554,7 @@ export function SettingsContent(props: SettingsContentProps) {
             <View className="flex-row items-center gap-2">
               <Toggle
                 testID="settings.toggle.theme"
-                value={theme === 'dark'}
+                value={isDark}
                 onValueChange={(value) => {
                   HapticService.selection();
                   setTheme(value ? 'dark' : 'light');

@@ -102,6 +102,26 @@ jest.mock('../../../src/contexts/ThemeContext', () => ({
   }),
 }));
 
+jest.mock('../../../src/components/ui', () => {
+  const React = require('react');
+  const actual = jest.requireActual('../../../src/components/ui');
+  const { Pressable } = require('react-native');
+
+  return {
+    ...actual,
+    Toggle: ({ testID, value, onValueChange }: {
+      testID: string;
+      value: boolean;
+      onValueChange: (next: boolean) => void;
+    }) => React.createElement(Pressable, {
+      testID,
+      accessibilityRole: 'switch',
+      accessibilityState: { checked: value },
+      onPress: () => onValueChange(!value),
+    }),
+  };
+});
+
 jest.mock('../../../src/hooks/useProviderAvailability', () => ({
   useProvidersAvailability: jest.fn(() => ({})),
 }));
@@ -150,6 +170,7 @@ interface TestSettingsContentProps {
   headerHeight: number;
   tabBarHeight: number;
   theme: 'light' | 'dark' | 'system';
+  isDark: boolean;
   uiStyle: 'flat' | 'neumorphic' | 'neo-brutalist' | 'retrofuturistic' | 'terminal-mono' | 'crt-green' | 'developer-desk';
   accounts: unknown[];
   activeAccountId: string | null;
@@ -247,6 +268,7 @@ function makeProps(overrides: Partial<TestSettingsContentProps> = {}): TestSetti
     headerHeight: 100,
     tabBarHeight: 80,
     theme: 'light',
+    isDark: false,
     uiStyle: 'flat',
     accounts: [],
     activeAccountId: null,
@@ -583,13 +605,20 @@ describe('SettingsContent style selector [four-way selector]', () => {
   });
 
   describe('Dark mode style toggle unaffected', () => {
+    it('reflects resolved dark appearance when system theme is enabled', () => {
+      const props = makeProps({ theme: 'system', isDark: true });
+      const { getByTestId } = render(<SettingsContent {...props} />);
+
+      expect(getByTestId('settings.toggle.theme').props.accessibilityState.checked).toBe(true);
+    });
+
     it('dark mode toggle is still present and functional', async () => {
       const setTheme = jest.fn();
       const props = makeProps({ isPro: true, theme: 'light', setTheme });
       const { getByTestId } = render(<SettingsContent {...props} />);
 
       await act(async () => {
-        fireEvent(getByTestId('settings.toggle.theme'), 'valueChange', true);
+        fireEvent.press(getByTestId('settings.toggle.theme'));
       });
       expect(setTheme).toHaveBeenCalledWith('dark');
     });

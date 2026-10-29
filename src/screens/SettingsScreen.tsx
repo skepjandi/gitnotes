@@ -1518,6 +1518,7 @@ export default function SettingsScreen() {
         headerHeight={headerHeight}
         tabBarHeight={tabBarHeight}
         theme={theme}
+        isDark={isDark}
         uiStyle={uiStyle}
         accounts={accounts}
         activeAccountId={activeAccountId}

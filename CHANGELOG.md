@@ -16,11 +16,15 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **Fix:** Drive the toggle from the resolved appearance so its state matches the active system theme.
 
+**PR:** [#1827](https://github.com/skepjandi/gitnotes/pull/1827)
+
 ### fix(onboarding): hide floating Git button during setup
 
 **What:** The app-wide floating Git button appeared over first-run onboarding screens.
 
 **Fix:** Keep the button hidden until onboarding is complete.
+
+**PR:** [#1827](https://github.com/skepjandi/gitnotes/pull/1827)
 
 ## 2026-10-15
 

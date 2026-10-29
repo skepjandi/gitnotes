@@ -419,7 +419,7 @@ export default function AppNavigator({
             )}
           </Stack.Navigator>
           <FloatingAIButton currentRouteName={currentRouteName} />
-          {floatingGitButtonHydrated && floatingGitButtonVisible ? (
+          {!showOnboarding && floatingGitButtonHydrated && floatingGitButtonVisible ? (
             <AppFloatingGitButton />
           ) : null}
         </View>

@@ -8,6 +8,16 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-10-30
+
+### fix(settings): shorten telemetry disclosure
+
+**What:** The telemetry description in Settings was difficult to scan.
+
+**Fix:** Condense the disclosure while retaining what is shared and the sensitive-error-data caveat.
+
+**PR:** [#1829](https://github.com/skepjandi/gitnotes/pull/1829)
+
 ## 2026-10-29
 
 ### fix(settings): reflect system appearance in dark-mode toggle

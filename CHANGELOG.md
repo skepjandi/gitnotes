@@ -16,6 +16,8 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **Fix:** Condense the disclosure while retaining what is shared and the sensitive-error-data caveat.
 
+**PR:** [#1829](https://github.com/skepjandi/gitnotes/pull/1829)
+
 ## 2026-10-29
 
 ### fix(settings): reflect system appearance in dark-mode toggle

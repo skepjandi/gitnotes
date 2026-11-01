@@ -373,3 +373,37 @@ describe('AccountStorage.getActiveToken OAuth fallback', () => {
     expect(token).toBeNull();
   });
 });
+
+describe('AccountStorage.getHostToken legacy OAuth cleanup', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  afterEach(async () => {
+    await SecureStore.clear();
+  });
+
+  it('removes a legacy OAuth token copied into PAT storage', async () => {
+    await SecureStore.setItemAsync(NATIVE_TOKEN_KEY, 'gho_old_access_token');
+    await SecureStore.setItemAsync(
+      NATIVE_OAUTH_KEY,
+      JSON.stringify({ ...makeOAuthRecord(OAUTH_ID), accessToken: 'gho_current_access_token' }),
+    );
+
+    const token = await AccountStorage.getHostToken(HOST_ID);
+
+    expect(token).toBeNull();
+    expect(await SecureStore.getItemAsync(NATIVE_TOKEN_KEY)).toBeNull();
+    expect(await AccountStorage.getOAuthCredential(HOST_ID)).not.toBeNull();
+  });
+
+  it('preserves a real PAT when an OAuth credential also exists', async () => {
+    await SecureStore.setItemAsync(NATIVE_TOKEN_KEY, 'ghp_personal_access_token');
+    await SecureStore.setItemAsync(NATIVE_OAUTH_KEY, JSON.stringify(makeOAuthRecord(OAUTH_ID)));
+
+    const token = await AccountStorage.getHostToken(HOST_ID);
+
+    expect(token).toBe('ghp_personal_access_token');
+    expect(await SecureStore.getItemAsync(NATIVE_TOKEN_KEY)).toBe('ghp_personal_access_token');
+  });
+});

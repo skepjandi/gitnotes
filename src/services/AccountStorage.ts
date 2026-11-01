@@ -757,7 +757,13 @@ export class AccountStorage {
   }
 
   static async getHostToken(hostId: string): Promise<string | null> {
-    return readHostToken(hostId);
+    const token = await readHostToken(hostId);
+    // Older OAuth callbacks copied gho_ access tokens into this PAT slot.
+    if (token?.startsWith('gho_') && await this.getOAuthCredential(hostId)) {
+      await deleteHostToken(hostId);
+      return null;
+    }
+    return token;
   }
 
   static async clearHostToken(hostId: string): Promise<void> {

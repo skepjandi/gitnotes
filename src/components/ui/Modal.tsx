@@ -58,6 +58,7 @@ export function Modal(props: ModalProps) {
       }
     : fullWidth
     ? {
+        width: '100%',
         padding: pad,
         maxHeight: slotHeight,
         backgroundColor: bgColor,

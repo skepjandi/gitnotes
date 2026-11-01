@@ -1788,7 +1788,7 @@ export default function SettingsScreen() {
               {t('settings.appIcon.default', { defaultValue: 'Default' })}
             </Text>
           </GroupRow>
-          <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 16, marginBottom: 8 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 16, marginBottom: 8, paddingHorizontal: 16 }}>
             Pro Icons
           </Text>
           {PRO_APP_ICON_OPTIONS.map((option) => {
@@ -1832,7 +1832,7 @@ export default function SettingsScreen() {
           })}
           {REFERRAL_APP_ICON_OPTIONS.length > 0 && (
             <>
-              <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 16, marginBottom: 8 }}>
+              <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 16, marginBottom: 8, paddingHorizontal: 16 }}>
                 Referral Rewards
               </Text>
               {REFERRAL_APP_ICON_OPTIONS.map((option) => {

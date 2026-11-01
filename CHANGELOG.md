@@ -16,6 +16,8 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **Fix:** Give full-width modal surfaces a definite width and center sort option labels.
 
+**PR:** [#1831](https://github.com/skepjandi/gitnotes/pull/1831)
+
 ## 2026-10-30
 
 ### fix(settings): shorten telemetry disclosure

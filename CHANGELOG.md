@@ -8,6 +8,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-11-01
+
+### fix(notes): repair sort popup layout
+
+**What:** The Notes sort popup shrink-wrapped its options, leaving direction buttons cramped.
+
+**Fix:** Give full-width modal surfaces a definite width and center sort option labels.
+
 ## 2026-10-30
 
 ### fix(settings): shorten telemetry disclosure

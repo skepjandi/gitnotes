@@ -154,6 +154,7 @@ export default function SortPicker({ currentSort, onSortChange, entityType, size
                         onPress={() => handleSelect({ field, direction })}
                         style={{
                           flex: 1,
+                          alignItems: 'center',
                           paddingVertical: tokens.spacing[3],
                           paddingHorizontal: tokens.spacing[3],
                           borderRadius: tokens.radii.md,

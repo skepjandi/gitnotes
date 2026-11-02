@@ -26,6 +26,17 @@ const availableGitLabRepo: GitHostRepository = {
   isPrivate: false,
 };
 
+const availableForgejoRepo: GitHostRepository = {
+  provider: 'forgejo',
+  owner: 'team',
+  repo: 'notes',
+  fullName: 'team/notes',
+  name: 'notes',
+  description: null,
+  isPrivate: true,
+  defaultBranch: 'main',
+};
+
 const unavailableGitea: GitHostRepositoryUnavailable = {
   kind: 'unavailable',
   provider: 'gitea',
@@ -182,6 +193,22 @@ describe('RepoPickerList (via SettingsModals)', () => {
     );
 
     expect(getByText('me/my-repo')).toBeTruthy();
+  });
+
+  it('renders the scoped Forgejo repository as selectable', () => {
+    const onSelectRepo = jest.fn();
+    const { getByTestId, getByText, queryByText } = render(
+      <SettingsModals
+        {...defaultProps}
+        discoverableRepos={[availableForgejoRepo]}
+        onSelectRepo={onSelectRepo}
+      />,
+    );
+
+    expect(getByText('team/notes')).toBeTruthy();
+    expect(queryByText('settings.noRepositoriesFound')).toBeNull();
+    fireEvent.press(getByTestId('settings-modals.button.select-repo'));
+    expect(onSelectRepo).toHaveBeenCalledWith(availableForgejoRepo);
   });
 
   it('renders OAuth repositories without PAT auth state', () => {

@@ -1,11 +1,14 @@
-import AccountStorage, { HostConnection, StoredAccount } from './AccountStorage';
+import AccountStorage, {
+  ForgejoRepositoryTokenTarget,
+  HostConnection,
+  StoredAccount,
+} from './AccountStorage';
 import { GitHubAppService } from './GitHubAppService';
 import { gitLabService } from './git/GitLabService';
 import {
   giteaHostService,
   forgejoHostService,
 } from './git/gitHostFactory';
-import type { ForgejoRepositoryTokenTarget } from './git/GiteaLikeHostService';
 import type { GitHostProvider } from './git/GitHost';
 import type {
   GitHubOAuthCredentialRecord,
@@ -497,6 +500,8 @@ export class AuthService {
       name: verified.name ?? verified.login,
       email: verified.email ?? null,
       avatarUrl: verified.avatar_url ?? null,
+      repositoryTokenTarget:
+        input.provider === 'forgejo' ? input.forgejoRepositoryToken : undefined,
       token: input.token,
     });
 

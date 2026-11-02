@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AccountStorage } from '../AccountStorage';
+import { AccountStorage, type ForgejoRepositoryTokenTarget } from '../AccountStorage';
 import type {
   GitHostBranch,
   GitHostContent,
@@ -32,12 +32,6 @@ export interface GiteaLikeRepo {
   default_branch?: string;
   size?: number;
   owner?: { login?: string };
-}
-
-export interface ForgejoRepositoryTokenTarget {
-  owner: string;
-  repo: string;
-  username: string;
 }
 
 export interface GiteaLikeBranch {
@@ -89,6 +83,21 @@ export interface GiteaLikeIssue {
   created_at: string;
   updated_at?: string;
   pull_request?: { url?: string } | null;
+}
+
+function isForgejoRepositoryTokenTarget(
+  value: unknown,
+): value is ForgejoRepositoryTokenTarget {
+  if (!value || typeof value !== 'object') return false;
+  const target = value as Record<string, unknown>;
+  return (
+    typeof target.owner === 'string' &&
+    target.owner.trim().length > 0 &&
+    typeof target.repo === 'string' &&
+    target.repo.trim().length > 0 &&
+    typeof target.username === 'string' &&
+    target.username.trim().length > 0
+  );
 }
 
 /**
@@ -178,8 +187,8 @@ export class GiteaLikeHostService implements GitHostService, GitHostWriteService
     const nextBaseUrl = (baseUrl?.trim() || this.baseUrl).replace(/\/+$/, '');
     let user: GiteaLikeUser | null;
     if (repositoryToken) {
+      if (!isForgejoRepositoryTokenTarget(repositoryToken)) return null;
       const { owner, repo, username } = repositoryToken;
-      if (!owner.trim() || !repo.trim() || !username.trim()) return null;
       const accessibleRepo = await this.authedFetch<GiteaLikeRepo>(
         `${nextBaseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
         token,
@@ -408,6 +417,7 @@ export class GiteaLikeHostService implements GitHostService, GitHostWriteService
   async listRepositories(hostId?: string): Promise<GitHostRepositoryResult[]> {
     let token = this.token;
     let baseUrl = this.baseUrl;
+    let repositoryTokenTarget: ForgejoRepositoryTokenTarget | undefined;
     if (hostId) {
       // Use AccountStorage as the source of truth for per-host credentials.
       // This matches how the token is stored by upsertHostConnection and
@@ -419,15 +429,32 @@ export class GiteaLikeHostService implements GitHostService, GitHostWriteService
       ]);
       if (hostToken) token = hostToken;
       if (hostConnection?.instanceBaseUrl) baseUrl = hostConnection.instanceBaseUrl;
+      if (
+        this.provider === 'forgejo' &&
+        isForgejoRepositoryTokenTarget(hostConnection?.repositoryTokenTarget)
+      ) {
+        repositoryTokenTarget = hostConnection.repositoryTokenTarget;
+      }
     }
     try {
-      const repos = await this.authedFetch<GiteaLikeRepo[]>(`${baseUrl}/user/repos`, token);
+      let repos: GiteaLikeRepo[] | null;
+      if (repositoryTokenTarget) {
+        const repo = await this.authedFetch<GiteaLikeRepo>(
+          `${baseUrl}/repos/${encodeURIComponent(repositoryTokenTarget.owner)}/${encodeURIComponent(repositoryTokenTarget.repo)}`,
+          token,
+        );
+        repos = repo ? [repo] : null;
+      } else {
+        repos = await this.authedFetch<GiteaLikeRepo[]>(`${baseUrl}/user/repos`, token);
+      }
       if (!repos) {
         return [
           {
             kind: 'unavailable',
             provider: this.provider,
-            reason: 'Network error',
+            reason: repositoryTokenTarget
+              ? `Could not reach or access ${repositoryTokenTarget.owner}/${repositoryTokenTarget.repo}. Check network, repository path, and token permissions.`
+              : 'Network error',
           },
         ];
       }

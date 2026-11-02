@@ -656,7 +656,7 @@
     "tokenLabel": "Personal access token",
     "tokenPlaceholder": "Paste token…",
     "repositoryScopedToken": "Repositorygebundenes Token",
-    "repositoryScopedTokenHelp": "Für ein Token mit Zugriff auf nur ein Repository. Gib den Benutzernamen des Token-Eigentümers und das Repository als owner/name ein und füge es anschließend manuell hinzu.",
+    "repositoryScopedTokenHelp": "Für ein Token mit Zugriff auf nur ein Repository. Gib den Benutzernamen des Token-Eigentümers und das Repository als owner/name ein. Nur dieses Repository wird in der Auswahl angezeigt.",
     "forgejoUsernameLabel": "Forgejo-Benutzername",
     "forgejoUsernamePlaceholder": "Benutzername des Token-Eigentümers",
     "forgejoRepositoryLabel": "Repository (owner/name)",

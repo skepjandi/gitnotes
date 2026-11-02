@@ -67,6 +67,12 @@ export interface AccountProfile {
   avatarUrl: string;
 }
 
+export interface ForgejoRepositoryTokenTarget {
+  owner: string;
+  repo: string;
+  username: string;
+}
+
 export interface HostConnection {
   /** Stable id; format `<accountId>:<provider>:<instanceKey>`. */
   id: string;
@@ -81,6 +87,7 @@ export interface HostConnection {
   name: string;
   email: string | null;
   avatarUrl: string | null;
+  repositoryTokenTarget?: ForgejoRepositoryTokenTarget;
   addedAt: number;
 }
 
@@ -718,11 +725,16 @@ export class AccountStorage {
       name: connection.name,
       email: connection.email,
       avatarUrl: connection.avatarUrl,
+      ...(connection.repositoryTokenTarget
+        ? { repositoryTokenTarget: connection.repositoryTokenTarget }
+        : {}),
       addedAt: Date.now(),
     };
 
     if (existingIndex >= 0) {
-      hosts[existingIndex] = { ...hosts[existingIndex], ...persisted, id };
+      const updated = { ...hosts[existingIndex], ...persisted, id };
+      if (!connection.repositoryTokenTarget) delete updated.repositoryTokenTarget;
+      hosts[existingIndex] = updated;
     } else {
       hosts.push(persisted);
     }

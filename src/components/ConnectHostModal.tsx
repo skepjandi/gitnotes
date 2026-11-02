@@ -15,7 +15,7 @@ import { useTheme, useTokens } from '../contexts/ThemeContext';
 import { Modal } from './ui';
 import { useAccounts } from '../contexts/AccountsContext';
 import { GIT_HOST_API_BASES, GIT_HOST_LABELS, type GitHostProvider } from '../services/git/GitHost';
-import type { ForgejoRepositoryTokenTarget } from '../services/git/GiteaLikeHostService';
+import type { ForgejoRepositoryTokenTarget } from '../services/AccountStorage';
 
 type ThemeColors = {
   background: string;

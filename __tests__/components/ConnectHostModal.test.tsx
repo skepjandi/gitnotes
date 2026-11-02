@@ -35,9 +35,9 @@ jest.mock('react-native', () => {
     FlatList: 'FlatList',
     SectionList: 'SectionList',
     RefreshControl: 'RefreshControl',
+    Switch: 'Switch',
     Modal: 'Modal',
     StatusBar: 'StatusBar',
-    Switch: 'Switch',
     Dimensions: { get: () => ({ width: 375, height: 812 }), addEventListener: fn, removeEventListener: fn },
     PixelRatio: { get: () => 2, getFontScale: () => 1 },
     NativeModules: {},
@@ -130,6 +130,57 @@ const enterToken = (getByPlaceholderText: (text: string) => ReturnType<typeof re
 describe('ConnectHostModal token error guidance', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockTestToken.mockReset();
+    mockConnectHost.mockReset();
+  });
+
+  it('requires Forgejo repository details before testing a scoped token', async () => {
+    const { getByPlaceholderText, getByText, getByTestId } = renderModal();
+    fireEvent.press(getByTestId('connect-host-provider-forgejo'));
+    fireEvent(getByTestId('connect-host-forgejo-repo-scoped-toggle'), 'valueChange', true);
+    enterToken(getByPlaceholderText, 'forgejo_repo_token');
+
+    await act(async () => {
+      fireEvent.press(getByText('connectHost.test'));
+    });
+
+    expect(alert).toHaveBeenCalledWith(
+      'connectHost.error.forgejoRepositoryDetailsRequired',
+    );
+    expect(mockTestToken).not.toHaveBeenCalled();
+  });
+
+  it('passes the Forgejo repo target for repo-scoped token validation and save', async () => {
+    mockTestToken.mockResolvedValueOnce({ ok: true });
+    mockConnectHost.mockResolvedValueOnce({ ok: true });
+
+    const { getByPlaceholderText, getByText, getByTestId } = renderModal();
+    fireEvent.press(getByTestId('connect-host-provider-forgejo'));
+    fireEvent(getByTestId('connect-host-forgejo-repo-scoped-toggle'), 'valueChange', true);
+    fireEvent.changeText(getByTestId('connect-host-forgejo-username-input'), 'writer');
+    fireEvent.changeText(getByTestId('connect-host-forgejo-repository-input'), 'team/notes');
+    enterToken(getByPlaceholderText, 'forgejo_repo_token');
+
+    await act(async () => {
+      fireEvent.press(getByText('connectHost.test'));
+    });
+    await act(async () => {
+      fireEvent.press(getByText('connectHost.save'));
+    });
+
+    expect(mockTestToken).toHaveBeenCalledWith(
+      'forgejo',
+      'forgejo_repo_token',
+      'https://codeberg.org/api/v1',
+      { owner: 'team', repo: 'notes', username: 'writer' },
+    );
+    expect(mockConnectHost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'forgejo',
+        token: 'forgejo_repo_token',
+        forgejoRepositoryToken: { owner: 'team', repo: 'notes', username: 'writer' },
+      }),
+    );
   });
 
   describe('handleTest', () => {

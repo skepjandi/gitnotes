@@ -8,6 +8,16 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-11-02
+
+### fix(forgejo): support repository-scoped tokens
+
+**What:** Forgejo repository-scoped tokens cannot call `/user`, so GitNotēs rejected valid tokens during connection.
+
+**Fix:** Let users verify a scoped token against its target repository and supply the Forgejo username used for Git credentials.
+
+**Issue:** [#1833](https://github.com/skepjandi/gitnotes/issues/1833)
+
 ## 2026-11-01
 
 ### fix(notes): repair sort popup layout

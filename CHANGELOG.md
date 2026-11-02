@@ -14,7 +14,7 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **What:** Forgejo repository-scoped tokens cannot call `/user`, so GitNotēs rejected valid tokens during connection.
 
-**Fix:** Let users verify a scoped token against its target repository and supply the Forgejo username used for Git credentials.
+**Fix:** Let users verify a scoped token against its target repository and supply the Forgejo username used for Git credentials. List that repository in the picker instead of requesting `/user/repos`.
 
 **Issue:** [#1833](https://github.com/skepjandi/gitnotes/issues/1833)
 

@@ -600,7 +600,7 @@
     "tokenLabel": "Personal access token",
     "tokenPlaceholder": "Paste token…",
     "repositoryScopedToken": "Repository-scoped token",
-    "repositoryScopedTokenHelp": "Use this for a token restricted to one repository. Enter the token owner's username and repository as owner/name, then add that repository manually.",
+    "repositoryScopedTokenHelp": "Use this for a token restricted to one repository. Enter the token owner's username and repository as owner/name. Only that repository will appear in the picker.",
     "forgejoUsernameLabel": "Forgejo username",
     "forgejoUsernamePlaceholder": "Token owner's username",
     "forgejoRepositoryLabel": "Repository (owner/name)",

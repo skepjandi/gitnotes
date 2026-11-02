@@ -218,6 +218,38 @@ describe('AuthService.connectHost — Free/Pro identity boundary', () => {
 
       expect(result.ok).toBe(true);
     });
+
+    it('stores the target repository with a Forgejo-scoped token connection', async () => {
+      const repositoryTokenTarget = {
+        owner: 'team',
+        repo: 'notes',
+        username: 'forgejouser',
+      };
+      listAccountsSpy.mockResolvedValue([{
+        id: 'acc-forgejo',
+        login: 'forgejouser',
+        name: 'Forgejo User',
+        email: null,
+        avatarUrl: null,
+        addedAt: Date.now(),
+      }]);
+      listHostConnectionsSpy.mockResolvedValue([]);
+      upsertHostConnectionSpy.mockResolvedValue(
+        makeHost('acc-forgejo', 'forgejo', 'http://forgejo.local/api/v1'),
+      );
+
+      const result = await AuthService.connectHost({
+        provider: 'forgejo',
+        token: 'repo-token',
+        instanceBaseUrl: 'http://forgejo.local/api/v1',
+        forgejoRepositoryToken: repositoryTokenTarget,
+      });
+
+      expect(result.ok).toBe(true);
+      expect(upsertHostConnectionSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ repositoryTokenTarget }),
+      );
+    });
   });
 
   describe('Pro user: unlimited identities', () => {
@@ -281,6 +313,7 @@ describe('AuthService.connectHost — Free/Pro identity boundary', () => {
 
       expect(result.ok).toBe(true);
     });
+
   });
 
   describe('Rejection: correct reason returned for Free tier', () => {

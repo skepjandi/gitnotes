@@ -407,3 +407,40 @@ describe('AccountStorage.getHostToken legacy OAuth cleanup', () => {
     expect(await SecureStore.getItemAsync(NATIVE_TOKEN_KEY)).toBe('ghp_personal_access_token');
   });
 });
+
+describe('AccountStorage.upsertHostConnection Forgejo repository target', () => {
+  it('persists scoped repository identity for repository discovery', async () => {
+    const repositoryTokenTarget = {
+      owner: 'team',
+      repo: 'notes',
+      username: 'writer',
+    };
+    await AccountStorage.writeAccounts([
+      {
+        id: 'acc-forgejo',
+        login: 'writer',
+        name: 'Writer',
+        email: '',
+        avatarUrl: '',
+        addedAt: Date.now(),
+        hostIds: [],
+      },
+    ]);
+
+    const connection = await AccountStorage.upsertHostConnection({
+      accountId: 'acc-forgejo',
+      provider: 'forgejo',
+      instanceBaseUrl: 'http://forgejo.local/api/v1',
+      hostLogin: 'writer',
+      hostUserId: 0,
+      name: 'Writer',
+      email: null,
+      avatarUrl: null,
+      repositoryTokenTarget,
+    });
+
+    await expect(AccountStorage.getHostConnection(connection.id)).resolves.toMatchObject({
+      repositoryTokenTarget,
+    });
+  });
+});

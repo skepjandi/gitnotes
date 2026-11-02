@@ -656,7 +656,7 @@
     "tokenLabel": "Personal access token",
     "tokenPlaceholder": "Paste token…",
     "repositoryScopedToken": "Jeton limité à un dépôt",
-    "repositoryScopedTokenHelp": "À utiliser pour un jeton limité à un seul dépôt. Saisissez le nom d'utilisateur propriétaire du jeton et le dépôt au format owner/name, puis ajoutez ce dépôt manuellement.",
+    "repositoryScopedTokenHelp": "À utiliser pour un jeton limité à un seul dépôt. Saisissez le nom d'utilisateur propriétaire du jeton et le dépôt au format owner/name. Seul ce dépôt apparaîtra dans la liste.",
     "forgejoUsernameLabel": "Nom d'utilisateur Forgejo",
     "forgejoUsernamePlaceholder": "Utilisateur propriétaire du jeton",
     "forgejoRepositoryLabel": "Dépôt (owner/name)",

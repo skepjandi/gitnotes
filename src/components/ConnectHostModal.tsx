@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Switch,
   StyleSheet,
   Alert,
 } from 'react-native';
@@ -14,6 +15,7 @@ import { useTheme, useTokens } from '../contexts/ThemeContext';
 import { Modal } from './ui';
 import { useAccounts } from '../contexts/AccountsContext';
 import { GIT_HOST_API_BASES, GIT_HOST_LABELS, type GitHostProvider } from '../services/git/GitHost';
+import type { ForgejoRepositoryTokenTarget } from '../services/git/GiteaLikeHostService';
 
 type ThemeColors = {
   background: string;
@@ -66,6 +68,16 @@ const getTokenErrorKey = (reason: TokenReason | undefined, provider: string): st
   return 'connectHost.error.invalidTokenBody';
 };
 
+function parseForgejoRepositoryTokenTarget(
+  username: string,
+  repository: string,
+): ForgejoRepositoryTokenTarget | null {
+  const [owner, repo, ...extra] = repository.trim().split('/').map((part) => part.trim());
+  const login = username.trim();
+  if (!login || !owner || !repo || extra.length > 0) return null;
+  return { owner, repo, username: login };
+}
+
 /**
  * Modal that lets a user add a new host connection (or replace a token for
  * an existing one). Operates in 3 conceptual steps:
@@ -91,6 +103,9 @@ export function ConnectHostModal({
   const [token, setToken] = useState('');
   const [tokenVisible, setTokenVisible] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [forgejoRepositoryScoped, setForgejoRepositoryScoped] = useState(false);
+  const [forgejoUsername, setForgejoUsername] = useState('');
+  const [forgejoRepository, setForgejoRepository] = useState('');
 
   // Reset state when modal closes or preset changes.
   useEffect(() => {
@@ -101,15 +116,27 @@ export function ConnectHostModal({
       setToken('');
       setTokenVisible(false);
       setIsTesting(false);
+      setForgejoRepositoryScoped(false);
+      setForgejoUsername('');
+      setForgejoRepository('');
     }
   }, [visible, presetProvider]);
 
   const supportsSelfHost = provider !== 'github';
+  const forgejoRepositoryTokenTarget =
+    provider === 'forgejo' && forgejoRepositoryScoped
+      ? parseForgejoRepositoryTokenTarget(forgejoUsername, forgejoRepository)
+      : undefined;
 
   const handleSelectProvider = useCallback(
     (next: GitHostProvider) => {
       setProvider(next);
       setInstanceBaseUrl(GIT_HOST_API_BASES[next]);
+      if (next !== 'forgejo') {
+        setForgejoRepositoryScoped(false);
+        setForgejoUsername('');
+        setForgejoRepository('');
+      }
     },
     [],
   );
@@ -117,6 +144,10 @@ export function ConnectHostModal({
   const handleTest = useCallback(async () => {
     if (!token.trim()) {
       Alert.alert(t('connectHost.error.tokenRequired'));
+      return;
+    }
+    if (provider === 'forgejo' && forgejoRepositoryScoped && !forgejoRepositoryTokenTarget) {
+      Alert.alert(t('connectHost.error.forgejoRepositoryDetailsRequired'));
       return;
     }
     if (supportsSelfHost && instanceBaseUrl) {
@@ -139,6 +170,7 @@ export function ConnectHostModal({
         provider,
         token.trim(),
         supportsSelfHost ? instanceBaseUrl.trim() : null,
+        forgejoRepositoryTokenTarget ?? undefined,
       );
       if (result.ok) {
         Alert.alert(t('connectHost.success.testTitle'), t('connectHost.success.testBody'));
@@ -154,11 +186,24 @@ export function ConnectHostModal({
     } finally {
       setIsTesting(false);
     }
-  }, [provider, token, supportsSelfHost, instanceBaseUrl, testToken, t]);
+  }, [
+    provider,
+    token,
+    supportsSelfHost,
+    instanceBaseUrl,
+    forgejoRepositoryScoped,
+    forgejoRepositoryTokenTarget,
+    testToken,
+    t,
+  ]);
 
   const handleSave = useCallback(async () => {
     if (!token.trim()) {
       Alert.alert(t('connectHost.error.tokenRequired'));
+      return;
+    }
+    if (provider === 'forgejo' && forgejoRepositoryScoped && !forgejoRepositoryTokenTarget) {
+      Alert.alert(t('connectHost.error.forgejoRepositoryDetailsRequired'));
       return;
     }
     setIsTesting(true);
@@ -167,6 +212,7 @@ export function ConnectHostModal({
         provider,
         token: token.trim(),
         instanceBaseUrl: supportsSelfHost ? instanceBaseUrl.trim() : undefined,
+        forgejoRepositoryToken: forgejoRepositoryTokenTarget ?? undefined,
         accountId,
       });
       if (!result.ok) {
@@ -183,7 +229,18 @@ export function ConnectHostModal({
     } finally {
       setIsTesting(false);
     }
-  }, [provider, token, supportsSelfHost, instanceBaseUrl, accountId, connectHost, onClose, t]);
+  }, [
+    provider,
+    token,
+    supportsSelfHost,
+    instanceBaseUrl,
+    forgejoRepositoryScoped,
+    forgejoRepositoryTokenTarget,
+    accountId,
+    connectHost,
+    onClose,
+    t,
+  ]);
 
   const accountLoginHint = useMemo(() => {
     if (!accountId) return null;
@@ -299,6 +356,99 @@ export function ConnectHostModal({
               }}
             />
           </>
+        ) : null}
+
+        {provider === 'forgejo' ? (
+          <View style={{ marginBottom: spacing[3] }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}>
+                {t('connectHost.repositoryScopedToken')}
+              </Text>
+              <Switch
+                value={forgejoRepositoryScoped}
+                onValueChange={setForgejoRepositoryScoped}
+                testID="connect-host-forgejo-repo-scoped-toggle"
+                accessibilityLabel={t('connectHost.repositoryScopedToken')}
+              />
+            </View>
+            <Text
+              style={{
+                color: colors.textSecondary,
+                fontSize: 12,
+                marginTop: spacing[1],
+              }}
+            >
+              {t('connectHost.repositoryScopedTokenHelp')}
+            </Text>
+            {forgejoRepositoryScoped ? (
+              <>
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: 13,
+                    marginTop: spacing[3],
+                    marginBottom: spacing[2],
+                  }}
+                >
+                  {t('connectHost.forgejoUsernameLabel')}
+                </Text>
+                <TextInput
+                  value={forgejoUsername}
+                  onChangeText={setForgejoUsername}
+                  placeholder={t('connectHost.forgejoUsernamePlaceholder')}
+                  placeholderTextColor={colors.textSecondary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  testID="connect-host-forgejo-username-input"
+                  style={{
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 12,
+                    paddingHorizontal: spacing[3],
+                    paddingVertical: spacing[3],
+                    color: colors.text,
+                    backgroundColor: colors.surface,
+                    fontSize: 14,
+                  }}
+                />
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: 13,
+                    marginTop: spacing[3],
+                    marginBottom: spacing[2],
+                  }}
+                >
+                  {t('connectHost.forgejoRepositoryLabel')}
+                </Text>
+                <TextInput
+                  value={forgejoRepository}
+                  onChangeText={setForgejoRepository}
+                  placeholder={t('connectHost.forgejoRepositoryPlaceholder')}
+                  placeholderTextColor={colors.textSecondary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  testID="connect-host-forgejo-repository-input"
+                  style={{
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: 12,
+                    paddingHorizontal: spacing[3],
+                    paddingVertical: spacing[3],
+                    color: colors.text,
+                    backgroundColor: colors.surface,
+                    fontSize: 14,
+                  }}
+                />
+              </>
+            ) : null}
+          </View>
         ) : null}
 
         <Text

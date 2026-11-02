@@ -34,6 +34,12 @@ export interface GiteaLikeRepo {
   owner?: { login?: string };
 }
 
+export interface ForgejoRepositoryTokenTarget {
+  owner: string;
+  repo: string;
+  username: string;
+}
+
 export interface GiteaLikeBranch {
   name: string;
 }
@@ -164,20 +170,32 @@ export class GiteaLikeHostService implements GitHostService, GitHostWriteService
     }
   }
 
-  async setToken(token: string, baseUrl?: string): Promise<GiteaLikeUser | null> {
-    this.token = token;
-    await AsyncStorage.setItem(this.tokenKey(), token);
-    if (baseUrl) {
-      this.setBaseUrl(baseUrl);
-      await AsyncStorage.setItem(this.baseKey(), this.baseUrl);
-    }
-    const user = await this.fetchUser();
-    this.user = user;
-    if (user) {
-      await AsyncStorage.setItem(this.userKey(), JSON.stringify(user));
+  async setToken(
+    token: string,
+    baseUrl?: string,
+    repositoryToken?: ForgejoRepositoryTokenTarget,
+  ): Promise<GiteaLikeUser | null> {
+    const nextBaseUrl = (baseUrl?.trim() || this.baseUrl).replace(/\/+$/, '');
+    let user: GiteaLikeUser | null;
+    if (repositoryToken) {
+      const { owner, repo, username } = repositoryToken;
+      if (!owner.trim() || !repo.trim() || !username.trim()) return null;
+      const accessibleRepo = await this.authedFetch<GiteaLikeRepo>(
+        `${nextBaseUrl}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
+        token,
+      );
+      user = accessibleRepo ? { id: 0, login: username, full_name: username } : null;
     } else {
-      await AsyncStorage.removeItem(this.userKey());
+      user = await this.authedFetch<GiteaLikeUser>(`${nextBaseUrl}/user`, token);
     }
+    if (!user) return null;
+
+    this.token = token;
+    this.setBaseUrl(nextBaseUrl);
+    await AsyncStorage.setItem(this.tokenKey(), token);
+    if (baseUrl) await AsyncStorage.setItem(this.baseKey(), this.baseUrl);
+    this.user = user;
+    await AsyncStorage.setItem(this.userKey(), JSON.stringify(user));
     return user;
   }
 

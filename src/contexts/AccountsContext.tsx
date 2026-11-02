@@ -51,6 +51,7 @@ interface AccountsContextValue {
     provider: GitHostProvider,
     token: string,
     instanceBaseUrl?: string | null,
+    forgejoRepositoryToken?: ConnectHostInput['forgejoRepositoryToken'],
   ) => Promise<{ ok: boolean; reason?: 'invalid' | 'missing_repo_scope' | 'missing_contents_permission' | 'saml' | 'no_repository_access' | 'network' }>;
 
   /** Connect a stored GitHub OAuth credential to the native Git engine for a host.
@@ -387,8 +388,14 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
       provider: GitHostProvider,
       token: string,
       instanceBaseUrl?: string | null,
+      forgejoRepositoryToken?: ConnectHostInput['forgejoRepositoryToken'],
     ): Promise<{ ok: boolean; reason?: 'invalid' | 'missing_repo_scope' | 'missing_contents_permission' | 'saml' | 'no_repository_access' | 'network' }> => {
-      const result = await validateHostToken(provider, token, instanceBaseUrl ?? null);
+      const result = await validateHostToken(
+        provider,
+        token,
+        instanceBaseUrl ?? null,
+        forgejoRepositoryToken,
+      );
       return result.ok ? { ok: true } : { ok: false, reason: result.reason };
     },
     [],

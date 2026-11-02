@@ -5,6 +5,7 @@ import {
   giteaHostService,
   forgejoHostService,
 } from './git/gitHostFactory';
+import type { ForgejoRepositoryTokenTarget } from './git/GiteaLikeHostService';
 import type { GitHostProvider } from './git/GitHost';
 import type {
   GitHubOAuthCredentialRecord,
@@ -153,6 +154,7 @@ export interface ConnectHostInput {
   provider: GitHostProvider;
   token: string;
   instanceBaseUrl?: string | null;
+  forgejoRepositoryToken?: ForgejoRepositoryTokenTarget;
   /** When supplied, attach to this existing account; otherwise create one. */
   accountId?: string;
 }
@@ -170,6 +172,7 @@ export async function validateHostToken(
   provider: GitHostProvider,
   token: string,
   instanceBaseUrl?: string | null,
+  forgejoRepositoryToken?: ForgejoRepositoryTokenTarget,
 ): Promise<TokenValidity> {
   if (provider === 'github') {
     return validateGitHubToken(token);
@@ -185,7 +188,11 @@ export async function validateHostToken(
     return { ok: true, user: userFromHost('gitea', user as GiteaLikeUser)! };
   }
   if (provider === 'forgejo') {
-    const user = await forgejoHostService.setToken(token, instanceBaseUrl ?? undefined);
+    const user = await forgejoHostService.setToken(
+      token,
+      instanceBaseUrl ?? undefined,
+      forgejoRepositoryToken,
+    );
     if (!user) return { ok: false, reason: 'invalid' };
     return { ok: true, user: userFromHost('forgejo', user as GiteaLikeUser)! };
   }
@@ -434,6 +441,7 @@ export class AuthService {
       input.provider,
       input.token,
       input.instanceBaseUrl ?? null,
+      input.forgejoRepositoryToken,
     );
     if (!verification.ok) return { ok: false, reason: verification.reason };
     const verified = verification.user;

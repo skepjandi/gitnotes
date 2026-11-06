@@ -56,7 +56,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
         <View
           className="flex-row items-center justify-around py-2 px-3 rounded-full overflow-hidden"
           style={{
-            backgroundColor: isDark ? 'rgba(30,30,30,0.85)' : 'rgba(255,255,255,0.85)',
+            backgroundColor: `${colors.bg}D9`,
           }}
         >
           {state.routes.map((route, index) => {

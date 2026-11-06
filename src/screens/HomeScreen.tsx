@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../contexts/ThemeContext';
+import { ON_FILLED } from '../theme/tokens';
 import { useNotes } from '../contexts/NoteContext';
 import { useCanvases } from '../contexts/CanvasContext';
 import { useRepos } from '../contexts/RepoContext';
@@ -309,7 +310,7 @@ export default function HomeScreen() {
             </View>
             {isTablet && (
             <View className="absolute" style={{ top: -50, right: -50, opacity: 0.3 }}>
-              <Ionicons name="document-text" size={120} color="#FFFFFF" />
+              <Ionicons name="document-text" size={120} color={ON_FILLED} />
             </View>
             )}
             <View className="gap-1">
@@ -330,7 +331,7 @@ export default function HomeScreen() {
             </View>
             {isTablet && (
             <View className="absolute" style={{ top: -50, right: -50, opacity: 0.3 }}>
-              <Ionicons name="journal-outline" size={120} color="#FFFFFF" />
+              <Ionicons name="journal-outline" size={120} color={ON_FILLED} />
             </View>
             )}
             <View className="gap-1">
@@ -406,14 +407,14 @@ export default function HomeScreen() {
             { width: '100%', minHeight: 130, borderRadius: 20, padding: 16, justifyContent: 'space-between', overflow: 'hidden', backgroundColor: colors.accent, opacity: pressed ? 0.92 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
           ]}
         >
-          <View className="w-10 h-10 rounded-md items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-            <Ionicons name="bulb-outline" size={22} color="#FFFFFF" />
+          <View className="w-10 h-10 rounded-md items-center justify-center" style={{ backgroundColor: `${ON_FILLED}33` }}>
+            <Ionicons name="bulb-outline" size={22} color={ON_FILLED} />
           </View>
           <View style={{ gap: 6 }}>
             <View className="flex-row items-center gap-1.5">
-              <Text className="text-base font-bold" style={{ color: '#FFFFFF', letterSpacing: -0.2 }}>{t('thoughtDump.title')}</Text>
+              <Text className="text-base font-bold" style={{ color: ON_FILLED, letterSpacing: -0.2 }}>{t('thoughtDump.title')}</Text>
             </View>
-            <Text className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.85)' }} numberOfLines={3}>
+            <Text className="text-xs font-medium" style={{ color: `${ON_FILLED}D9` }} numberOfLines={3}>
               {t('home.bento.thoughtDumpSub')}
             </Text>
           </View>

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { Note } from '../models/Note';
-import { NOTE_COLORS } from '../theme/tokens';
+import { NOTE_COLORS, ON_FILLED } from '../theme/tokens';
 import { useResponsive } from '../hooks/useResponsive';
 import { stripPreview } from '../utils/notePreview';
 import { useTheme } from '../contexts/ThemeContext';
@@ -88,7 +88,7 @@ function NoteCardImpl({
     >
       {note.isPinned && (
         <View style={[styles.pinIndicator, { backgroundColor: colors.primary }]}>
-          <Ionicons name="pin" size={12} color="#fff" />
+          <Ionicons name="pin" size={12} color={ON_FILLED} />
         </View>
       )}
       <View style={styles.header}>

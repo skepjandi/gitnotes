@@ -19,6 +19,7 @@ import {
 } from './useFloatingGitButtonAffordances';
 import { useFloatingButtonCollision } from '../floatingButtonLayout';
 import { GitButtonRing } from './GitButtonRing';
+import { ON_FILLED } from '../../theme/tokens';
 
 interface FloatingGitButtonProps {
   aggregatedState?: AggregatedGitState;
@@ -90,17 +91,17 @@ export default function FloatingGitButton({
 
   const palette = (() => {
     if (disabled) return { bg: colors.surface, fg: colors.textSecondary };
-    if (anyConflicts) return { bg: colors.error, fg: '#ffffff' };
-    if (totalStaged > 0) return { bg: '#f59e0b', fg: '#ffffff' };
-    if (totalUncommitted > 0) return { bg: colors.success, fg: '#ffffff' };
-    if (totalAhead > 0) return { bg: colors.primary, fg: '#ffffff' };
+    if (anyConflicts) return { bg: colors.error, fg: ON_FILLED };
+    if (totalStaged > 0) return { bg: colors.warning, fg: ON_FILLED };
+    if (totalUncommitted > 0) return { bg: colors.success, fg: ON_FILLED };
+    if (totalAhead > 0) return { bg: colors.primary, fg: ON_FILLED };
     return { bg: colors.surface, fg: colors.textSecondary };
   })();
 
   const hueColor = (() => {
     if (disabled) return null;
     if (anyConflicts) return colors.error;
-    if (totalStaged > 0) return '#f59e0b';
+    if (totalStaged > 0) return colors.warning;
     if (totalUncommitted > 0) return colors.success;
     if (totalAhead > 0) return colors.primary;
     return null;
@@ -174,7 +175,7 @@ export default function FloatingGitButton({
           />
           <GitButtonRing
             progress={holdProgress}
-            colors={[colors.success, '#f59e0b', colors.primary]}
+            colors={[colors.success, colors.warning, colors.primary]}
           />
           <Pressable
             testID="gitbutton.press"

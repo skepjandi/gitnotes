@@ -9,6 +9,7 @@ import type { GitRepository } from '../../services/GitService';
 import { GIT_HOST_LABELS, type GitHostRepository, type GitHostRepositoryResult, type GitHostRepositoryUnavailable } from '../../services/git/GitHost';
 import type { TemplateRepoPreference } from '../../services/TemplateRepoPreferenceService';
 import { CloneProgressContent, type CloneProgress } from './CloneProgressModal';
+import { ON_FILLED } from '../../theme/tokens';
 
 type ThemeColors = {
   background: string;
@@ -18,6 +19,7 @@ type ThemeColors = {
   textSecondary: string;
   border: string;
   error: string;
+  success: string;
 };
 
 type AuthState = { isAuthenticated: boolean };
@@ -97,7 +99,7 @@ export const SSHKeyModal = memo(function SSHKeyModal({
               variant="primary"
               fullWidth
               style={{ minHeight: 48, marginHorizontal: 8 }}
-              textStyle={{ color: '#fff', fontWeight: '600' }}
+              textStyle={{ color: ON_FILLED, fontWeight: '600' }}
             />
           </>
         ) : (
@@ -345,8 +347,8 @@ export function SettingsModals(props: SettingsModalsProps) {
               disabled={!manualRepoInput.trim() || isAddingRepoPath !== null}
               variant="primary"
               style={{ paddingHorizontal: 16 }}
-              textStyle={{ color: '#fff' }}
-              trailingIcon={isAddingRepoPath !== null ? <ActivityIndicator size="small" color="#fff" /> : undefined}
+              textStyle={{ color: ON_FILLED }}
+              trailingIcon={isAddingRepoPath !== null ? <ActivityIndicator size="small" color={ON_FILLED} /> : undefined}
               iconAlign="inline"
             />
           </View>
@@ -453,7 +455,7 @@ export function SettingsModals(props: SettingsModalsProps) {
           </TouchableOpacity>
           <View
             className="flex-row items-center rounded-lg px-3 mb-2 h-[50px]"
-            style={{ borderWidth: 1, borderColor: tokenError ? '#FF3B30' : colors.border, backgroundColor: colors.background }}
+            style={{ borderWidth: 1, borderColor: tokenError ? colors.error : colors.border, backgroundColor: colors.background }}
           >
             <Input
               testID="settings-modals.input.token"
@@ -516,11 +518,11 @@ export function SettingsModals(props: SettingsModalsProps) {
             </TouchableOpacity>
           ) : null}
           {tokenTestResult ? (
-            <Text style={{ color: tokenTestResult.ok ? '#34C759' : '#FF3B30', fontSize: 13, marginBottom: 10 }}>
+            <Text style={{ color: tokenTestResult.ok ? colors.success : colors.error, fontSize: 13, marginBottom: 10 }}>
               {tokenTestResult.text}
             </Text>
           ) : null}
-          {tokenError ? <Text style={{ color: '#FF3B30', fontSize: 13, marginBottom: 10 }}>{tokenError}</Text> : null}
+          {tokenError ? <Text style={{ color: colors.error, fontSize: 13, marginBottom: 10 }}>{tokenError}</Text> : null}
           <Button
             testID="settings-modals.button.save-token"
             label={tokenModalMode === 'add' ? t('settings.addAccount') : t('settings.saveToken')}
@@ -529,8 +531,8 @@ export function SettingsModals(props: SettingsModalsProps) {
             variant="primary"
             fullWidth
             style={{ marginTop: 8, minHeight: 48 }}
-            textStyle={{ color: '#fff', fontWeight: '600' }}
-            trailingIcon={isVerifying ? <ActivityIndicator color="#fff" /> : undefined}
+            textStyle={{ color: ON_FILLED, fontWeight: '600' }}
+            trailingIcon={isVerifying ? <ActivityIndicator color={ON_FILLED} /> : undefined}
             iconAlign="edge"
           />
         </ScrollView>

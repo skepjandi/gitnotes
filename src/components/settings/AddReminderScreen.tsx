@@ -32,6 +32,7 @@ import { ReminderService } from '../../services/ReminderService';
 import { NotePickerModal } from '../NotePickerModal';
 import RepoFolderPickerModal from '../RepoFolderPickerModal';
 import type { RootStackParamList } from '../../navigation/types';
+import { ON_FILLED } from '../../theme/tokens';
 
 type Navigation = NativeStackNavigationProp<RootStackParamList>;
 
@@ -412,7 +413,7 @@ export function AddReminderScreen() {
               >
                 <Text
                   style={{
-                    color: repeat === 'daily' ? '#fff' : colors.text,
+                    color: repeat === 'daily' ? ON_FILLED : colors.text,
                     fontSize: type.sm,
                     fontWeight: '600',
                   }}
@@ -438,7 +439,7 @@ export function AddReminderScreen() {
               >
                 <Text
                   style={{
-                    color: repeat === 'weekly' ? '#fff' : colors.text,
+                    color: repeat === 'weekly' ? ON_FILLED : colors.text,
                     fontSize: type.sm,
                     fontWeight: '600',
                   }}
@@ -464,7 +465,7 @@ export function AddReminderScreen() {
               >
                 <Text
                   style={{
-                    color: repeat === 'one-time' ? '#fff' : colors.text,
+                    color: repeat === 'one-time' ? ON_FILLED : colors.text,
                     fontSize: type.sm,
                     fontWeight: '600',
                   }}
@@ -503,7 +504,7 @@ export function AddReminderScreen() {
                         style={{
                           fontSize: type.xs,
                           fontWeight: '700',
-                          color: isSelected ? '#fff' : colors.text,
+                          color: isSelected ? ON_FILLED : colors.text,
                         }}
                       >
                         {opt.short}
@@ -559,16 +560,16 @@ export function AddReminderScreen() {
           fullWidth
           style={{
             backgroundColor:
-              submitState === 'added' ? '#22c55e' : colors.primary,
+              submitState === 'added' ? colors.success : colors.primary,
             minHeight: 54,
             opacity: submitState === 'saving' ? 0.85 : 1,
           }}
-          textStyle={{ color: '#fff', fontWeight: '700' }}
+          textStyle={{ color: ON_FILLED, fontWeight: '700' }}
           leadingIcon={
             submitState === 'saving' ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={ON_FILLED} />
             ) : submitState === 'added' ? (
-              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              <Ionicons name="checkmark-circle" size={20} color={ON_FILLED} />
             ) : undefined
           }
           testID="add-reminder-submit"

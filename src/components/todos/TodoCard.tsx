@@ -126,7 +126,7 @@ export const TodoCard = memo(TodoCardImpl, (prev, next) => {
   return prev.todo === next.todo && prev.onPress === next.onPress && prev.onToggle === next.onToggle;
 });
 
-const createStyles = ({ colors }) => StyleSheet.create({
+const createStyles = ({ colors }: { colors: Palette }) => StyleSheet.create({
   todoItem: {
     flexDirection: 'row',
     alignItems: 'center',

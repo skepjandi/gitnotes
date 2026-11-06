@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { Surface } from './Surface';
 import { useTokens, useTheme } from '../../contexts/ThemeContext';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import type { Radius } from '../../theme/tokens';
+import { readableInk, type Radius } from '../../theme/tokens';
 import { cn } from '../../lib/utils';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger';
@@ -93,7 +93,7 @@ export function Button(props: ButtonProps) {
     transform: [{ scale: scale.value }],
   }));
 
-  const textColor = (variant === 'primary' || variant === 'danger') ? '#fff' : colors.text;
+  const textColor = variant === 'primary' ? readableInk(colors.primary) : variant === 'danger' ? '#fff' : colors.text;
   const isGhost = variant === 'ghost';
 
   const labelNode = label !== undefined && (

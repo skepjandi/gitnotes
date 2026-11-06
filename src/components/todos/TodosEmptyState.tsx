@@ -5,9 +5,10 @@ import { EmptyState } from '../ui';
 
 interface TodosEmptyStateProps {
   isFiltered: boolean;
+  onCreate: () => void;
 }
 
-export function TodosEmptyState({ isFiltered }: TodosEmptyStateProps) {
+export function TodosEmptyState({ isFiltered, onCreate }: TodosEmptyStateProps) {
   const { t } = useTranslation();
 
   return (
@@ -15,6 +16,9 @@ export function TodosEmptyState({ isFiltered }: TodosEmptyStateProps) {
       icon="checkbox-outline"
       title={isFiltered ? t('todos.noMatchingTodos') : t('todos.noTodosYet')}
       subtitle={isFiltered ? t('notes.tryAdjusting') : t('todos.addFirst')}
+      actionLabel={isFiltered ? undefined : t('todos.newTodo')}
+      onAction={isFiltered ? undefined : onCreate}
+      actionTestID="todo-list.button.empty-create"
     />
   );
 }

@@ -8,6 +8,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-11-07
+
+### feat(ui): upgrade mobile Home, empty states and tab bar
+
+**What:** The Home dashboard tiles overlapped their icon badge when copy wrapped (Thought Dump), used a fixed white ink that falls under 3:1 on bright fills, and the Notes/Todos empty states were a bare icon with no way forward.
+
+**Change:** Home tiles lay out in flow with a themed watermark glyph and arrow affordance, and the header greets by time of day with the date. `readableInk` picks white or dark ink per fill by WCAG contrast. Empty states gain a tinted halo and a call-to-action (New Note / New Todo). The flat-theme tab bar marks the active tab with an accent pill. `ScreenHeader` badges use the theme accent. Adds `home.greeting.*` and `home.bento.openCalendar` to all six locales.
+
 ## 2026-11-02
 
 ### fix(forgejo): support repository-scoped tokens

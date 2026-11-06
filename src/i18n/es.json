@@ -563,8 +563,12 @@
     "dailyQuote": {
       "loading": "Buscando tu cita"
     },
-    "appTitle": "GitNotēs",
-    "subtitle": "Tus notas de desarrollo, organizadas.",
+    "greeting": {
+      "morning": "Buenos días",
+      "afternoon": "Buenas tardes",
+      "evening": "Buenas noches",
+      "night": "Buenas noches"
+    },
     "format": {
       "markdown": "Markdown",
       "org": "Org Mode",
@@ -574,6 +578,7 @@
     },
     "bento": {
       "blankNote": "Nota en blanco",
+      "openCalendar": "Abrir calendario",
       "todaysJournal": "Diario de hoy",
       "newJournal": "Nuevo diario",
       "fromTemplate": "Desde plantilla",

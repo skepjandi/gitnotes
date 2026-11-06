@@ -563,8 +563,12 @@
     "dailyQuote": {
       "loading": "명언을 찾는 중"
     },
-    "appTitle": "GitNotēs",
-    "subtitle": "정리된 개발 노트.",
+    "greeting": {
+      "morning": "좋은 아침이에요",
+      "afternoon": "좋은 오후예요",
+      "evening": "좋은 저녁이에요",
+      "night": "편안한 밤 되세요"
+    },
     "format": {
       "markdown": "Markdown",
       "org": "Org Mode",
@@ -574,6 +578,7 @@
     },
     "bento": {
       "blankNote": "빈 노트",
+      "openCalendar": "캘린더 열기",
       "todaysJournal": "오늘의 저널",
       "newJournal": "새 저널",
       "fromTemplate": "템플릿에서",

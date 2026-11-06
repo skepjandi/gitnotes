@@ -563,8 +563,12 @@
     "dailyQuote": {
       "loading": "Recherche de votre citation"
     },
-    "appTitle": "GitNotēs",
-    "subtitle": "Vos notes de développement, organisées.",
+    "greeting": {
+      "morning": "Bonjour",
+      "afternoon": "Bon après-midi",
+      "evening": "Bonsoir",
+      "night": "Bonne nuit"
+    },
     "format": {
       "markdown": "Markdown",
       "org": "Org Mode",
@@ -574,6 +578,7 @@
     },
     "bento": {
       "blankNote": "Note vierge",
+      "openCalendar": "Ouvrir le calendrier",
       "todaysJournal": "Journal du jour",
       "newJournal": "Nouveau journal",
       "fromTemplate": "Depuis un modèle",

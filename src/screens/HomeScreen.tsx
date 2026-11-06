@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Pressable, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Pressable, Alert, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +38,7 @@ import { DailyQuoteCard } from '../components/home/DailyQuoteCard';
 import { PrivacyNoticeCallout } from '../components/privacy/PrivacyNoticeCallout';
 import { useDailyQuote } from '../hooks/useDailyQuote';
 import { useProGate } from '../hooks/useProGate';
+import { greetingPeriod } from '../utils/greeting';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type EditableNoteFormat = Exclude<NoteFormat, 'pdf' | 'json'>;
@@ -49,7 +50,7 @@ const FORMAT_OPTIONS: { labelKey: string; value: EditableNoteFormat; ext: string
 ];
 
 export default function HomeScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { colors } = useTheme();
   const { isPro, openPaywall } = useProGate();
@@ -138,7 +139,8 @@ export default function HomeScreen() {
     navigation.navigate('NoteEditor', buildJournalEditorParams(today));
   }, [navigation, notes, repositories.length, openSettings]);
 
-  const todaysJournalTitle = journalNoteTitle(new Date());
+  const now = new Date();
+  const todaysJournalTitle = journalNoteTitle(now);
   const hasTodaysJournal = notes.some(
     (note) => isJournalEntry(note) && note.title === todaysJournalTitle,
   );
@@ -298,16 +300,8 @@ export default function HomeScreen() {
           <HomeTile
             variant="primary"
             icon="document-text"
-            badgeColor="#FFFFFF"
-            badgeSize={36}
-            iconColor={colors.primary}
-            titleNode={
-              <Text className="text-xl font-bold text-white" style={{ letterSpacing: -0.3 }}>{t('notes.newNote')}</Text>
-            }
-            subtitleNode={
-              <Text className="text-xs font-medium text-white opacity-80">{t('home.bento.blankNote')}</Text>
-            }
-            showTabletDecoration={isTablet}
+            title={t('notes.newNote')}
+            subtitle={t('home.bento.blankNote')}
             onPress={handleCreateNote}
             onLongPress={() => {
               HapticService.medium();
@@ -320,20 +314,8 @@ export default function HomeScreen() {
           <HomeTile
             variant="primary"
             icon="journal-outline"
-            badgeColor="#FFFFFF"
-            badgeSize={36}
-            iconColor={colors.primary}
-            titleNode={
-              <Text className="text-xl font-bold text-white" style={{ letterSpacing: -0.3 }} numberOfLines={1}>
-                {hasTodaysJournal ? t('home.bento.todaysJournal') : t('home.bento.newJournal')}
-              </Text>
-            }
-            subtitleNode={
-              <Text className="text-xs font-medium text-white opacity-80" numberOfLines={1}>
-                {todaysJournalTitle.replace('Journal ', '')}
-              </Text>
-            }
-            showTabletDecoration={isTablet}
+            title={hasTodaysJournal ? t('home.bento.todaysJournal') : t('home.bento.newJournal')}
+            subtitle={todaysJournalTitle.replace('Journal ', '')}
             onPress={handleOpenTodaysJournal}
             testID="home.button.open-journal"
           />
@@ -341,56 +323,43 @@ export default function HomeScreen() {
 
         <Pressable
           testID="home.button.open-calendar"
+          accessibilityRole="button"
           onPress={() => navigation.navigate('Calendar', {})}
           style={({ pressed }) => [
-            { height: 56, borderRadius: 16, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surface, borderWidth: 0.5, borderColor: colors.border, opacity: pressed ? 0.92 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
+            { height: 60, borderRadius: 18, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, opacity: pressed ? 0.92 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
           ]}
         >
           <View className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: colors.primary + '1F' }}>
-            <Ionicons name="calendar-outline" size={22} color={colors.primary} />
+            <Ionicons name="calendar-outline" size={21} color={colors.primary} />
           </View>
-          <Text className="text-base font-semibold" style={{ color: colors.text }}>Open Calendar</Text>
+          <Text className="flex-1 text-base font-semibold" style={{ color: colors.text, letterSpacing: -0.2 }}>{t('home.bento.openCalendar')}</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
         </Pressable>
 
         <View className="flex-row items-stretch gap-3 overflow-hidden">
           <HomeTile
             variant="secondary"
             icon="copy-outline"
-            titleNode={
-              <Text className="text-base font-bold" style={{ color: colors.text, letterSpacing: -0.2 }}>{t('home.bento.fromTemplate')}</Text>
-            }
-            subtitleNode={
-              <Text className="text-xs font-medium" style={{ color: colors.textSecondary }}>{t('home.bento.fromTemplateSub')}</Text>
-            }
-            contentPosition="space-between"
+            title={t('home.bento.fromTemplate')}
+            subtitle={t('home.bento.fromTemplateSub')}
             onPress={handleOpenTemplates}
             testID="home.button.open-templates"
           />
           <HomeTile
             variant="secondary"
             icon="easel-outline"
-            titleNode={
-              <Text className="text-base font-bold" style={{ color: colors.text, letterSpacing: -0.2 }}>{t('canvases.title')}</Text>
-            }
-            subtitleNode={
-              <Text className="text-xs font-medium" style={{ color: colors.textSecondary }}>{t('home.bento.canvasesSub')}</Text>
-            }
-            contentPosition="space-between"
+            title={t('canvases.title')}
+            subtitle={t('home.bento.canvasesSub')}
             onPress={() => navigation.navigate('MainTabs', { screen: 'CanvasList' })}
             testID="home.button.navigate"
           />
         </View>
 
         <HomeTile
+          block
           variant="accent"
           icon="bulb-outline"
-          badgeColor="rgba(255,255,255,0.2)"
-          badgeSize={40}
-          titleNode={
-            <View className="flex-row items-center gap-1.5">
-              <Text className="text-base font-bold" style={{ color: '#FFFFFF', letterSpacing: -0.2 }}>{t('thoughtDump.title')}</Text>
-            </View>
-          }
+          title={t('thoughtDump.title')}
           subtitle={t('home.bento.thoughtDumpSub')}
           onPress={() => {
             HapticService.medium();
@@ -474,8 +443,8 @@ export default function HomeScreen() {
       />
       </ScrollView>
       <ScreenHeader
-        title={t('home.appTitle')}
-        subtitle={t('home.subtitle')}
+        title={t(`home.greeting.${greetingPeriod(now)}`)}
+        subtitle={now.toLocaleDateString(i18n.language, { weekday: 'long', month: 'long', day: 'numeric' })}
       />
     </SafeAreaView>
   );

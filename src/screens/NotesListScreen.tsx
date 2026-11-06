@@ -355,6 +355,17 @@ export default function NotesListScreen() {
     );
   }, [hasActiveSearch, searchMatchCount]);
 
+  const handleAddNote = useCallback(() => {
+    HapticService.medium();
+    if (!requireRepo(repositories.length > 0, {
+      kind: 'note',
+      onOpenSettings: () => navigation.navigate('MainTabs', { screen: 'SettingsTab' }),
+    })) {
+      return;
+    }
+    navigation.navigate('NoteEditor', {});
+  }, [navigation, repositories.length]);
+
   const handlePullToRefresh = useCallback(async () => {
     if (isPullRefreshingRef.current) return;
     if (useGitHubActivityStore.getState().inflight > 0) return;
@@ -551,7 +562,7 @@ export default function NotesListScreen() {
               progressViewOffset={headerBlurHeight}
             />
           }
-          ListEmptyComponent={<NotesEmptyState isFiltered={!!searchQuery || activeFilterCount > 0} />}
+          ListEmptyComponent={<NotesEmptyState isFiltered={!!searchQuery || activeFilterCount > 0} onCreate={handleAddNote} />}
         />
       </View>
 
@@ -682,16 +693,7 @@ export default function NotesListScreen() {
             <IconButton
               size="sm"
               testID="notes-list.icon-button.add"
-              onPress={() => {
-                HapticService.medium();
-                if (!requireRepo(repositories.length > 0, {
-                  kind: 'note',
-                  onOpenSettings: () => navigation.navigate('MainTabs', { screen: 'SettingsTab' }),
-                })) {
-                  return;
-                }
-                navigation.navigate('NoteEditor', {});
-              }}
+              onPress={handleAddNote}
               accessibilityLabel={t('notes.addNoteA11y')}
             >
               <Ionicons name="add" size={20} color={colors.accent} />

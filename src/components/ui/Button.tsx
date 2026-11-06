@@ -4,7 +4,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import * as Haptics from 'expo-haptics';
 import { Surface } from './Surface';
 import { useTokens, useTheme } from '../../contexts/ThemeContext';
-import type { Radius } from '../../theme/tokens';
+import { ON_FILLED, type Radius } from '../../theme/tokens';
 import { cn } from '../../lib/utils';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger';
@@ -87,7 +87,7 @@ export function Button(props: ButtonProps) {
     transform: [{ scale: scale.value }],
   }));
 
-  const textColor = (variant === 'primary' || variant === 'danger') ? '#fff' : colors.text;
+  const textColor = (variant === 'primary' || variant === 'danger') ? ON_FILLED : colors.text;
   const isGhost = variant === 'ghost';
 
   const labelNode = label !== undefined && (
@@ -220,7 +220,7 @@ export function Button(props: ButtonProps) {
             variant === 'primary'
               ? { backgroundColor: colors.primary }
               : variant === 'danger'
-                ? { backgroundColor: '#ef4444' }
+                ? { backgroundColor: colors.error }
                 : variant === 'outline'
                   ? { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border }
                   : { backgroundColor: colors.surface },

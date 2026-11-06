@@ -122,6 +122,11 @@ export const NOTE_COLORS = {
 } as const;
 export type NoteColorToken = keyof typeof NOTE_COLORS;
 
+// Text/icon color for content sitting on a filled accent/primary/error
+// background. Theme-agnostic on purpose: every palette's filled colors are
+// mid-tone, so white keeps contrast in light and dark.
+export const ON_FILLED = '#FFFFFF';
+
 export const RADII = { sm: 12, md: 18, lg: 24, pill: 999 } as const;
 export type Radius = keyof typeof RADII;
 

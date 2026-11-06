@@ -11,7 +11,7 @@ import { useMarkdown, type MarkedStyles } from 'react-native-marked';
 import type { ViewStyle } from 'react-native';
 import type { RootStackParamList } from '../../navigation/types';
 import { parseThoughtContent } from '../../utils/chatThoughts';
-import { ON_FILLED } from '../theme/tokens';
+import { ON_FILLED } from '../../theme/tokens';
 
 type NoteToolResult = { noteId: string; title?: string };
 const COLLAPSIBLE_HEADER_HEIGHT = 44;

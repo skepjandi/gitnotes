@@ -29,7 +29,7 @@ import {
   parseJournalDateFromTitle,
 } from '../services/JournalService';
 import { HapticService } from '../utils/haptics';
-import { ON_FILLED } from '../../theme/tokens';
+import { ON_FILLED } from '../theme/tokens';
 
 type CalendarRouteProp = RouteProp<RootStackParamList, 'Calendar'>;
 type CalendarNavProp = NativeStackNavigationProp<RootStackParamList>;

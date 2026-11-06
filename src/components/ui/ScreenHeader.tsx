@@ -4,6 +4,7 @@ import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useTokens } from '../../contexts/ThemeContext';
+import { readableInk } from '../../theme/tokens';
 import { IconButton } from './IconButton';
 
 export const SCREEN_HEADER_BASE_HEIGHT = 60;
@@ -61,8 +62,8 @@ export function ScreenHeader(props: ScreenHeaderProps) {
             {title}
           </Text>
           {badge && (
-            <View className="bg-blue-500 px-2 py-0.5 rounded-md">
-              <Text className="text-white text-[10px] font-extrabold" style={{ letterSpacing: 0.5 }}>
+            <View className="px-2 py-0.5 rounded-md" style={{ backgroundColor: colors.accent }}>
+              <Text className="text-[10px] font-extrabold" style={{ color: readableInk(colors.accent), letterSpacing: 0.5 }}>
                 {badge}
               </Text>
             </View>

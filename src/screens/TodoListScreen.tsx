@@ -403,6 +403,16 @@ export default function TodoListScreen() {
     resetForm();
   }, [resetForm]);
 
+  const openAddTodo = useCallback(() => {
+    if (!requireRepo(repositories.length > 0, {
+      kind: 'todo',
+      onOpenSettings: () => navigation.navigate('MainTabs', { screen: 'SettingsTab' }),
+    })) {
+      return;
+    }
+    setShowAddModal(true);
+  }, [navigation, repositories.length]);
+
   const onDateChange = useCallback((_event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) {
@@ -534,7 +544,7 @@ export default function TodoListScreen() {
             flexGrow: 1,
           }}
           columnWrapperStyle={columnCount > 1 ? { gap: 8 } : undefined}
-          ListEmptyComponent={<TodosEmptyState isFiltered={hasActiveFilters} />}
+          ListEmptyComponent={<TodosEmptyState isFiltered={hasActiveFilters} onCreate={openAddTodo} />}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -669,15 +679,7 @@ export default function TodoListScreen() {
             <IconButton
               size="sm"
               testID="todo-list.icon-button.add"
-              onPress={() => {
-                if (!requireRepo(repositories.length > 0, {
-                  kind: 'todo',
-                  onOpenSettings: () => navigation.navigate('MainTabs', { screen: 'SettingsTab' }),
-                })) {
-                  return;
-                }
-                setShowAddModal(true);
-              }}
+              onPress={openAddTodo}
               accessibilityLabel={t('todos.addTodoA11y')}
             >
               <Ionicons name="add" size={20} color={colors.accent} />

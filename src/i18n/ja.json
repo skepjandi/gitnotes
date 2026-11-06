@@ -562,8 +562,12 @@
     "dailyQuote": {
       "loading": "名言を検索中"
     },
-    "appTitle": "GitNotēs",
-    "subtitle": "あなたの開発ノートを整理。",
+    "greeting": {
+      "morning": "おはようございます",
+      "afternoon": "こんにちは",
+      "evening": "こんばんは",
+      "night": "おやすみなさい"
+    },
     "format": {
       "markdown": "Markdown",
       "org": "Org Mode",
@@ -573,6 +577,7 @@
     },
     "bento": {
       "blankNote": "空白のノート",
+      "openCalendar": "カレンダーを開く",
       "todaysJournal": "今日のジャーナル",
       "newJournal": "新しいジャーナル",
       "fromTemplate": "テンプレートから",

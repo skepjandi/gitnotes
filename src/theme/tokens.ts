@@ -333,6 +333,38 @@ export const NOTE_COLORS = {
 } as const;
 export type NoteColorToken = keyof typeof NOTE_COLORS;
 
+// Ink drawn on filled `primary`/`accent` surfaces (tiles, badges).
+export const ON_FILLED = '#FFFFFF';
+export const INK_ON_FILLED = '#10131F';
+
+function relativeLuminance(hex: string): number {
+  const value = hex.replace('#', '');
+  if (value.length !== 6) return 0;
+  const [r, g, b] = [0, 2, 4].map((offset) => {
+    const channel = parseInt(value.slice(offset, offset + 2), 16) / 255;
+    return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+// WCAG 2.x contrast ratio between two 6-digit hex colors, 1 (none) to 21.
+export function contrastRatio(a: string, b: string): number {
+  const first = relativeLuminance(a);
+  const second = relativeLuminance(b);
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+}
+
+// Ink for content on a filled surface. White stays while it clears 3:1 — the
+// WCAG bar for large/bold text and icon glyphs, which is what tile titles and
+// badges are — so the iOS blue and neumorphic-light periwinkle keep their
+// white-on-color look. Fills under 3:1 against white (neumorphic-dark
+// periwinkle, phosphor amber, CRT green, cyan) get dark ink instead. Fills that
+// are not 6-digit hex (partial theme overrides, rgba values) keep white.
+export function readableInk(fill: string | undefined): string {
+  if (!fill || !/^#[0-9a-f]{6}$/i.test(fill)) return ON_FILLED;
+  return contrastRatio(fill, ON_FILLED) >= 3 ? ON_FILLED : INK_ON_FILLED;
+}
+
 export const RADII = { sm: 12, md: 18, lg: 24, pill: 999 } as const;
 export type Radius = keyof typeof RADII;
 

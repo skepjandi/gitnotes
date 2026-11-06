@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
-import { HOME_TILE_HEIGHT, HomeTile } from '../../../src/components/home/HomeTile';
+import { HomeTile } from '../../../src/components/home/HomeTile';
+import { INK_ON_FILLED, ON_FILLED } from '../../../src/theme/tokens';
 
 jest.mock('../../../src/contexts/ThemeContext', () => {
   const React = require('react');
@@ -105,11 +106,12 @@ const renderWithTheme = (ui: React.ReactElement) => {
   return render(ui);
 };
 
-describe('HomeTile', () => {
-  it('gives accent cards enough height for the badge and copy', () => {
-    expect(HOME_TILE_HEIGHT.accent).toBe(160);
-  });
+const flatten = (style: unknown): Record<string, unknown> => {
+  const items = Array.isArray(style) ? style.flat(Infinity) : [style];
+  return items.reduce<Record<string, unknown>>((merged, item) => ({ ...merged, ...((item as object) ?? {}) }), {});
+};
 
+describe('HomeTile', () => {
   const defaultProps = {
     variant: 'primary' as const,
     icon: 'document-text' as const,
@@ -120,6 +122,7 @@ describe('HomeTile', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.requireMock('../../../src/contexts/ThemeContext').__resetTheme();
   });
 
   it('renders title and subtitle', () => {
@@ -128,11 +131,14 @@ describe('HomeTile', () => {
     expect(getByText('Test subtitle')).toBeTruthy();
   });
 
+  it('announces title and subtitle together', () => {
+    const { getByLabelText } = renderWithTheme(<HomeTile {...defaultProps} />);
+    expect(getByLabelText('Test Title, Test subtitle')).toBeTruthy();
+  });
+
   it('calls onPress when pressed', () => {
     const onPress = jest.fn();
-    const { getByTestId } = renderWithTheme(
-      <HomeTile {...defaultProps} onPress={onPress} testID="test-tile" />,
-    );
+    const { getByTestId } = renderWithTheme(<HomeTile {...defaultProps} onPress={onPress} testID="test-tile" />);
     fireEvent.press(getByTestId('test-tile'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
@@ -146,119 +152,48 @@ describe('HomeTile', () => {
     expect(onLongPress).toHaveBeenCalledTimes(1);
   });
 
-  it('renders secondary variant with surface background', () => {
-    const { getByTestId } = renderWithTheme(
-      <HomeTile {...defaultProps} variant="secondary" testID="secondary-tile" />,
-    );
-    expect(getByTestId('secondary-tile')).toBeTruthy();
+  it.each(['primary', 'secondary', 'accent'] as const)(
+    'lets %s copy grow the tile instead of overlapping the badge',
+    (variant) => {
+      const { getByTestId } = renderWithTheme(<HomeTile {...defaultProps} variant={variant} testID="tile" />);
+      const tileStyle = flatten(getByTestId('tile').props.style({ pressed: false }));
+      const badgeStyle = flatten(getByTestId('tile.badge').props.style);
+
+      expect(tileStyle.minHeight).toBeGreaterThan(0);
+      expect(tileStyle.height).toBeUndefined();
+      expect(badgeStyle.position).toBeUndefined();
+    },
+  );
+
+  it('shares row width through flex unless laid out as a block', () => {
+    const cell = renderWithTheme(<HomeTile {...defaultProps} testID="cell" />);
+    const block = renderWithTheme(<HomeTile {...defaultProps} block testID="block" />);
+
+    expect(flatten(cell.getByTestId('cell').props.style({ pressed: false })).flex).toBe(1);
+    expect(flatten(block.getByTestId('block').props.style({ pressed: false })).flex).toBeUndefined();
   });
 
-  it('keeps secondary dashboard cards at the full card height', () => {
-    expect(HOME_TILE_HEIGHT.secondary).toBe(130);
+  it('hides the decorative watermark from assistive tech', () => {
+    const { getByTestId } = renderWithTheme(<HomeTile {...defaultProps} testID="tile" />);
+    expect(getByTestId('tile.watermark', { includeHiddenElements: true }).props.importantForAccessibility).toBe('no-hide-descendants');
   });
 
-  it('renders accent variant', () => {
-    const { getByTestId } = renderWithTheme(
-      <HomeTile {...defaultProps} variant="accent" testID="accent-tile" />,
+  it('uses dark ink when the primary fill is too bright for white', () => {
+    const brightPrimary = '#FFB347';
+    const { ThemeProvider, __overrideTheme } = jest.requireMock('../../../src/contexts/ThemeContext');
+    __overrideTheme({
+      colors: { surface: '#ffffff', text: '#1c1c1e', textSecondary: '#6e6e73', border: '#c6c6c8', primary: brightPrimary, accent: brightPrimary },
+    });
+    const { getByText } = render(
+      <ThemeProvider>
+        <HomeTile {...defaultProps} />
+      </ThemeProvider>,
     );
-    expect(getByTestId('accent-tile')).toBeTruthy();
+    expect(flatten(getByText('Test Title').props.style).color).toBe(INK_ON_FILLED);
   });
 
-  it('renders with titleNode override', () => {
-    const { getByText } = renderWithTheme(
-      <HomeTile
-        {...defaultProps}
-        titleNode={null}
-        title="Fallback Title"
-      />,
-    );
-    expect(getByText('Fallback Title')).toBeTruthy();
-  });
-
-  it('renders with subtitleNode override', () => {
-    const { getByText } = renderWithTheme(
-      <HomeTile
-        {...defaultProps}
-        subtitleNode={null}
-        subtitle="Fallback Subtitle"
-      />,
-    );
-    expect(getByText('Fallback Subtitle')).toBeTruthy();
-  });
-
-  it('shows tablet decoration when showTabletDecoration is true', () => {
-    const { getByTestId } = renderWithTheme(
-      <HomeTile {...defaultProps} showTabletDecoration={true} testID="deco-tile" />,
-    );
-    expect(getByTestId('deco-tile')).toBeTruthy();
-  });
-
-  it('accepts height override', () => {
-    const { getByTestId } = renderWithTheme(
-      <HomeTile {...defaultProps} height={200} testID="height-tile" />,
-    );
-    expect(getByTestId('height-tile')).toBeTruthy();
-  });
-
-  it('accepts contentPosition space-between', () => {
-    const rendered = renderWithTheme(
-      <HomeTile
-        {...defaultProps}
-        variant="secondary"
-        contentPosition="space-between"
-        testID="space-between-tile"
-      />,
-    );
-    const badge = rendered.getByTestId('space-between-tile.badge');
-    const content = rendered.getByTestId('space-between-tile.content');
-    const badgeStyle = badge.props.style.reduce(
-      (merged: Record<string, unknown>, style: Record<string, unknown>) => ({ ...merged, ...style }),
-      {},
-    );
-
-    expect(badgeStyle.position).toBeUndefined();
-    expect(content.props.style.marginTop).toBe(8);
-  });
-
-  it('keeps the accent badge out of the description flow', () => {
-    const rendered = renderWithTheme(
-      <HomeTile
-        {...defaultProps}
-        variant="accent"
-        contentPosition="space-between"
-        testID="accent-space-between-tile"
-      />,
-    );
-    const badge = rendered.getByTestId('accent-space-between-tile.badge');
-    const badgeStyle = badge.props.style.reduce(
-      (merged: Record<string, unknown>, style: Record<string, unknown>) => ({ ...merged, ...style }),
-      {},
-    );
-
-    expect(badgeStyle.position).toBe('absolute');
-  });
-
-  it('allows descriptions to wrap without a line cap', () => {
-    const rendered = renderWithTheme(
-      <HomeTile
-        {...defaultProps}
-        subtitle="A long description that should remain available to the card layout"
-        subtitleLines={undefined}
-        testID="unbounded-subtitle-tile"
-      />,
-    );
-    const subtitle = rendered.getByText(
-      'A long description that should remain available to the card layout',
-    );
-
-    expect(subtitle.props.numberOfLines).toBeUndefined();
-  });
-
-  it('renders with disabled prop set', () => {
-    const onPress = jest.fn();
-    const { getByTestId } = renderWithTheme(
-      <HomeTile {...defaultProps} disabled={true} onPress={onPress} testID="disabled-tile" />,
-    );
-    expect(getByTestId('disabled-tile')).toBeTruthy();
+  it('keeps white ink on the standard blue fill', () => {
+    const { getByText } = renderWithTheme(<HomeTile {...defaultProps} />);
+    expect(flatten(getByText('Test Title').props.style).color).toBe(ON_FILLED);
   });
 });

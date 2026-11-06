@@ -1,8 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Modal } from './ui';
+import { useTheme } from '../contexts/ThemeContext';
+import { Palette } from '../theme/tokens';
 
 let speechModule: {
   start: (opts: Record<string, unknown>) => Promise<void>;
@@ -41,6 +43,8 @@ interface VoiceInputModalProps {
 }
 
 export default function VoiceInputModal({ visible, onDone, onClose }: VoiceInputModalProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [interim, setInterim] = useState('');
@@ -173,7 +177,7 @@ export default function VoiceInputModal({ visible, onDone, onClose }: VoiceInput
             <View style={styles.headerBtn} />
           </View>
           <View style={styles.body}>
-            <Ionicons name="mic-off-outline" size={64} color="#8e8e93" />
+            <Ionicons name="mic-off-outline" size={64} color={colors.textSecondary} />
             <Text style={styles.statusText}>Speech recognition not available on this device</Text>
           </View>
         </SafeAreaView>
@@ -207,9 +211,9 @@ export default function VoiceInputModal({ visible, onDone, onClose }: VoiceInput
             activeOpacity={0.7}
           >
             {isListening ? (
-              <ActivityIndicator size="large" color="#fff" />
+              <ActivityIndicator size="large" color={colors.text} />
             ) : (
-              <Ionicons name="mic" size={44} color="#fff" />
+              <Ionicons name="mic" size={44} color={colors.text} />
             )}
           </TouchableOpacity>
 
@@ -240,13 +244,13 @@ export default function VoiceInputModal({ visible, onDone, onClose }: VoiceInput
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Palette) => StyleSheet.create({
   modalContent: {
     padding: 0,
     width: '100%',
     height: '80%',
   },
-  container: { flex: 1, backgroundColor: '#1c1c1e' },
+  container: { flex: 1, backgroundColor: colors.bg },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -254,12 +258,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#3a3a3c',
+    borderBottomColor: colors.border,
   },
   headerBtn: { paddingHorizontal: 8, paddingVertical: 4, minWidth: 60 },
-  headerBtnText: { fontSize: 16, color: '#8e8e93' },
-  insertBtn: { color: '#007AFF', fontWeight: '600', textAlign: 'right' },
-  headerTitle: { fontSize: 17, fontWeight: '600', color: '#fff' },
+  headerBtnText: { fontSize: 16, color: colors.textSecondary },
+  insertBtn: { color: colors.accent, fontWeight: '600', textAlign: 'right' },
+  headerTitle: { fontSize: 17, fontWeight: '600', color: colors.text },
   body: {
     flex: 1,
     alignItems: 'center',
@@ -271,22 +275,22 @@ const styles = StyleSheet.create({
     width: 112,
     height: 112,
     borderRadius: 56,
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   micBtnActive: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: colors.error,
   },
   statusText: {
     fontSize: 15,
-    color: '#8e8e93',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   transcriptBox: {
     width: '100%',
     maxHeight: 180,
-    backgroundColor: '#2c2c2e',
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 12,
   },
   transcriptContent: {
@@ -295,13 +299,13 @@ const styles = StyleSheet.create({
   transcriptText: {
     fontSize: 17,
     lineHeight: 25,
-    color: '#fff',
+    color: colors.text,
   },
   interimText: {
-    color: '#8e8e93',
+    color: colors.textSecondary,
   },
   placeholder: {
     fontSize: 17,
-    color: '#636366',
+    color: colors.textSecondary,
   },
 });

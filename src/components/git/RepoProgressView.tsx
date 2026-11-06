@@ -9,9 +9,9 @@ function timeLabel(time: number): string {
 }
 
 const TONE_COLOR: Record<ProgressLine['tone'], string> = {
-  info: 'text-emerald-700',
-  success: 'text-green-600',
-  error: 'text-red-600',
+  info: 'text-primary',
+  success: 'text-success',
+  error: 'text-error',
 };
 
 interface RepoProgressViewProps {

@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { isPast } from 'date-fns';
@@ -17,7 +17,7 @@ interface TodoCardProps {
 
 function TodoCardImpl({ todo, onPress, onToggle }: TodoCardProps) {
   const { colors } = useTheme();
-  const styles = createStyles({ colors });
+  const styles = useMemo(() => createStyles({ colors }), [colors]);
   const { t } = useTranslation();
   const isOverdue = todo.dueDate ? isPast(new Date(todo.dueDate)) && !todo.completed : false;
 

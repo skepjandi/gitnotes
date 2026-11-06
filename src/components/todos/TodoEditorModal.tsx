@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native/datetimepicker';
@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { PRIORITY_COLORS, PRIORITY_LABELS, REMINDER_OPTIONS, Todo, TodoPriority } from '../../models/Todo';
 import GitContextPicker from '../GitContextPicker';
 import { findReminderLabel } from './todosShared';
+import { Palette, readableInk } from '../../theme/tokens';
 
 interface TodoEditorModalProps {
   visible: boolean;
@@ -68,6 +69,7 @@ export function TodoEditorModal({
   onSubmit,
 }: TodoEditorModalProps) {
   const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { t } = useTranslation();
   const modalScrollRef = useRef<ScrollView>(null);
 
@@ -255,7 +257,7 @@ export function TodoEditorModal({
                   style={[styles.reminderPickerButton, { borderColor: colors.border }]}
                   onPress={handleReminderPickerToggle}
                 >
-                  <Ionicons name="notifications-outline" size={16} color="#FF9500" />
+                  <Ionicons name="notifications-outline" size={16} color={colors.warning} />
                   <Text style={[styles.reminderPickerText, { color: colors.text }]}>
                     {findReminderLabel(todoReminderMinutes)}
                   </Text>
@@ -279,13 +281,13 @@ export function TodoEditorModal({
                         <Text
                           style={[
                             styles.reminderOptionText,
-                            { color: todoReminderMinutes === option.minutes ? '#FF9500' : colors.text },
+                            { color: todoReminderMinutes === option.minutes ? colors.warning : colors.text },
                           ]}
                         >
                           {option.label}
                         </Text>
                         {todoReminderMinutes === option.minutes ? (
-                          <Ionicons name="checkmark" size={16} color="#FF9500" />
+                          <Ionicons name="checkmark" size={16} color={colors.warning} />
                         ) : null}
                       </TouchableOpacity>
                     ))}
@@ -321,11 +323,11 @@ export function TodoEditorModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Palette) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: `${colors.bg}80`,
   },
   modalContent: {
     borderTopLeftRadius: 20,
@@ -351,7 +353,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#ccc',
+    borderTopColor: colors.border,
   },
   inputLabel: {
     fontSize: 13,
@@ -509,6 +511,6 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: readableInk(colors.primary),
   },
 });

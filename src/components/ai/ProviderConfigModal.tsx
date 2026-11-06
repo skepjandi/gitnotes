@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   View,
@@ -22,6 +22,7 @@ import { useAIStore } from '../../stores/aiStore';
 import { checkOpenRouterKey, isOpenRouterBaseURL } from '../../services/ai/openrouterPreflight';
 import { isAnthropicBaseURL } from '../../services/ai/anthropicDefaults';
 import { getFactory } from '../../services/ai/providerFactory';
+import { Palette, readableInk } from '../../theme/tokens';
 
 interface ProviderConfigModalProps {
   visible: boolean;
@@ -53,6 +54,7 @@ function normalizeMiniMaxBaseURL(value: string): string {
 
 export function ProviderConfigModal({ visible, onClose, provider }: ProviderConfigModalProps) {
   const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { spacing } = useTokens();
   
   const [name, setName] = useState('');
@@ -425,7 +427,7 @@ export function ProviderConfigModal({ visible, onClose, provider }: ProviderConf
               style={[styles.actionBtn, { backgroundColor: colors.primary }]}
               onPress={handleSave}
             >
-              <Text style={[styles.actionBtnText, { color: '#FFF' }]}>Save Provider</Text>
+              <Text style={[styles.actionBtnText, { color: readableInk(colors.primary) }]}>Save Provider</Text>
             </TouchableOpacity>
 
             {provider && provider.type !== 'apple' && provider.type !== 'llama' && (
@@ -434,7 +436,7 @@ export function ProviderConfigModal({ visible, onClose, provider }: ProviderConf
                 style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: '#FF3B30', borderWidth: 1, marginTop: spacing[2] }]}
                 onPress={handleDelete}
               >
-                <Text style={[styles.actionBtnText, { color: '#FF3B30' }]}>Delete Provider</Text>
+                <Text style={[styles.actionBtnText, { color: colors.error }]}>Delete Provider</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -444,11 +446,11 @@ export function ProviderConfigModal({ visible, onClose, provider }: ProviderConf
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Palette) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: `${colors.bg}66`,
   },
   modalSheet: {
     borderTopLeftRadius: 20,

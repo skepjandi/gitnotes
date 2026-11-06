@@ -15,7 +15,7 @@
  * Pattern reference: CanvasEditorContent.tsx (React Native view composition).
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,8 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useDraftStore, type DraftCommand } from '../../stores/draftStore';
+import { useTheme } from '../../contexts/ThemeContext';
+import { Palette, readableInk } from '../../theme/tokens';
 
 interface AcceptDiscardBarProps {
   applyCommand: (cmd: DraftCommand) => void;
@@ -36,6 +38,8 @@ export function AcceptDiscardBar({
   applyCommands,
   pushUndo,
 }: AcceptDiscardBarProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const commands = useDraftStore((s: any) => s.commands);
   const toggleChecked = useDraftStore((s: any) => s.toggleChecked);
   const discardCommand = useDraftStore((s: any) => s.discardCommand);
@@ -131,24 +135,24 @@ export function AcceptDiscardBar({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Palette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     borderRadius: 8,
     marginTop: 20,
     overflow: 'hidden',
   },
   header: {
     padding: 16,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceSecondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#d1d5db',
+    borderBottomColor: colors.border,
   },
   headerText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: colors.text,
   },
   list: {
     maxHeight: 400,
@@ -158,24 +162,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border,
   },
   checkbox: {
     width: 24,
     height: 24,
     borderWidth: 2,
-    borderColor: '#9ca3af',
+    borderColor: colors.textSecondary,
     borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   checkboxChecked: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    backgroundColor: colors.success,
+    borderColor: colors.success,
   },
   checkmark: {
-    color: '#ffffff',
+    color: readableInk(colors.success),
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -187,17 +191,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     textTransform: 'uppercase',
-    color: '#6b7280',
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   commandContent: {
     fontSize: 14,
-    color: '#1f2937',
+    color: colors.text,
     marginBottom: 2,
   },
   confidence: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: colors.textSecondary,
   },
   commandActions: {
     flexDirection: 'row',
@@ -207,7 +211,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#10b981',
+    backgroundColor: colors.success,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -215,12 +219,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.error,
     alignItems: 'center',
     justifyContent: 'center',
   },
   actionText: {
-    color: '#ffffff',
+    color: readableInk(colors.error),
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -228,9 +232,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     padding: 16,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceSecondary,
     borderTopWidth: 1,
-    borderTopColor: '#d1d5db',
+    borderTopColor: colors.border,
     gap: 8,
   },
   batchBtn: {
@@ -241,19 +245,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   batchBtnSuccess: {
-    backgroundColor: '#10b981',
+    backgroundColor: colors.success,
   },
   batchBtnPrimary: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
   },
   batchBtnSecondary: {
-    backgroundColor: '#6b7280',
+    backgroundColor: colors.textSecondary,
   },
   batchBtnDisabled: {
     opacity: 0.5,
   },
   batchBtnText: {
-    color: '#ffffff',
+    color: readableInk(colors.primary),
     fontSize: 14,
     fontWeight: 'bold',
   },

@@ -22,6 +22,8 @@
 import React, { useMemo, useRef } from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { useDraftStore, type DraftCommand } from '../../stores/draftStore';
+import { useTheme } from '../../contexts/ThemeContext';
+import { Palette, readableInk } from '../../theme/tokens';
 
 interface DraftLayerProps {
   /** Pixel width of the atlas region (for positioning). */
@@ -76,6 +78,8 @@ export function DraftLayerRenderer({
   pushUndo,
   applyCommands,
 }: DraftLayerProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const commands = useDraftStore((s: any) => s.commands);
   const toggleChecked = useDraftStore((s: any) => s.toggleChecked);
   const discardCommand = useDraftStore((s: any) => s.discardCommand);
@@ -133,7 +137,7 @@ export function DraftLayerRenderer({
             onPress={() => toggleChecked(cmd.id)}
             style={[
               styles.checkbox,
-              { backgroundColor: cmd.checked ? '#10b981' : '#ffffff' },
+              { backgroundColor: cmd.checked ? colors.success : colors.surface },
             ]}
           >
             {cmd.checked && <Text style={styles.checkmark}>✓</Text>}
@@ -186,7 +190,7 @@ export function DraftLayerRenderer({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: Palette) => StyleSheet.create({
   overlay: {
     position: 'absolute',
     zIndex: 1000,
@@ -194,7 +198,7 @@ const styles = StyleSheet.create({
   card: {
     position: 'absolute',
     borderWidth: 2,
-    borderColor: 'rgba(0, 0, 0, 0.5)',
+    borderColor: colors.border,
     borderRadius: 4,
   },
   checkbox: {
@@ -204,12 +208,12 @@ const styles = StyleSheet.create({
     width: CHECKBOX_SIZE,
     height: CHECKBOX_SIZE,
     borderWidth: 1,
-    borderColor: '#000000',
+    borderColor: colors.textSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkmark: {
-    color: '#ffffff',
+    color: readableInk(colors.success),
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -220,12 +224,12 @@ const styles = StyleSheet.create({
     width: DISCARD_SIZE,
     height: DISCARD_SIZE,
     borderRadius: DISCARD_SIZE / 2,
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.error,
     justifyContent: 'center',
     alignItems: 'center',
   },
   discardText: {
-    color: '#ffffff',
+    color: readableInk(colors.error),
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -234,7 +238,7 @@ const styles = StyleSheet.create({
     left: 10,
     top: 28,
     fontSize: 14,
-    color: '#000000',
+    color: colors.text,
     fontWeight: 'bold',
   },
   contentPreview: {
@@ -242,7 +246,7 @@ const styles = StyleSheet.create({
     left: 10,
     top: 50,
     fontSize: 12,
-    color: 'rgba(0,0,0,0.6)',
+    color: colors.textSecondary,
     maxWidth: CMD_WIDTH - 20,
   },
   controlBar: {
@@ -251,26 +255,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 80,
     marginTop: 20 + Math.max(0, ...([] as number[])),
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 8,
   },
   acceptCheckedButton: {
     padding: 12,
-    backgroundColor: '#10b981',
+    backgroundColor: colors.success,
     borderRadius: 6,
   },
   acceptAllButton: {
     padding: 12,
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     borderRadius: 6,
   },
   discardAllButton: {
     padding: 12,
-    backgroundColor: '#6b7280',
+    backgroundColor: colors.textSecondary,
     borderRadius: 6,
   },
   buttonText: {
-    color: '#ffffff',
+    color: readableInk(colors.primary),
     fontSize: 14,
     fontWeight: 'bold',
   },

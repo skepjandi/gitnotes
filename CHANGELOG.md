@@ -8,6 +8,16 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-11-06
+
+### fix(git): clone over HTTPS from TLS 1.3-only servers on iOS
+
+**What:** Cloning an HTTPS repository failed on iPhone with `unexpected return value from ssl handshake -9836` when the Git server required TLS 1.3.
+
+**Fix:** Build libgit2's Apple TLS backend on OpenSSL instead of the deprecated SecureTransport stack (which caps at TLS 1.2) and validate the server chain against the iOS system trust store through `Security.framework`. The vendored libgit2 patch is now applied before the dependency compiles, so the TLS backend can no longer be stale.
+
+**Issue:** [#1835](https://github.com/skepjandi/gitnotes/issues/1835)
+
 ## 2026-11-02
 
 ### fix(forgejo): support repository-scoped tokens

@@ -32,7 +32,7 @@ import CanvasCard from '../components/CanvasCard';
 import { SwipeableListItem } from '../components/list/SwipeableListItem';
 import { BulkActionBar } from '../components/list/BulkActionBar';
 import { HapticService } from '../utils/haptics';
-import { ON_FILLED } from '../theme/tokens';
+import { readableInk } from '../theme/tokens';
 
 type CanvasViewMode = 'list' | 'grid';
 
@@ -261,7 +261,7 @@ export default function CanvasListScreen() {
               style={{ backgroundColor: colors.primary }}
               onPress={handleCreate}
             >
-              <Text className="text-white text-base font-semibold">{t('canvases.createCanvas')}</Text>
+              <Text className="text-base font-semibold" style={{ color: readableInk(colors.primary) }}>{t('canvases.createCanvas')}</Text>
             </TouchableOpacity>
           </View>
         }
@@ -414,7 +414,7 @@ export default function CanvasListScreen() {
               style={{ backgroundColor: colors.primary }}
               onPress={handleCustomSize}
             >
-              <Text className="text-white text-base font-semibold">{t('canvases.createCustom')}</Text>
+              <Text className="text-base font-semibold" style={{ color: readableInk(colors.primary) }}>{t('canvases.createCustom')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

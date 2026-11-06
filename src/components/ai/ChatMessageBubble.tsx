@@ -11,7 +11,7 @@ import { useMarkdown, type MarkedStyles } from 'react-native-marked';
 import type { ViewStyle } from 'react-native';
 import type { RootStackParamList } from '../../navigation/types';
 import { parseThoughtContent } from '../../utils/chatThoughts';
-import { ON_FILLED } from '../../theme/tokens';
+import { readableInk } from '../../theme/tokens';
 
 type NoteToolResult = { noteId: string; title?: string };
 const COLLAPSIBLE_HEADER_HEIGHT = 44;
@@ -76,7 +76,7 @@ function ChatMessageBubbleImpl({ message, isStreaming, onLongPress }: ChatMessag
     : '';
 
   const isUser = message.role === 'user';
-  const textColor = isUser ? ON_FILLED : colors.text;
+  const textColor = isUser ? readableInk(colors.primary) : colors.text;
   const toolCallLabel = formatToolCallLabel(message.toolCallName);
   const noteToolResult = useMemo(() => {
     if (!message.toolCallName) return null;

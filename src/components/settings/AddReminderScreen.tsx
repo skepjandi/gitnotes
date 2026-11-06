@@ -32,7 +32,7 @@ import { ReminderService } from '../../services/ReminderService';
 import { NotePickerModal } from '../NotePickerModal';
 import RepoFolderPickerModal from '../RepoFolderPickerModal';
 import type { RootStackParamList } from '../../navigation/types';
-import { ON_FILLED } from '../../theme/tokens';
+import { readableInk } from '../../theme/tokens';
 
 type Navigation = NativeStackNavigationProp<RootStackParamList>;
 
@@ -413,7 +413,7 @@ export function AddReminderScreen() {
               >
                 <Text
                   style={{
-                    color: repeat === 'daily' ? ON_FILLED : colors.text,
+                    color: repeat === 'daily' ? readableInk(colors.primary) : colors.text,
                     fontSize: type.sm,
                     fontWeight: '600',
                   }}
@@ -439,7 +439,7 @@ export function AddReminderScreen() {
               >
                 <Text
                   style={{
-                    color: repeat === 'weekly' ? ON_FILLED : colors.text,
+                    color: repeat === 'weekly' ? readableInk(colors.primary) : colors.text,
                     fontSize: type.sm,
                     fontWeight: '600',
                   }}
@@ -465,7 +465,7 @@ export function AddReminderScreen() {
               >
                 <Text
                   style={{
-                    color: repeat === 'one-time' ? ON_FILLED : colors.text,
+                    color: repeat === 'one-time' ? readableInk(colors.primary) : colors.text,
                     fontSize: type.sm,
                     fontWeight: '600',
                   }}
@@ -504,7 +504,7 @@ export function AddReminderScreen() {
                         style={{
                           fontSize: type.xs,
                           fontWeight: '700',
-                          color: isSelected ? ON_FILLED : colors.text,
+                          color: isSelected ? readableInk(colors.primary) : colors.text,
                         }}
                       >
                         {opt.short}
@@ -564,12 +564,12 @@ export function AddReminderScreen() {
             minHeight: 54,
             opacity: submitState === 'saving' ? 0.85 : 1,
           }}
-          textStyle={{ color: ON_FILLED, fontWeight: '700' }}
+          textStyle={{ color: readableInk(submitState === 'added' ? colors.success : colors.primary), fontWeight: '700' }}
           leadingIcon={
             submitState === 'saving' ? (
-              <ActivityIndicator size="small" color={ON_FILLED} />
+              <ActivityIndicator size="small" color={readableInk(colors.primary)} />
             ) : submitState === 'added' ? (
-              <Ionicons name="checkmark-circle" size={20} color={ON_FILLED} />
+              <Ionicons name="checkmark-circle" size={20} color={readableInk(colors.success)} />
             ) : undefined
           }
           testID="add-reminder-submit"

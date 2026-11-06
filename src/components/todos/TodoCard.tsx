@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
 import { PRIORITY_COLORS, PRIORITY_LABELS, Todo } from '../../models/Todo';
 import { findReminderLabel, formatDeadline } from './todosShared';
-import { Palette, ON_FILLED } from '../../theme/tokens';
+import { Palette, readableInk } from '../../theme/tokens';
 
 interface TodoCardProps {
   todo: Todo;
@@ -179,7 +179,7 @@ const createStyles = ({ colors }: { colors: Palette }) => StyleSheet.create({
     marginRight: 6,
   },
   expiredText: {
-    color: ON_FILLED,
+    color: readableInk(colors.error),
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.5,

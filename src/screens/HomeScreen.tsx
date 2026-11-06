@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../contexts/ThemeContext';
-import { ON_FILLED } from '../theme/tokens';
+import { readableInk } from '../theme/tokens';
 import { useNotes } from '../contexts/NoteContext';
 import { useCanvases } from '../contexts/CanvasContext';
 import { useRepos } from '../contexts/RepoContext';
@@ -305,17 +305,17 @@ export default function HomeScreen() {
               { flex: 1, minWidth: 0, height: 130, borderRadius: 20, padding: 16, overflow: 'hidden', justifyContent: 'flex-end', backgroundColor: colors.primary, opacity: pressed ? 0.92 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
             ]}
           >
-            <View className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white items-center justify-center">
+            <View className="absolute top-4 left-4 w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: readableInk(colors.primary) }}>
               <Ionicons name="document-text" size={18} color={colors.primary} />
             </View>
             {isTablet && (
             <View className="absolute" style={{ top: -50, right: -50, opacity: 0.3 }}>
-              <Ionicons name="document-text" size={120} color={ON_FILLED} />
+              <Ionicons name="document-text" size={120} color={readableInk(colors.primary)} />
             </View>
             )}
             <View className="gap-1">
-              <Text className="text-xl font-bold text-white" style={{ letterSpacing: -0.3 }}>{t('notes.newNote')}</Text>
-              <Text className="text-xs font-medium text-white opacity-80">{t('home.bento.blankNote')}</Text>
+              <Text className="text-xl font-bold" style={{ color: readableInk(colors.primary), letterSpacing: -0.3 }}>{t('notes.newNote')}</Text>
+              <Text className="text-xs font-medium" style={{ color: readableInk(colors.primary), opacity: 0.8 }}>{t('home.bento.blankNote')}</Text>
             </View>
           </Pressable>
 
@@ -326,19 +326,19 @@ export default function HomeScreen() {
               { flex: 1, minWidth: 0, height: 130, borderRadius: 20, padding: 16, overflow: 'hidden', justifyContent: 'flex-end', backgroundColor: colors.primary, opacity: pressed ? 0.92 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
             ]}
           >
-            <View className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white items-center justify-center">
+            <View className="absolute top-4 left-4 w-9 h-9 rounded-full items-center justify-center" style={{ backgroundColor: readableInk(colors.primary) }}>
               <Ionicons name="journal-outline" size={18} color={colors.primary} />
             </View>
             {isTablet && (
             <View className="absolute" style={{ top: -50, right: -50, opacity: 0.3 }}>
-              <Ionicons name="journal-outline" size={120} color={ON_FILLED} />
+              <Ionicons name="journal-outline" size={120} color={readableInk(colors.primary)} />
             </View>
             )}
             <View className="gap-1">
-              <Text className="text-xl font-bold text-white" style={{ letterSpacing: -0.3 }} numberOfLines={1}>
+              <Text className="text-xl font-bold" style={{ color: readableInk(colors.primary), letterSpacing: -0.3 }} numberOfLines={1}>
                 {hasTodaysJournal ? t('home.bento.todaysJournal') : t('home.bento.newJournal')}
               </Text>
-              <Text className="text-xs font-medium text-white opacity-80" numberOfLines={1}>
+              <Text className="text-xs font-medium" style={{ color: readableInk(colors.primary), opacity: 0.8 }} numberOfLines={1}>
                 {todaysJournalTitle.replace('Journal ', '')}
               </Text>
             </View>
@@ -407,14 +407,14 @@ export default function HomeScreen() {
             { width: '100%', minHeight: 130, borderRadius: 20, padding: 16, justifyContent: 'space-between', overflow: 'hidden', backgroundColor: colors.accent, opacity: pressed ? 0.92 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
           ]}
         >
-          <View className="w-10 h-10 rounded-md items-center justify-center" style={{ backgroundColor: `${ON_FILLED}33` }}>
-            <Ionicons name="bulb-outline" size={22} color={ON_FILLED} />
+          <View className="w-10 h-10 rounded-md items-center justify-center" style={{ backgroundColor: `${readableInk(colors.accent)}33` }}>
+            <Ionicons name="bulb-outline" size={22} color={readableInk(colors.accent)} />
           </View>
           <View style={{ gap: 6 }}>
             <View className="flex-row items-center gap-1.5">
-              <Text className="text-base font-bold" style={{ color: ON_FILLED, letterSpacing: -0.2 }}>{t('thoughtDump.title')}</Text>
+              <Text className="text-base font-bold" style={{ color: readableInk(colors.accent), letterSpacing: -0.2 }}>{t('thoughtDump.title')}</Text>
             </View>
-            <Text className="text-xs font-medium" style={{ color: `${ON_FILLED}D9` }} numberOfLines={3}>
+            <Text className="text-xs font-medium" style={{ color: readableInk(colors.accent), opacity: 0.85 }} numberOfLines={3}>
               {t('home.bento.thoughtDumpSub')}
             </Text>
           </View>

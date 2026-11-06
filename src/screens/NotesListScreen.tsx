@@ -41,6 +41,7 @@ import { useResponsive } from '../hooks/useResponsive';
 import { useGitHubActivityStore } from '../stores/githubActivityStore';
 import { useReminderStore } from '../stores/reminderStore';
 import { useTranslation } from 'react-i18next';
+import { readableInk } from '../theme/tokens';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -675,7 +676,7 @@ export default function NotesListScreen() {
               </IconButton>
               {activeFilterCount > 0 ? (
                 <View className="absolute top-0.5 right-0.5 min-w-3.5 h-3.5 px-0.5 rounded-full items-center justify-center" style={{ backgroundColor: colors.primary }}>
-                  <Text className="text-white font-bold" style={{ fontSize: 9 }}>{activeFilterCount}</Text>
+                  <Text className="font-bold" style={{ fontSize: 9, color: readableInk(colors.primary) }}>{activeFilterCount}</Text>
                 </View>
               ) : null}
             </View>

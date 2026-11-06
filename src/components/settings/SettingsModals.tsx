@@ -9,7 +9,7 @@ import type { GitRepository } from '../../services/GitService';
 import { GIT_HOST_LABELS, type GitHostRepository, type GitHostRepositoryResult, type GitHostRepositoryUnavailable } from '../../services/git/GitHost';
 import type { TemplateRepoPreference } from '../../services/TemplateRepoPreferenceService';
 import { CloneProgressContent, type CloneProgress } from './CloneProgressModal';
-import { ON_FILLED } from '../../theme/tokens';
+import { readableInk } from '../../theme/tokens';
 
 type ThemeColors = {
   background: string;
@@ -99,7 +99,7 @@ export const SSHKeyModal = memo(function SSHKeyModal({
               variant="primary"
               fullWidth
               style={{ minHeight: 48, marginHorizontal: 8 }}
-              textStyle={{ color: ON_FILLED, fontWeight: '600' }}
+              textStyle={{ color: readableInk(colors.primary), fontWeight: '600' }}
             />
           </>
         ) : (
@@ -347,8 +347,8 @@ export function SettingsModals(props: SettingsModalsProps) {
               disabled={!manualRepoInput.trim() || isAddingRepoPath !== null}
               variant="primary"
               style={{ paddingHorizontal: 16 }}
-              textStyle={{ color: ON_FILLED }}
-              trailingIcon={isAddingRepoPath !== null ? <ActivityIndicator size="small" color={ON_FILLED} /> : undefined}
+              textStyle={{ color: readableInk(colors.primary) }}
+              trailingIcon={isAddingRepoPath !== null ? <ActivityIndicator size="small" color={readableInk(colors.primary)} /> : undefined}
               iconAlign="inline"
             />
           </View>
@@ -531,8 +531,8 @@ export function SettingsModals(props: SettingsModalsProps) {
             variant="primary"
             fullWidth
             style={{ marginTop: 8, minHeight: 48 }}
-            textStyle={{ color: ON_FILLED, fontWeight: '600' }}
-            trailingIcon={isVerifying ? <ActivityIndicator color={ON_FILLED} /> : undefined}
+            textStyle={{ color: readableInk(colors.primary), fontWeight: '600' }}
+            trailingIcon={isVerifying ? <ActivityIndicator color={readableInk(colors.primary)} /> : undefined}
             iconAlign="edge"
           />
         </ScrollView>

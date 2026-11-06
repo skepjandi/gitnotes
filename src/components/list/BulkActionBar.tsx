@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../../contexts/ThemeContext';
+import { readableInk } from '../../theme/tokens';
 
 interface BulkActionBarProps {
   count: number;
@@ -62,8 +63,8 @@ export function BulkActionBar({
         onPress={onDelete}
         accessibilityLabel={`Delete ${count} ${noun}`}
       >
-        <Ionicons name="trash" size={16} color="#FFFFFF" />
-        <Text className="text-white text-sm font-semibold">Delete</Text>
+        <Ionicons name="trash" size={16} color={readableInk(colors.error)} />
+        <Text className="text-sm font-semibold" style={{ color: readableInk(colors.error) }}>Delete</Text>
       </TouchableOpacity>
     </View>
   );

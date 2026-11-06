@@ -26,7 +26,7 @@ import { TemplateEditorModal } from '../components/templates/TemplateEditorModal
 import { TemplateListItem } from '../components/templates/TemplateListItem';
 import { TemplatesEmptyState } from '../components/templates/TemplatesEmptyState';
 import { DEFAULT_ICON } from '../components/templates/templateManagerShared';
-import { RADII } from '../theme/tokens';
+import { RADII, readableInk } from '../theme/tokens';
 import { useTranslation } from 'react-i18next';
 import { useProScreenGuard } from '../hooks/useProScreenGuard';
 
@@ -268,8 +268,8 @@ export default function TemplateManagerScreen() {
           style={{ backgroundColor: colors.primary, borderRadius: RADII.sm }}
           activeOpacity={0.8}
         >
-          <Ionicons name="add" size={18} color="#fff" />
-          <Text className="text-white text-[15px] font-semibold">{t('templates.newTemplate')}</Text>
+          <Ionicons name="add" size={18} color={readableInk(colors.primary)} />
+          <Text className="text-[15px] font-semibold" style={{ color: readableInk(colors.primary) }}>{t('templates.newTemplate')}</Text>
         </TouchableOpacity>
 
         {allTemplates.length === 0

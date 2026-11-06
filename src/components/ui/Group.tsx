@@ -2,6 +2,7 @@ import React, { Fragment, ReactNode } from 'react';
 import { Pressable, StyleProp, Text, View, ViewStyle, StyleSheet } from 'react-native';
 import { Surface } from './Surface';
 import { useTheme, useTokens } from '../../contexts/ThemeContext';
+import { readableInk } from '../../theme/tokens';
 
 export interface GroupProps {
   title?: string;
@@ -33,8 +34,8 @@ export function Group(props: GroupProps) {
             {title}
           </Text>
           {badge && (
-            <View className="bg-blue-500 px-2 py-0.5 rounded-md">
-              <Text className="text-white text-[10px] font-extrabold" style={{ letterSpacing: 0.5 }}>
+            <View className="px-2 py-0.5 rounded-md" style={{ backgroundColor: colors.accent }}>
+              <Text className="text-[10px] font-extrabold" style={{ color: readableInk(colors.accent), letterSpacing: 0.5 }}>
                 {badge}
               </Text>
             </View>

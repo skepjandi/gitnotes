@@ -20,6 +20,7 @@ import { RootStackParamList } from '../navigation/types';
 import { ScreenHeader } from '../components/ui';
 import { SafeAreaView } from '../components/ui/SafeAreaView';
 import SearchBar from '../components/SearchBar';
+import { readableInk } from '../theme/tokens';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -463,7 +464,7 @@ export default function GraphViewScreen() {
                           onPress={() => toggleNodeExpanded(node.id)}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
-                          <Text className="text-white text-[11px] font-bold">
+                          <Text className="text-[11px] font-bold" style={{ color: readableInk(getNodeColor(node)) }}>
                             {isExpanded ? '▲' : '▼'}
                           </Text>
                         </TouchableOpacity>
@@ -519,7 +520,7 @@ export default function GraphViewScreen() {
                 style={{ backgroundColor: colors.primary }}
                 onPress={handleOpenNote}
               >
-                <Text className="text-white font-bold text-[15px]">Open Note</Text>
+                <Text className="font-bold text-[15px]" style={{ color: readableInk(colors.primary) }}>Open Note</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -127,6 +127,42 @@ export type NoteColorToken = keyof typeof NOTE_COLORS;
 // mid-tone, so white keeps contrast in light and dark.
 export const ON_FILLED = '#FFFFFF';
 
+// Ink for content on bright fills, where white cannot clear WCAG AA.
+// Near-black with a cool cast so it reads on saturated greens, ambers and
+// cyans without looking muddy.
+export const INK_ON_FILLED = '#10131F';
+
+function relativeLuminance(hex: string): number {
+  const value = hex.replace('#', '');
+  if (value.length !== 6) return 0;
+  const channels = [0, 2, 4].map((offset) => {
+    const raw = parseInt(value.slice(offset, offset + 2), 16) / 255;
+    return raw <= 0.03928 ? raw / 12.92 : Math.pow((raw + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+export function contrastRatio(a: string, b: string): number {
+  const first = relativeLuminance(a);
+  const second = relativeLuminance(b);
+  const lighter = Math.max(first, second);
+  const darker = Math.min(first, second);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+// Picks the ink for content drawn on `fill`. White wins while it clears
+// WCAG AA (4.5:1); otherwise a dark ink is used, and only when neither
+// clears AA does the better of the two win. This keeps white off the
+// mid-tone fills where it used to fail — the neumorphic periwinkle
+// (#7B8CDE) only reached 3.16:1 against white.
+export function readableInk(fill: string): string {
+  const onWhite = contrastRatio(fill, ON_FILLED);
+  if (onWhite >= 4.5) return ON_FILLED;
+  const onDark = contrastRatio(fill, INK_ON_FILLED);
+  if (onDark >= 4.5) return INK_ON_FILLED;
+  return onDark > onWhite ? INK_ON_FILLED : ON_FILLED;
+}
+
 export const RADII = { sm: 12, md: 18, lg: 24, pill: 999 } as const;
 export type Radius = keyof typeof RADII;
 

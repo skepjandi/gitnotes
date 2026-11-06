@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useTokens } from '../../contexts/ThemeContext';
 import { IconButton } from './IconButton';
-import { ON_FILLED } from '../../theme/tokens';
+import { readableInk } from '../../theme/tokens';
 
 export const SCREEN_HEADER_BASE_HEIGHT = 60;
 export const SCREEN_HEADER_SUBTITLE_HEIGHT = 88;
@@ -63,7 +63,7 @@ export function ScreenHeader(props: ScreenHeaderProps) {
           </Text>
           {badge && (
             <View className="px-2 py-0.5 rounded-md" style={{ backgroundColor: colors.accent }}>
-              <Text className="text-[10px] font-extrabold" style={{ color: ON_FILLED, letterSpacing: 0.5 }}>
+              <Text className="text-[10px] font-extrabold" style={{ color: readableInk(colors.accent), letterSpacing: 0.5 }}>
                 {badge}
               </Text>
             </View>

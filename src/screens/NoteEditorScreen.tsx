@@ -29,6 +29,7 @@ import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { useTranslation } from 'react-i18next';
 import { useSafeBack } from '../hooks/useSafeBack';
 import { subscribeGitContentRefresh } from '../hooks/useGitRefreshEvent';
+import { readableInk } from '../theme/tokens';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'NoteEditor'>;
 type NoteEditorRouteProp = RouteProp<RootStackParamList, 'NoteEditor'>;
@@ -126,7 +127,7 @@ function NoteEditorScreenInner() {
           style={{ backgroundColor: colors.primary }}
           onPress={() => navigation.navigate('MainTabs', { screen: 'NotesTab' })}
         >
-          <Text className="text-white text-base font-semibold">{t('notes.backToNotes')}</Text>
+          <Text className="text-base font-semibold" style={{ color: readableInk(colors.primary) }}>{t('notes.backToNotes')}</Text>
         </Pressable>
       </SafeAreaView>
     );

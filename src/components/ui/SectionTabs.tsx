@@ -26,7 +26,7 @@ const COLOR_MAP: Record<SectionTabColor, keyof ReturnType<typeof useTokens>['col
 };
 
 export function SectionTabs({ tabs, value, onChange, testID, renderLabel }: SectionTabsProps) {
-  const { colors } = useTokens();
+  const { colors, spacing, type } = useTokens();
 
   return (
     <ScrollView
@@ -45,15 +45,15 @@ export function SectionTabs({ tabs, value, onChange, testID, renderLabel }: Sect
             testID={`explore.tab.${tab.id}`}
             onPress={() => onChange(tab.id)}
             style={{
-              paddingHorizontal: 14,
-              paddingVertical: 8,
+              paddingHorizontal: spacing[3] + 2,
+              paddingVertical: spacing[2],
               borderBottomWidth: 2,
               borderBottomColor: isActive ? activeColor : 'transparent',
             }}
           >
             <Text
               style={{
-                fontSize: 13,
+                fontSize: type.sm - 1,
                 fontWeight: isActive ? '600' : '500',
                 color: isActive ? activeColor : colors.textSecondary,
               }}

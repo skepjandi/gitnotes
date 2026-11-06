@@ -55,7 +55,13 @@ export function Chip(props: ChipProps) {
   if (!onPress && !onLongPress) return surface;
 
   return (
-    <Pressable onPress={onPress} onLongPress={onLongPress} testID={testID}>
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      testID={testID}
+      accessibilityRole="button"
+      style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+    >
       {surface}
     </Pressable>
   );

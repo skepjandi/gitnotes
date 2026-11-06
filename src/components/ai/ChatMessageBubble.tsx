@@ -11,6 +11,7 @@ import { useMarkdown, type MarkedStyles } from 'react-native-marked';
 import type { ViewStyle } from 'react-native';
 import type { RootStackParamList } from '../../navigation/types';
 import { parseThoughtContent } from '../../utils/chatThoughts';
+import { ON_FILLED } from '../theme/tokens';
 
 type NoteToolResult = { noteId: string; title?: string };
 const COLLAPSIBLE_HEADER_HEIGHT = 44;
@@ -75,7 +76,7 @@ function ChatMessageBubbleImpl({ message, isStreaming, onLongPress }: ChatMessag
     : '';
 
   const isUser = message.role === 'user';
-  const textColor = isUser ? '#ffffff' : colors.text;
+  const textColor = isUser ? ON_FILLED : colors.text;
   const toolCallLabel = formatToolCallLabel(message.toolCallName);
   const noteToolResult = useMemo(() => {
     if (!message.toolCallName) return null;
@@ -93,7 +94,7 @@ function ChatMessageBubbleImpl({ message, isStreaming, onLongPress }: ChatMessag
       text: textColor,
       code: textColor,
       link: colors.primary,
-      border: isDark ? '#444' : '#ddd',
+      border: isDark ? colors.textSecondary : colors.border,
       background: 'transparent' as const,
     },
   }), [textColor, colors.primary, isDark]);
@@ -105,7 +106,7 @@ function ChatMessageBubbleImpl({ message, isStreaming, onLongPress }: ChatMessag
     li: { color: textColor },
     codespan: { color: textColor, backgroundColor: isDark ? '#1c1c1e' : '#e8e8e8' },
     code: { backgroundColor: isDark ? '#1c1c1e' : '#e8e8e8' },
-    blockquote: { backgroundColor: 'transparent', borderLeftColor: isDark ? '#444' : '#ddd' },
+    blockquote: { backgroundColor: 'transparent', borderLeftColor: isDark ? colors.textSecondary : colors.border },
   }), [textColor, isDark]);
   // react-native-marked's <Markdown> wraps output in a FlatList that captures
   // pan gestures even with `scrollEnabled: false`, which deadlocks the outer
@@ -122,7 +123,7 @@ function ChatMessageBubbleImpl({ message, isStreaming, onLongPress }: ChatMessag
   if (message.role === 'system') {
     return (
       <View className="items-center my-2">
-        <Text className="italic text-sm" style={{ color: '#888' }}>
+        <Text className="italic text-sm" style={{ color: colors.textSecondary }}>
           {message.content}
         </Text>
       </View>
@@ -157,7 +158,7 @@ function ChatMessageBubbleImpl({ message, isStreaming, onLongPress }: ChatMessag
     ...(!isUser && message.toolCallName ? { minWidth: Math.min(220, viewportWidth * 0.5) } : null),
   };
 
-  const surfaceBg = isDark ? '#2c2c2e' : '#f0f0f0';
+  const surfaceBg = isDark ? colors.bg : colors.surface;
 
   const bubbleStyle = message.toolCallName
     ? {
@@ -190,7 +191,7 @@ function ChatMessageBubbleImpl({ message, isStreaming, onLongPress }: ChatMessag
               width: '100%',
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: toolCallExpanded ? (isDark ? '#4a4a4f' : '#d8dbe5') : 'transparent',
+              borderColor: toolCallExpanded ? (isDark ? colors.border : colors.primary) : 'transparent',
               overflow: 'hidden',
               backgroundColor: toolCallExpanded ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(99,102,241,0.05)') : 'transparent',
               paddingHorizontal: spacing[3],
@@ -300,7 +301,7 @@ function ChatMessageBubbleImpl({ message, isStreaming, onLongPress }: ChatMessag
                     marginBottom: spacing[2],
                     borderRadius: 12,
                     borderWidth: 1,
-                    borderColor: isDark ? '#4a4a4f' : '#d8dbe5',
+                    borderColor: isDark ? colors.border : colors.primary,
                     overflow: 'hidden',
                     backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(99,102,241,0.05)',
                   }}
@@ -416,7 +417,7 @@ function ChatMessageBubbleImpl({ message, isStreaming, onLongPress }: ChatMessag
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: isDark ? '#2c2c2e' : '#e8e8e8',
+                backgroundColor: isDark ? colors.bg : '#e8e8e8',
                 paddingHorizontal: spacing[2],
                 paddingVertical: 2,
                 borderRadius: 10,

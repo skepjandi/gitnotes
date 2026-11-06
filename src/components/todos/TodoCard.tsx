@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
 import { PRIORITY_COLORS, PRIORITY_LABELS, Todo } from '../../models/Todo';
 import { findReminderLabel, formatDeadline } from './todosShared';
+import { ON_FILLED } from '../../theme/tokens';
 
 interface TodoCardProps {
   todo: Todo;
@@ -177,7 +178,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   expiredText: {
-    color: '#ffffff',
+    color: ON_FILLED,
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.5,
@@ -201,10 +202,10 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 10,
     gap: 3,
-    backgroundColor: '#FF950020',
+    backgroundColor: `${colors.warning}20`,
   },
   reminderBadgeText: {
-    color: '#FF9500',
+    color: colors.warning,
     fontSize: 10,
     fontWeight: '500',
   },

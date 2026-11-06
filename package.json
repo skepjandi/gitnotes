@@ -24,6 +24,7 @@
     "build:rust:android": "bash scripts/build-rust.sh --android",
     "build:rust:all": "bash scripts/build-rust.sh --all",
     "build:rust:bindings": "bash scripts/build-rust.sh --bindings",
+    "test:rust": "bash scripts/patch-libgit2-sys.sh && cd rust && cargo test",
     "dev:ios": "yarn preios && expo run:ios",
     "dev:android": "expo run:android",
     "ios:fix-icon": "bash scripts/strip-icon-alpha.sh",

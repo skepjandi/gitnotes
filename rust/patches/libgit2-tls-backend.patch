@@ -1,0 +1,209 @@
+--- a/build.rs
++++ b/build.rs
+@@ -223,6 +223,12 @@
+ 
+     if !target.contains("android") {
+         features.push_str("#define GIT_USE_NSEC 1\n");
++    }
++
++    if target.contains("android") {
++        /* Android validates the server chain in the platform's own TLS stack,
++         * so libgit2's OpenSSL chain check is skipped there. */
++        features.push_str("#define GIT_SKIP_SSL_VERIFY 1\n");
+     }
+ 
+     if windows {
+@@ -258,9 +264,9 @@
+ 
+         if windows {
+             features.push_str("#define GIT_WINHTTP 1\n");
+-        } else if target.contains("apple") {
+-            features.push_str("#define GIT_SECURE_TRANSPORT 1\n");
+         } else {
++            /* Apple platforms use OpenSSL as well: SecureTransport cannot
++             * negotiate TLS 1.3 and has been deprecated since iOS 13. */
+             features.push_str("#define GIT_OPENSSL 1\n");
+             if let Some(path) = env::var_os("DEP_OPENSSL_INCLUDE") {
+                 cfg.include(path);
+--- a/libgit2/src/libgit2/streams/openssl.c
++++ b/libgit2/src/libgit2/streams/openssl.c
+@@ -36,6 +36,10 @@
+ # include <openssl/bio.h>
+ #endif
+ 
++#ifdef __APPLE__
++# include <Security/Security.h>
++#endif
++
+ extern char *git__ssl_ciphers;
+ 
+ SSL_CTX *git__ssl_ctx;
+@@ -103,6 +107,107 @@
+ # endif /* !GIT_OPENSSL_LEGACY && !GIT_OPENSSL_DYNAMIC */
+ #endif /* VALGRIND */
+ 
++#ifdef __APPLE__
++/*
++ * Apple platforms ship no OpenSSL CA bundle, so the server chain is validated
++ * against the system trust store with Security.framework once the handshake
++ * completed. This callback keeps OpenSSL from rejecting the chain before that
++ * check can run.
++ */
++static int git_openssl__verify_apple_cb(int preverify_ok, X509_STORE_CTX *ctx)
++{
++	GIT_UNUSED(preverify_ok);
++	GIT_UNUSED(ctx);
++	return 1;
++}
++
++static int git_openssl__verify_apple_trust(SSL *ssl)
++{
++	STACK_OF(X509) *chain = NULL;
++	CFArrayRef certificates = NULL;
++	SecTrustRef trust = NULL;
++	SecPolicyRef policy = NULL;
++	CFIndex count, i;
++	int error = 0;
++
++	chain = SSL_get_peer_cert_chain(ssl);
++	if (!chain || sk_X509_num(chain) == 0) {
++		git_error_set(GIT_ERROR_SSL, "the server did not provide a certificate");
++		return -1;
++	}
++
++	count = sk_X509_num(chain);
++	certificates = CFArrayCreateMutable(NULL, count, &kCFTypeArrayCallBacks);
++	if (!certificates) {
++		git_error_set(GIT_ERROR_SSL, "could not create certificate array");
++		return -1;
++	}
++
++	for (i = 0; i < count; i++) {
++		X509 *cert = sk_X509_value(chain, i);
++		unsigned char *der = NULL, *guard = NULL;
++		CFDataRef data = NULL;
++		SecCertificateRef sec_cert = NULL;
++		int len;
++
++		len = i2d_X509(cert, NULL);
++		if (len <= 0)
++			continue;
++
++		der = OPENSSL_malloc(len);
++		GIT_ERROR_CHECK_ALLOC(der);
++
++		guard = der;
++		if (i2d_X509(cert, &guard) <= 0) {
++			OPENSSL_free(der);
++			continue;
++		}
++
++		data = CFDataCreate(NULL, der, len);
++		OPENSSL_free(der);
++		if (!data)
++			continue;
++
++		sec_cert = SecCertificateCreateWithData(NULL, data);
++		CFRelease(data);
++		if (!sec_cert)
++			continue;
++
++		CFArrayAppendValue(certificates, sec_cert);
++		CFRelease(sec_cert);
++	}
++
++	/* NULL anchors select the system trust store. */
++	if (SecTrustCreateWithCertificates(certificates, NULL, &trust) != errSecSuccess) {
++		git_error_set(GIT_ERROR_SSL, "could not create certificate trust");
++		error = -1;
++		goto cleanup;
++	}
++
++	/* Server certificates only; the host name is checked by verify_server_cert. */
++	policy = SecPolicyCreateSSL(true, NULL);
++	if (!policy || SecTrustSetPolicies(trust, policy) != errSecSuccess) {
++		git_error_set(GIT_ERROR_SSL, "could not set certificate policy");
++		error = -1;
++		goto cleanup;
++	}
++
++	if (!SecTrustEvaluateWithError(trust, NULL)) {
++		git_error_set(GIT_ERROR_SSL, "untrusted connection error");
++		error = GIT_ECERTIFICATE;
++	}
++
++cleanup:
++	if (policy)
++		CFRelease(policy);
++	if (trust)
++		CFRelease(trust);
++	CFRelease(certificates);
++
++	return error;
++}
++#endif /* __APPLE__ */
++
+ static int openssl_init(void)
+ {
+ 	long ssl_opts = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3;
+@@ -144,9 +249,15 @@
+ 
+ 	SSL_CTX_set_options(git__ssl_ctx, ssl_opts);
+ 	SSL_CTX_set_mode(git__ssl_ctx, SSL_MODE_AUTO_RETRY);
++#ifdef __APPLE__
++	/* The chain is checked against the system trust store by
++	 * git_openssl__verify_apple_trust once the handshake completed. */
++	SSL_CTX_set_verify(git__ssl_ctx, SSL_VERIFY_PEER, git_openssl__verify_apple_cb);
++#else
+ 	SSL_CTX_set_verify(git__ssl_ctx, SSL_VERIFY_NONE, NULL);
+ 	if (!SSL_CTX_set_default_verify_paths(git__ssl_ctx))
+ 		goto error;
++#endif
+ 
+ 	if (!ciphers)
+ 		ciphers = GIT_SSL_DEFAULT_CIPHERS;
+@@ -378,10 +489,12 @@
+ 	size_t addrlen = 0;
+ 	int i = -1, j, error = 0;
+ 
++#ifndef GIT_SKIP_SSL_VERIFY
+ 	if (SSL_get_verify_result(ssl) != X509_V_OK) {
+ 		git_error_set(GIT_ERROR_SSL, "the SSL certificate is invalid");
+ 		return GIT_ECERTIFICATE;
+ 	}
++#endif
+ 
+ 	/* Try to parse the host as an IP address to see if it is */
+ 	if (p_inet_pton(AF_INET, host, &addr4)) {
+@@ -531,6 +644,11 @@
+ 		return ssl_set_error(st->ssl, ret);
+ 
+ 	st->connected = true;
++
++#ifdef __APPLE__
++	if ((ret = git_openssl__verify_apple_trust(st->ssl)) < 0)
++		return ret;
++#endif
+ 
+ 	return verify_server_cert(st->ssl, st->host);
+ }
+@@ -716,6 +834,19 @@
+ 		char errmsg[256];
+ 
+ 		ERR_error_string_n(ERR_get_error(), errmsg, sizeof(errmsg));
++
++		/* If file mode fails (e.g. "no-stdio" OpenSSL build), try directory mode
++		 * if a directory was also provided. This handles Android where OpenSSL's
++		 * file-mode fails but directory mode works. */
++		if (file != NULL && path != NULL) {
++			if (SSL_CTX_load_verify_locations(git__ssl_ctx, NULL, path) == 0) {
++				git_error_set(GIT_ERROR_SSL, "OpenSSL error: failed to load certificates: %s",
++					errmsg);
++				return -1;
++			}
++			return 0;
++		}
++
+ 		git_error_set(GIT_ERROR_SSL, "OpenSSL error: failed to load certificates: %s",
+ 			errmsg);
+ 

@@ -37,9 +37,18 @@ PROFILE="${RUST_PROFILE:-debug}"
 
 log() { echo "[build-rust] $*"; }
 
+patch_libgit2() {
+  log "patching vendored libgit2 sources"
+  if ! bash "$SCRIPT_DIR/patch-libgit2-sys.sh"; then
+    (cd "$RUST_DIR" && cargo fetch --quiet)
+    bash "$SCRIPT_DIR/patch-libgit2-sys.sh"
+  fi
+}
+
 cargo_build() {
   local target="$1"
   log "cargo build --target $target ($PROFILE)"
+  patch_libgit2
   if [ "$PROFILE" = "release" ]; then
     (cd "$RUST_DIR" && cargo build --target "$target" --release)
   else
@@ -101,6 +110,7 @@ generate_bindings() {
   local host
   host="$(rustc -vV | grep '^host:' | cut -d' ' -f2)"
   log "building host cdylib for bindgen ($host)"
+  patch_libgit2
   if [ "$PROFILE" = "release" ]; then
     (cd "$RUST_DIR" && cargo build --release)
   else

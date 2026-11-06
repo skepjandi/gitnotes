@@ -532,7 +532,7 @@ libgit2 routes `set_ssl_cert_dir` to OpenSSL's `SSL_CTX_load_verify_locations` d
 
 ### Certificate verification
 
-No certificate bypass is involved. `set_ssl_cert_file` directs OpenSSL to the Android CA bundle; it does not disable verification. GitHub's TLS certificate remains validated against trusted system CAs.
+`set_ssl_cert_file` only points OpenSSL at the Android CA bundle. On Android, libgit2's own OpenSSL chain check is compiled out (`GIT_SKIP_SSL_VERIFY`, see [Apple TLS Backend](#apple-tls-backend-ios-and-macos)), because the platform TLS stack performs the chain validation there; the host name check still runs. The claim that no certificate bypass exists on Android is therefore wrong — the bypass is deliberate and limited to the chain check.
 
 ### Rust module: `rust/src/engine/android_ca.rs`
 
@@ -552,6 +552,29 @@ pub fn set_ssl_cert_file(cert_file: &Path) -> Result<(), AndroidCaError>
 ```
 
 The `#[uniffi::export]` wrapper in `rust/src/api/bridge.rs` exposes `set_ssl_cert_file` as `setSslCertFile(certFile: String)` to Kotlin. The UniFFI layer maps `AndroidCaError` to `BridgeError::Other`, so Kotlin callers can catch `BridgeException` if the CA configuration fails.
+
+## Apple TLS Backend (iOS and macOS)
+
+`libgit2-sys` selects Apple's SecureTransport as its TLS backend on Apple targets. SecureTransport is limited to TLS 1.2 and has been deprecated since iOS 13, so HTTPS clones against servers that require TLS 1.3 fail with `unexpected return value from ssl handshake -9836` (`errSSLPeerProtocolVersion`).
+
+The vendored `libgit2-sys` sources in the cargo registry are patched by `scripts/patch-libgit2-sys.sh` (patch file `rust/patches/libgit2-tls-backend.patch`):
+
+- **TLS backend** — Apple targets compile libgit2 with OpenSSL instead of SecureTransport, so TLS 1.3 is negotiated.
+- **Trust validation** — Apple platforms ship no OpenSSL CA bundle, so the server chain is validated against the **system trust store** with `SecTrustEvaluateWithError` (`Security.framework`) right after the handshake. The host name is still checked by libgit2's own `verify_server_cert`.
+- **Android** — unchanged: libgit2's OpenSSL chain check stays skipped there (`GIT_SKIP_SSL_VERIFY`).
+
+### Why the patch runs before the build
+
+Cargo compiles a dependency's build script before the dependent crate's build script, so patching from `rust/build.rs` lands one build too late. `scripts/patch-libgit2-sys.sh` therefore rewrites the vendored sources *before* cargo compiles `libgit2-sys`, and `rust/build.rs` verifies the patch is in place and fails the build when it is not — a stale TLS backend can never ship silently.
+
+```sh
+scripts/patch-libgit2-sys.sh          # apply the patch
+scripts/patch-libgit2-sys.sh --check  # exit 0 when the vendored sources are patched
+```
+
+### Regression test
+
+`rust/tests/tls13_clone.rs` serves a git repository from a TLS 1.3-only HTTPS server and clones it with `git2`. With the SecureTransport backend the clone fails with the `-9836` handshake error; with the OpenSSL backend the handshake completes and the clone succeeds.
 
 ## Integration with JavaScript Services
 

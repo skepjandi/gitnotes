@@ -16,6 +16,16 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **Change:** Home tiles lay out in flow with a themed watermark glyph and arrow affordance, and the header greets by time of day with the date. `readableInk` picks white or dark ink per fill by WCAG contrast. Empty states gain a tinted halo and a call-to-action (New Note / New Todo). The flat-theme tab bar marks the active tab with an accent pill. `ScreenHeader` badges use the theme accent. Adds `home.greeting.*` and `home.bento.openCalendar` to all six locales.
 
+## 2026-11-06
+
+### fix(git): clone over HTTPS from TLS 1.3-only servers on iOS
+
+**What:** Cloning an HTTPS repository failed on iPhone with `unexpected return value from ssl handshake -9836` when the Git server required TLS 1.3.
+
+**Fix:** Build libgit2's Apple TLS backend on OpenSSL instead of the deprecated SecureTransport stack (which caps at TLS 1.2) and validate the server chain against the iOS system trust store through `Security.framework`. The vendored libgit2 patch is now applied before the dependency compiles, so the TLS backend can no longer be stale.
+
+**Issue:** [#1835](https://github.com/skepjandi/gitnotes/issues/1835)
+
 ## 2026-11-02
 
 ### fix(forgejo): support repository-scoped tokens

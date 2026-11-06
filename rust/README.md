@@ -91,6 +91,30 @@ EAS cloud builds are NOT exercised by this plan (no credentials); the local
 build path is the verified one. The unexercised EAS-cloud path is tracked as
 an accepted residual risk (plan item F4).
 
+## Vendored libgit2 patches
+
+`libgit2-sys` selects Apple's SecureTransport as its TLS backend on Apple
+targets. SecureTransport caps at TLS 1.2 and has been deprecated since iOS 13,
+so HTTPS clones against TLS 1.3-only servers fail with
+`unexpected return value from ssl handshake -9836`.
+
+`rust/patches/libgit2-tls-backend.patch` switches Apple targets to OpenSSL and
+validates the server chain against the system trust store with
+`Security.framework`. `scripts/patch-libgit2-sys.sh` writes that patch into the
+vendored sources in the cargo registry, and it must run **before** cargo
+compiles `libgit2-sys`: cargo compiles a dependency's build script before the
+dependent crate's build script, so patching from `build.rs` would land one
+build too late. `build.rs` therefore checks the patch and fails the build when
+it is missing.
+
+```sh
+scripts/patch-libgit2-sys.sh          # apply the patch
+scripts/patch-libgit2-sys.sh --check  # exit 0 when the vendored sources are patched
+```
+
+`scripts/build-rust.sh` runs the patch script before every cargo build, so
+`yarn build:rust:*` and the Xcode build phase need no extra step.
+
 ## Checks
 
 ```sh

@@ -17,6 +17,7 @@ interface TodoCardProps {
 
 function TodoCardImpl({ todo, onPress, onToggle }: TodoCardProps) {
   const { colors } = useTheme();
+  const styles = createStyles({ colors });
   const { t } = useTranslation();
   const isOverdue = todo.dueDate ? isPast(new Date(todo.dueDate)) && !todo.completed : false;
 
@@ -125,7 +126,7 @@ export const TodoCard = memo(TodoCardImpl, (prev, next) => {
   return prev.todo === next.todo && prev.onPress === next.onPress && prev.onToggle === next.onToggle;
 });
 
-const styles = StyleSheet.create({
+const createStyles = ({ colors }) => StyleSheet.create({
   todoItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -226,4 +227,4 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
   },
-});
+}));

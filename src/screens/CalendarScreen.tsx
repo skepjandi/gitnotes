@@ -29,6 +29,7 @@ import {
   parseJournalDateFromTitle,
 } from '../services/JournalService';
 import { HapticService } from '../utils/haptics';
+import { ON_FILLED } from '../../theme/tokens';
 
 type CalendarRouteProp = RouteProp<RootStackParamList, 'Calendar'>;
 type CalendarNavProp = NativeStackNavigationProp<RootStackParamList>;
@@ -123,7 +124,7 @@ export default function CalendarScreen() {
               fontSize: 14,
               fontWeight: today ? '700' : '500',
               color: today
-                ? '#FFFFFF'
+                ? ON_FILLED
                 : inMonth
                   ? colors.text
                   : colors.textSecondary,
@@ -137,7 +138,7 @@ export default function CalendarScreen() {
                 width: 4,
                 height: 4,
                 borderRadius: 2,
-                backgroundColor: today ? '#FFFFFF' : colors.primary,
+                backgroundColor: today ? ON_FILLED : colors.primary,
                 marginTop: 2,
               }}
             />

@@ -32,6 +32,7 @@ import CanvasCard from '../components/CanvasCard';
 import { SwipeableListItem } from '../components/list/SwipeableListItem';
 import { BulkActionBar } from '../components/list/BulkActionBar';
 import { HapticService } from '../utils/haptics';
+import { ON_FILLED } from '../../theme/tokens';
 
 type CanvasViewMode = 'list' | 'grid';
 

@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
 import { PRIORITY_COLORS, PRIORITY_LABELS, Todo } from '../../models/Todo';
 import { findReminderLabel, formatDeadline } from './todosShared';
-import { ON_FILLED } from '../theme/tokens';
+import { ON_FILLED } from '../../theme/tokens';
 
 interface TodoCardProps {
   todo: Todo;

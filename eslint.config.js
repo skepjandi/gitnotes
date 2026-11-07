@@ -10,9 +10,9 @@ const files = ['**/*.{ts,tsx,js,jsx}'];
 const ignores = ['node_modules/', '.expo/', 'ios/', 'android/', 'dist/', 'coverage/', 'bridge/'];
 
 module.exports = [
+  { ignores },
   {
     files,
-    ignores,
     languageOptions: {
       parser: tsparser,
       parserOptions: {

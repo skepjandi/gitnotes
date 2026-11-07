@@ -103,6 +103,14 @@ describe('CRDT conflict resolution', () => {
     expect(GitEngine.push).toHaveBeenCalledWith('file:///repo', 'origin', 'repo-1');
   });
 
+  it('commits with the author resolved for the repository', async () => {
+    stubConflicts([NOTE, SIDECAR]);
+
+    await resolveConflictAndSync(repo(true), NOTE, 'ONE\ntwo\nTHREE\n');
+
+    expect(CommitService.resolveAuthor).toHaveBeenCalledWith('repo-1');
+  });
+
   describe('retrying after a failed commit/push', () => {
     // Staging a resolved path drops its conflict stages, like the real index.
     function stubStatefulConflicts() {

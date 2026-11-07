@@ -16,6 +16,8 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **Fix:** `resolveConflictAndSync` only loads both sides while the note is still conflicted. Otherwise it reuses the sidecar the earlier attempt wrote (it already holds both histories) and records the final text on top, so edits made between attempts are kept. The note and sidecar are also written to disk before either is staged, so a failed write leaves the conflict intact.
 
+**Root cause of the first failure:** the resolve commit called `CommitService.resolveAuthor()` without the repo id, skipping the per-repo/host author lookup and producing an empty identity (`failed to parse signature - Signature cannot have an empty name or email`). It now passes `repo.id`, like the other commit paths. This failure left the note staged (the Git button showed "staged") but never committed.
+
 ### feat(onboarding): redesigned onboarding with an interactive feature tour
 
 **What:** Onboarding explained almost nothing (four generic icon-and-sentence screens) and never mentioned the floating Git button, the floating AI button or the rest of the UI.

@@ -1,38 +1,7 @@
-import type { AIContextItem } from '../../models/AIProvider';
-import type { ChatMessage } from '../../models/Chat';
-import * as AIService from '../../services/AIService';
-import { executeToolCall } from '../../services/ai/actionExecutor';
-
-export type ToolEvent = {
-  type: 'tool-call' | 'tool-call-streaming-start' | 'tool-call-delta' | 'tool-result';
-  toolCallId?: string;
-  toolName?: string;
-  input?: unknown;
-  argsTextDelta?: string;
-  result?: unknown;
-};
-
-export type PendingConfirmation = {
-  toolName: string;
-  args: Record<string, unknown>;
-  description: string;
-  details: Record<string, unknown>;
-  messageId: string;
-};
-
-export type RetryPayload = {
-  text: string;
-  contexts: AIContextItem[];
-};
-
-export type ChatRequestMessage = Parameters<typeof AIService.streamChatResponse>[1][number];
-
-const TOOL_EVENT_TYPES = new Set<ToolEvent['type']>([
-  'tool-call',
-  'tool-call-streaming-start',
-  'tool-call-delta',
-  'tool-result',
-]);
+import type { ModelMessage } from 'ai';
+import type { AIContextItem } from '../../../models/AIProvider';
+import type { ChatMessage } from '../../../models/Chat';
+import type { ActionExecutorResult } from '../../ai/actionExecutor';
 
 export function dedupeContexts(items: AIContextItem[]): AIContextItem[] {
   const map = new Map<string, AIContextItem>();
@@ -41,19 +10,6 @@ export function dedupeContexts(items: AIContextItem[]): AIContextItem[] {
     if (!map.has(key)) map.set(key, item);
   }
   return [...map.values()];
-}
-
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
-
-export function parseToolEvent(chunk: string): ToolEvent | null {
-  try {
-    const parsed = JSON.parse(chunk) as ToolEvent;
-    return TOOL_EVENT_TYPES.has(parsed.type) ? parsed : null;
-  } catch {
-    return null;
-  }
 }
 
 // Some providers (notably Ring-2.6-1T via OpenRouter) emit assistant text as a
@@ -71,7 +27,7 @@ export function decodeOverEscapedChunk(chunk: string): string {
   const looksEscaped = trimmed.includes('\\n') || trimmed.includes('\\t') || trimmed.includes('\\"');
   if (!looksQuoted || !looksEscaped) return chunk;
   try {
-    const parsed = JSON.parse(trimmed);
+    const parsed: unknown = JSON.parse(trimmed);
     if (typeof parsed === 'string') return parsed;
   } catch {
     // fall through to return chunk unchanged
@@ -79,12 +35,16 @@ export function decodeOverEscapedChunk(chunk: string): string {
   return chunk;
 }
 
+/** Tool arguments from the finished tool-call input, falling back to the streamed JSON text. */
 export function parseToolArgs(value: unknown, fallback = ''): Record<string, unknown> {
-  if (isRecord(value)) return value;
-  if (!fallback.trim()) return {};
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) return value as Record<string, unknown>;
+  const streamed = typeof value === 'string' && value.trim() ? value : fallback;
+  if (!streamed.trim()) return {};
   try {
-    const parsed = JSON.parse(fallback);
-    return isRecord(parsed) ? parsed : {};
+    const parsed: unknown = JSON.parse(streamed);
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
   } catch {
     return {};
   }
@@ -101,7 +61,7 @@ function stringifyToolCallArgs(args: Record<string, unknown> | undefined): strin
   }
 }
 
-export function formatHistoryMessage(message: ChatMessage): ChatRequestMessage {
+export function formatHistoryMessage(message: ChatMessage): ModelMessage {
   const content =
     message.content
     || (message.toolCallName
@@ -109,6 +69,12 @@ export function formatHistoryMessage(message: ChatMessage): ChatRequestMessage {
       : '');
 
   return { role: message.role, content };
+}
+
+/** History worth sending to a model: drops thoughts, plans and messages that carry nothing. */
+export function isModelHistoryMessage(message: ChatMessage): boolean {
+  if (message.kind === 'thought' || message.kind === 'plan') return false;
+  return message.content.trim().length > 0 || !!message.toolCallName;
 }
 
 export function formatToolResult(value: unknown): string {
@@ -121,7 +87,7 @@ export function formatToolResult(value: unknown): string {
   }
 }
 
-export function formatExecutorResult(result: Awaited<ReturnType<typeof executeToolCall>>): string {
+export function formatExecutorResult(result: ActionExecutorResult): string {
   if (!result.success) return result.error ?? 'Tool execution failed.';
   if (result.requiresConfirmation && result.proposedChanges) return result.proposedChanges.description;
   return formatToolResult(result.data);

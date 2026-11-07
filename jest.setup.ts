@@ -8,6 +8,11 @@ jest.mock('@react-native-community/netinfo', () => ({
   },
 }));
 
+jest.mock('expo-constants', () => ({
+  __esModule: true,
+  default: { expoConfig: { version: '0.0.0-test' } },
+}));
+
 jest.mock('nativewind', () => ({
   cssInterop: () => {},
   rem: (v: number) => v,

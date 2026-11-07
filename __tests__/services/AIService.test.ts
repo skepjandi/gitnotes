@@ -1,13 +1,13 @@
 /**
  * Regression tests for AIService — covers:
- * - streamChatResponse with text and tool events
- * - Empty body error fallback to generateText
- * - Tool event serialization
- * - Error handling (auth/network errors)
+ * - streamChatEvents mapping of fullStream parts to typed ModelStreamPart values
+ * - Empty body retry and generateText fallback
+ * - Error handling (auth/network errors) and abort
  * - System message extraction
  */
 import type { LanguageModel, ModelMessage } from 'ai';
-import { streamChatResponse, generateChatTitle } from '@/services/AIService';
+import { streamChatEvents, generateChatTitle } from '@/services/AIService';
+import type { ModelStreamPart } from '@/services/AIService';
 
 const makeSchema = () => ({ parse: jest.fn(), optional: () => ({ parse: jest.fn() }) });
 
@@ -58,8 +58,8 @@ jest.mock('@/services/ai/providerAvailability', () => ({
 
 const mockExtractErrorDetails = jest.fn();
 jest.mock('@/services/ai/aiServiceErrors', () => ({
-  extractErrorDetails: mockExtractErrorDetails,
-  humanizeStreamError: jest.fn((e: unknown) => (e instanceof Error ? e.message : 'Unknown error')),
+  extractErrorDetails: (error: unknown) => mockExtractErrorDetails(error),
+  humanizeStreamError: (e: unknown) => (e instanceof Error ? e.message : 'Unknown error'),
 }));
 
 jest.mock('@/stores/aiStore', () => ({
@@ -102,28 +102,37 @@ function createMockModel(): LanguageModel {
   return {} as LanguageModel;
 }
 
-function textDelta(delta: string) {
-  return { type: 'text-delta' as const, textDelta: delta };
+const textDelta = (text: string) => ({ type: 'text-delta' as const, id: 't', text });
+const inputStart = (id: string, toolName: string) => ({ type: 'tool-input-start' as const, id, toolName });
+const inputDelta = (id: string, delta: string) => ({ type: 'tool-input-delta' as const, id, delta });
+const toolCall = (toolCallId: string, toolName: string, input: unknown) => ({
+  type: 'tool-call' as const,
+  toolCallId,
+  toolName,
+  input,
+});
+const toolResult = (toolCallId: string, toolName: string, output: unknown) => ({
+  type: 'tool-result' as const,
+  toolCallId,
+  toolName,
+  output,
+});
+const errorPart = (msg: string) => ({ type: 'error' as const, error: new Error(msg) });
+
+function streamOf(...parts: unknown[]) {
+  return {
+    fullStream: {
+      [Symbol.asyncIterator]: async function* () {
+        for (const part of parts) yield part;
+      },
+    },
+  };
 }
 
-function toolCall(id: string, name: string, input: Record<string, unknown>) {
-  return { type: 'tool-call' as const, id, toolName: name, input };
-}
-
-function toolResult(id: string, name: string, result: unknown) {
-  return { type: 'tool-result' as const, id, toolName: name, result };
-}
-
-function toolCallStreamingStart(id: string, name: string) {
-  return { type: 'tool-call-streaming-start' as const, id, toolName: name };
-}
-
-function toolCallDelta(id: string, delta: string) {
-  return { type: 'tool-call-delta' as const, id, delta };
-}
-
-function errorPart(msg: string) {
-  return { type: 'error' as const, error: new Error(msg) };
+async function collect(gen: AsyncGenerator<ModelStreamPart>): Promise<ModelStreamPart[]> {
+  const received: ModelStreamPart[] = [];
+  for await (const part of gen) received.push(part);
+  return received;
 }
 
 beforeEach(() => {
@@ -132,301 +141,169 @@ beforeEach(() => {
 
 // ── Test suite ───────────────────────────────────────────────────────────────
 
-describe('AIService streamChatResponse regression', () => {
+describe('AIService streamChatEvents', () => {
   let model: LanguageModel;
   let messages: ModelMessage[];
 
   beforeEach(() => {
-    jest.clearAllMocks();
     model = createMockModel();
     messages = [{ role: 'user' as const, content: 'Hello' }];
   });
 
-  describe('text streaming', () => {
-    it('yields text-delta chunks as plain text', async () => {
-      const chunks: unknown[] = [textDelta('Hello '), textDelta('world!')];
-      const mockStream = {
-        fullStream: {
-          [Symbol.asyncIterator]: async function* () {
-            for (const chunk of chunks) yield chunk;
-          },
-        },
-      };
-      mockStreamText.mockReturnValueOnce(mockStream);
-
-      const gen = streamChatResponse(model, messages);
-      const received: string[] = [];
-      for await (const chunk of gen) {
-        received.push(chunk);
-      }
-
-      expect(received).toEqual(['Hello ', 'world!']);
+  describe('part mapping', () => {
+    it('yields text deltas as typed parts and drops empty ones', async () => {
+      mockStreamText.mockReturnValueOnce(streamOf(textDelta('Hello '), textDelta(''), textDelta('world!')));
+      expect(await collect(streamChatEvents(model, messages))).toEqual([
+        { type: 'text-delta', text: 'Hello ' },
+        { type: 'text-delta', text: 'world!' },
+      ]);
     });
 
-    it('yields structured assistant text (type:text)', async () => {
-      const mockStream = {
-        fullStream: {
-          [Symbol.asyncIterator]: async function* () {
-            yield { type: 'text' as const, text: 'Assistant response' };
-          },
-        },
-      };
-      mockStreamText.mockReturnValueOnce(mockStream);
-
-      const gen = streamChatResponse(model, messages);
-      const received: string[] = [];
-      for await (const chunk of gen) {
-        received.push(chunk);
-      }
-
-      expect(received).toEqual(['Assistant response']);
-    });
-  });
-
-  describe('tool event serialization', () => {
-    it('serializes tool-call events as JSON strings', async () => {
-      const mockStream = {
-        fullStream: {
-          [Symbol.asyncIterator]: async function* () {
-            yield toolCall('tc-1', 'search_notes', { query: 'test' });
-          },
-        },
-      };
-      mockStreamText.mockReturnValueOnce(mockStream);
-
-      const gen = streamChatResponse(model, messages);
-      const received: string[] = [];
-      for await (const chunk of gen) {
-        received.push(chunk);
-      }
-
-      expect(received).toHaveLength(1);
-      const parsed = JSON.parse(received[0]);
-      expect(parsed.type).toBe('tool-call');
-      expect(parsed.toolCallId).toBe('tc-1');
-      expect(parsed.toolName).toBe('search_notes');
-      expect(parsed.input).toEqual({ query: 'test' });
+    it('keeps text that looks like a tool event as plain text', async () => {
+      const lookalike = JSON.stringify({ type: 'tool-call', toolCallId: 'x', toolName: 'create_note', input: {} });
+      mockStreamText.mockReturnValueOnce(streamOf(textDelta(lookalike)));
+      expect(await collect(streamChatEvents(model, messages))).toEqual([{ type: 'text-delta', text: lookalike }]);
     });
 
-    it('serializes tool-call-streaming-start events', async () => {
-      const mockStream = {
-        fullStream: {
-          [Symbol.asyncIterator]: async function* () {
-            yield toolCallStreamingStart('tc-1', 'create_note');
-          },
-        },
-      };
-      mockStreamText.mockReturnValueOnce(mockStream);
-
-      const gen = streamChatResponse(model, messages);
-      const received: string[] = [];
-      for await (const chunk of gen) {
-        received.push(chunk);
-      }
-
-      expect(received).toHaveLength(1);
-      const parsed = JSON.parse(received[0]);
-      expect(parsed.type).toBe('tool-call-streaming-start');
-      expect(parsed.toolCallId).toBe('tc-1');
-      expect(parsed.toolName).toBe('create_note');
+    it('maps tool input start, delta, call and result', async () => {
+      mockStreamText.mockReturnValueOnce(
+        streamOf(
+          inputStart('tc-1', 'search_notes'),
+          inputDelta('tc-1', '{"query":'),
+          toolCall('tc-1', 'search_notes', { query: 'test' }),
+          toolResult('tc-1', 'search_notes', { matches: ['note1'] }),
+        ),
+      );
+      expect(await collect(streamChatEvents(model, messages))).toEqual([
+        { type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'search_notes' },
+        { type: 'tool-input-delta', toolCallId: 'tc-1', delta: '{"query":' },
+        { type: 'tool-call', toolCallId: 'tc-1', toolName: 'search_notes', input: { query: 'test' } },
+        { type: 'tool-result', toolCallId: 'tc-1', toolName: 'search_notes', output: { matches: ['note1'] } },
+      ]);
     });
 
-    it('serializes tool-call-delta events with argsTextDelta', async () => {
-      const mockStream = {
-        fullStream: {
-          [Symbol.asyncIterator]: async function* () {
-            yield toolCallDelta('tc-1', '{"title": "Test');
-          },
-        },
-      };
-      mockStreamText.mockReturnValueOnce(mockStream);
-
-      const gen = streamChatResponse(model, messages);
-      const received: string[] = [];
-      for await (const chunk of gen) {
-        received.push(chunk);
-      }
-
-      expect(received).toHaveLength(1);
-      const parsed = JSON.parse(received[0]);
-      expect(parsed.type).toBe('tool-call-delta');
-      expect(parsed.toolCallId).toBe('tc-1');
-      expect(parsed.argsTextDelta).toBe('{"title": "Test');
+    it('splits the "name: {json}" tool name some OpenRouter models emit', async () => {
+      mockStreamText.mockReturnValueOnce(
+        streamOf(
+          inputStart('tc-1', 'search_notes: {"query":"dogs"}'),
+          toolCall('tc-1', 'search_notes: {"query":"dogs"}', ''),
+        ),
+      );
+      expect(await collect(streamChatEvents(model, messages))).toEqual([
+        { type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'search_notes' },
+        { type: 'tool-call', toolCallId: 'tc-1', toolName: 'search_notes', input: { query: 'dogs' } },
+      ]);
     });
 
-    it('serializes tool-result events', async () => {
-      const mockStream = {
-        fullStream: {
-          [Symbol.asyncIterator]: async function* () {
-            yield toolResult('tc-1', 'search_notes', { matches: ['note1', 'note2'] });
-          },
-        },
-      };
-      mockStreamText.mockReturnValueOnce(mockStream);
-
-      const gen = streamChatResponse(model, messages);
-      const received: string[] = [];
-      for await (const chunk of gen) {
-        received.push(chunk);
-      }
-
-      expect(received).toHaveLength(1);
-      const parsed = JSON.parse(received[0]);
-      expect(parsed.type).toBe('tool-result');
-      expect(parsed.toolCallId).toBe('tc-1');
-      expect(parsed.result).toEqual({ matches: ['note1', 'note2'] });
+    it('ignores bookkeeping parts such as start-step and finish', async () => {
+      mockStreamText.mockReturnValueOnce(
+        streamOf({ type: 'start' }, { type: 'start-step' }, textDelta('hi'), { type: 'finish-step' }, { type: 'finish' }),
+      );
+      expect(await collect(streamChatEvents(model, messages))).toEqual([{ type: 'text-delta', text: 'hi' }]);
     });
   });
 
   describe('error handling', () => {
-    it('yields text before error and continues processing', async () => {
-      const mockStream = {
-        fullStream: {
-          [Symbol.asyncIterator]: async function* () {
-            yield textDelta('Partial ');
-            yield errorPart('API error');
-          },
-        },
-      };
-      mockStreamText.mockReturnValueOnce(mockStream);
+    it('yields text produced before an error and then throws the humanised error', async () => {
+      mockStreamText.mockReturnValueOnce(streamOf(textDelta('Partial '), errorPart('API error')));
+      mockExtractErrorDetails.mockReturnValue({ isEmptyBody: false, isParserError: false });
 
-      // When error is emitted after some text, streamText throws
-      // Our code catches it and tries generateText fallback
-      mockGenerateText.mockResolvedValueOnce({ text: 'Fallback response' });
-
-      const gen = streamChatResponse(model, messages);
-      const received: string[] = [];
-      try {
-        for await (const chunk of gen) {
-          received.push(chunk);
-        }
-      } catch {
-        // Expected if error handling throws
-      }
-
-      // Partial text should have been yielded before error stopped the stream
-      // or fallback should have kicked in
-      expect(received.length).toBeGreaterThanOrEqual(0);
+      const received: ModelStreamPart[] = [];
+      await expect(
+        (async () => {
+          for await (const part of streamChatEvents(model, messages)) received.push(part);
+        })(),
+      ).rejects.toThrow('API error');
+      expect(received).toEqual([{ type: 'text-delta', text: 'Partial ' }]);
+      expect(mockGenerateText).not.toHaveBeenCalled();
     });
 
-    it('re-throws non-empty-body errors from generateText fallback', async () => {
-      const mockStream = {
+    it('retries once on an empty body and succeeds', async () => {
+      jest.useFakeTimers();
+      mockStreamText
+        .mockReturnValueOnce(streamOf(errorPart('empty body')))
+        .mockReturnValueOnce(streamOf(textDelta('second time lucky')));
+      mockExtractErrorDetails.mockReturnValueOnce({ isEmptyBody: true, isParserError: false });
+
+      const pending = collect(streamChatEvents(model, messages));
+      await jest.advanceTimersByTimeAsync(600);
+      expect(await pending).toEqual([{ type: 'text-delta', text: 'second time lucky' }]);
+      expect(mockStreamText).toHaveBeenCalledTimes(2);
+      jest.useRealTimers();
+    });
+
+    it('falls back to generateText on a parser error before any output, including its tool calls', async () => {
+      mockStreamText.mockReturnValueOnce(streamOf(errorPart('Failed to process successful response')));
+      mockExtractErrorDetails.mockReturnValue({ isEmptyBody: false, isParserError: true });
+      mockGenerateText.mockResolvedValueOnce({
+        text: 'Fallback response',
+        toolCalls: [{ toolCallId: 'tc-9', toolName: 'get_note', input: { noteId: 'n1' } }],
+      });
+
+      expect(await collect(streamChatEvents(model, messages))).toEqual([
+        { type: 'text-delta', text: 'Fallback response' },
+        { type: 'tool-call', toolCallId: 'tc-9', toolName: 'get_note', input: { noteId: 'n1' } },
+      ]);
+    });
+
+    it('does not fall back once output was already yielded', async () => {
+      mockStreamText.mockReturnValueOnce(streamOf(textDelta('x'), errorPart('Failed to process successful response')));
+      mockExtractErrorDetails.mockReturnValue({ isEmptyBody: false, isParserError: true });
+      await expect(collect(streamChatEvents(model, messages))).rejects.toThrow();
+      expect(mockGenerateText).not.toHaveBeenCalled();
+    });
+
+    it('throws the humanised original error when the fallback fails too', async () => {
+      mockStreamText.mockReturnValueOnce(streamOf(errorPart('parser broke')));
+      mockExtractErrorDetails.mockReturnValue({ isEmptyBody: false, isParserError: true });
+      mockGenerateText.mockRejectedValueOnce(new Error('Auth failed'));
+      await expect(collect(streamChatEvents(model, messages))).rejects.toThrow('parser broke');
+    });
+
+    it('ends quietly instead of throwing when the abort signal fired', async () => {
+      const controller = new AbortController();
+      mockStreamText.mockReturnValueOnce({
         fullStream: {
           [Symbol.asyncIterator]: async function* () {
-            yield errorPart('Auth error');
+            yield textDelta('partial');
+            controller.abort();
+            throw new Error('The operation was aborted');
           },
         },
-      };
-      mockStreamText.mockReturnValueOnce(mockStream);
-      mockGenerateText.mockRejectedValueOnce(new Error('Auth failed'));
+      });
+      mockExtractErrorDetails.mockReturnValue({ isEmptyBody: false, isParserError: false });
 
-      mockExtractErrorDetails.mockReturnValueOnce({ isEmptyBody: false, isParserError: false });
-
-      const gen = streamChatResponse(model, messages);
-
-      await expect(async () => {
-        for await (const _step of gen) { void _step; }
-      }).rejects.toThrow();
+      expect(await collect(streamChatEvents(model, messages, undefined, controller.signal))).toEqual([
+        { type: 'text-delta', text: 'partial' },
+      ]);
     });
   });
 
-  describe('system message extraction', () => {
-    it('extracts system message into separate system option', async () => {
-      const messagesWithSystem: ModelMessage[] = [
+  describe('request shaping', () => {
+    it('lifts system messages into the system option', async () => {
+      const withSystem: ModelMessage[] = [
         { role: 'system', content: 'You are a helpful assistant.' },
         { role: 'user', content: 'Hello' },
       ];
-
-      const mockStream = {
-        fullStream: {
-          [Symbol.asyncIterator]: async function* () {
-            yield textDelta('Hi there!');
-          },
-        },
-      };
-      mockStreamText.mockReturnValueOnce(mockStream);
-
-      const gen = streamChatResponse(model, messagesWithSystem);
-      const received: string[] = [];
-      for await (const chunk of gen) {
-        received.push(chunk);
-      }
-
+      mockStreamText.mockReturnValueOnce(streamOf(textDelta('Hi there!')));
+      await collect(streamChatEvents(model, withSystem));
       expect(mockStreamText).toHaveBeenCalledWith(
-        expect.objectContaining({
-          system: 'You are a helpful assistant.',
-          messages: [{ role: 'user', content: 'Hello' }],
-        }),
+        expect.objectContaining({ system: 'You are a helpful assistant.', messages: [{ role: 'user', content: 'Hello' }] }),
       );
     });
 
-    it('passes rest messages without system when no system message present', async () => {
-      const mockStream = {
-        fullStream: {
-          [Symbol.asyncIterator]: async function* () {
-            yield textDelta('Response');
-          },
-        },
-      };
-      mockStreamText.mockReturnValueOnce(mockStream);
-
-      const gen = streamChatResponse(model, messages);
-      for await (const _step of gen) { void _step; }
-
-      expect(mockStreamText).toHaveBeenCalledWith(
-        expect.objectContaining({
-          system: undefined,
-          messages,
-        }),
-      );
+    it('passes messages untouched when there is no system message', async () => {
+      mockStreamText.mockReturnValueOnce(streamOf(textDelta('Response')));
+      await collect(streamChatEvents(model, messages));
+      expect(mockStreamText).toHaveBeenCalledWith(expect.objectContaining({ system: undefined, messages }));
     });
-  });
 
-  describe('tools parameter', () => {
-    it('passes tools to streamText when provided', async () => {
-      const mockTools = { search_notes: jest.fn() } as unknown as Record<string, import('ai').Tool>;
-
-      const mockStream = {
-        fullStream: {
-          [Symbol.asyncIterator]: async function* () {
-            yield textDelta('Done');
-          },
-        },
-      };
-      mockStreamText.mockReturnValueOnce(mockStream);
-
-      const gen = streamChatResponse(model, messages, mockTools);
-      for await (const _step of gen) { void _step; }
-
-      expect(mockStreamText).toHaveBeenCalledWith(
-        expect.objectContaining({
-          tools: mockTools,
-        }),
-      );
-    });
-  });
-
-  describe('abort signal', () => {
-    it('passes abortSignal to streamText', async () => {
-      const abortController = new AbortController();
-
-      const mockStream = {
-        fullStream: {
-          [Symbol.asyncIterator]: async function* () {
-            yield textDelta('Response');
-          },
-        },
-      };
-      mockStreamText.mockReturnValueOnce(mockStream);
-
-      const gen = streamChatResponse(model, messages, undefined, abortController.signal);
-      for await (const _step of gen) { void _step; }
-
-      expect(mockStreamText).toHaveBeenCalledWith(
-        expect.objectContaining({
-          abortSignal: abortController.signal,
-        }),
-      );
+    it('passes tools and the abort signal to streamText', async () => {
+      const tools = { search_notes: jest.fn() } as unknown as Record<string, import('ai').Tool>;
+      const controller = new AbortController();
+      mockStreamText.mockReturnValueOnce(streamOf(textDelta('Done')));
+      await collect(streamChatEvents(model, messages, tools, controller.signal));
+      expect(mockStreamText).toHaveBeenCalledWith(expect.objectContaining({ tools, abortSignal: controller.signal }));
     });
   });
 });

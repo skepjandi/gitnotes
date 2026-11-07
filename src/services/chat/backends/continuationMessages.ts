@@ -1,5 +1,5 @@
 import type { ToolCallPart, ToolModelMessage, ToolResultPart, ModelMessage } from 'ai';
-import type { ChatMessage } from '../../models/Chat';
+import type { ChatMessage } from '../../../models/Chat';
 
 function isValidToolIdentifier(toolCallId: string | undefined, toolName: string | undefined): asserts toolCallId is string {
   if (!toolCallId) throw new Error('toolCallId is required for tool-carrying messages');

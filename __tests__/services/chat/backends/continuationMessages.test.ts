@@ -1,5 +1,5 @@
-import type { ChatMessage } from '../../../src/models/Chat';
-import { toContinuationMessages } from '../../../src/components/chat/continuationMessages';
+import type { ChatMessage } from '../../../../src/models/Chat';
+import { toContinuationMessages } from '../../../../src/services/chat/backends/continuationMessages';
 
 const makeMsg = (partial: Partial<ChatMessage>): ChatMessage =>
   ({

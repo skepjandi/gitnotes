@@ -1,409 +1,207 @@
-/**
- * Regression tests for chatStore — covers:
- * - Thread CRUD operations
- * - Message add/update/remove/truncate
- * - Storage adapter wiring
- * - Branch/account isolation via adapter
- * - Error handling
- */
-jest.mock('@/services/ChatStorageService');
+const mockLocal = {
+  listSummaries: jest.fn(),
+  remove: jest.fn(),
+  load: jest.fn(),
+  save: jest.fn(),
+};
+const mockRepo = {
+  listSummaries: jest.fn(),
+  remove: jest.fn(),
+  load: jest.fn(),
+  save: jest.fn(),
+};
+let mockRepoConfigured = true;
+const mockRelease = jest.fn();
+
+jest.mock('@/services/chat/storage/localThreadStorage', () => ({
+  get localThreadStorage() {
+    return mockLocal;
+  },
+}));
+jest.mock('@/services/chat/storage/threadStorage', () => ({
+  configuredRepoStorage: () => (mockRepoConfigured ? mockRepo : null),
+}));
+jest.mock('@/services/chat/backends/agentBackend', () => ({ releaseAgentConnection: (id: string) => mockRelease(id) }));
+jest.mock('@/services/ChatStorageService', () => {
+  class ChatStorageError extends Error {
+    cachedData?: unknown;
+    warning?: string;
+  }
+  return { ChatStorageError };
+});
 
 import { useChatStore } from '@/stores/chatStore';
-import type { ChatThread, ChatThreadSummary, ChatMessage } from '@/models/Chat';
+import { ChatStorageError } from '@/services/ChatStorageService';
+import { onThreadRemoved, onThreadRenamed } from '@/services/chat/threadEvents';
+import type { ChatThreadSummary } from '@/models/Chat';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+const summary = (overrides: Partial<ChatThreadSummary> & { id: string }): ChatThreadSummary => ({
+  title: overrides.id,
+  updatedAt: 1,
+  messageCount: 1,
+  ...overrides,
+});
 
-const OWNER = 'test-owner';
-const REPO = 'test-repo';
-const BRANCH = 'main';
-
-function makeThread(overrides: Partial<ChatThread> = {}): ChatThread {
-  const now = Date.now();
-  return {
-    id: `${now}-thread`,
-    title: 'Test Thread',
-    messages: [],
-    createdAt: now,
-    updatedAt: now,
-    repoOwner: OWNER,
-    repoName: REPO,
-    branch: BRANCH,
-    filePath: 'chat/test.json',
-    ...overrides,
-  };
-}
-
-function makeMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
-  return {
-    id: `msg-${Math.random().toString(36).slice(2, 8)}`,
-    role: 'user',
-    content: 'Test message',
-    timestamp: Date.now(),
-    ...overrides,
-  };
-}
-
-function makeSummary(overrides: Partial<ChatThreadSummary> = {}): ChatThreadSummary {
-  return {
-    id: `thread-${Math.random().toString(36).slice(2, 8)}`,
-    title: 'Test Thread',
-    updatedAt: Date.now(),
-    messageCount: 0,
-    preview: 'No messages yet',
-    ...overrides,
-  };
-}
-
-// ── Mock adapter ─────────────────────────────────────────────────────────────
-
-const mockLoadThreadSummaries = jest.fn();
-const mockLoadThread = jest.fn();
-const mockSaveThread = jest.fn();
-const mockDeleteThread = jest.fn();
-
-function createMockAdapter() {
-  return {
-    loadThreadSummaries: mockLoadThreadSummaries,
-    loadThread: mockLoadThread,
-    saveThread: mockSaveThread,
-    deleteThread: mockDeleteThread,
-  };
-}
-
-// ── Test suite ───────────────────────────────────────────────────────────────
-
-describe('chatStore regression', () => {
-  let adapter = createMockAdapter();
-
+describe('chatStore thread list', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    adapter = createMockAdapter();
-    useChatStore.setState({
-      threads: [],
-      activeThread: null,
-      isLoading: false,
-      error: null,
-      isStreaming: false,
-      storageAdapter: null,
-    });
-  });
-
-  describe('setStorageAdapter', () => {
-    it('accepts a storage adapter and makes it available', () => {
-      useChatStore.getState().setStorageAdapter(adapter);
-
-      expect(useChatStore.getState().storageAdapter).toBe(adapter);
-    });
+    mockRepoConfigured = true;
+    mockLocal.listSummaries.mockResolvedValue([]);
+    mockRepo.listSummaries.mockResolvedValue([]);
+    mockLocal.remove.mockResolvedValue(undefined);
+    mockRepo.remove.mockResolvedValue(undefined);
+    useChatStore.setState({ threads: [], isLoading: false, error: null });
   });
 
   describe('loadThreads', () => {
-    it('loads thread summaries via adapter', async () => {
-      const summaries = [makeSummary(), makeSummary()];
-      mockLoadThreadSummaries.mockResolvedValueOnce(summaries);
-      useChatStore.getState().setStorageAdapter(adapter);
+    it('merges repo and device-local summaries newest first', async () => {
+      mockRepo.listSummaries.mockResolvedValue([summary({ id: 'model-old', updatedAt: 10 })]);
+      mockLocal.listSummaries.mockResolvedValue([summary({ id: 'agent-new', updatedAt: 20, backend: 'agent' })]);
 
-      await useChatStore.getState().loadThreads({ owner: OWNER, repo: REPO, branch: BRANCH });
+      await useChatStore.getState().loadThreads();
 
-      expect(mockLoadThreadSummaries).toHaveBeenCalledWith(OWNER, REPO, BRANCH);
-      expect(useChatStore.getState().threads).toHaveLength(2);
+      expect(useChatStore.getState().threads.map((t) => t.id)).toEqual(['agent-new', 'model-old']);
+      expect(useChatStore.getState().error).toBeNull();
+    });
+
+    it('still lists agent chats when no chat repo is configured', async () => {
+      mockRepoConfigured = false;
+      mockLocal.listSummaries.mockResolvedValue([summary({ id: 'agent-1', backend: 'agent' })]);
+
+      await useChatStore.getState().loadThreads();
+
+      expect(useChatStore.getState().threads.map((t) => t.id)).toEqual(['agent-1']);
+      expect(mockRepo.listSummaries).not.toHaveBeenCalled();
+    });
+
+    it('keeps cached repo summaries and surfaces a warning on transient repo failure', async () => {
+      const failure = new ChatStorageError('offline');
+      failure.cachedData = [summary({ id: 'cached', updatedAt: 5 })];
+      failure.warning = 'Showing cached chats';
+      mockRepo.listSummaries.mockRejectedValue(failure);
+      mockLocal.listSummaries.mockResolvedValue([summary({ id: 'agent-1', updatedAt: 6, backend: 'agent' })]);
+
+      await useChatStore.getState().loadThreads();
+
+      expect(useChatStore.getState().threads.map((t) => t.id)).toEqual(['agent-1', 'cached']);
+      expect(useChatStore.getState().error).toBe('Showing cached chats');
       expect(useChatStore.getState().isLoading).toBe(false);
     });
 
-    it('sets error when adapter is not set', async () => {
-      await useChatStore.getState().loadThreads({ owner: OWNER, repo: REPO, branch: BRANCH });
+    it('does not lose agent chats when the repo fails without cache', async () => {
+      mockRepo.listSummaries.mockRejectedValue(new Error('boom'));
+      mockLocal.listSummaries.mockResolvedValue([summary({ id: 'agent-1', backend: 'agent' })]);
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
-      expect(useChatStore.getState().threads).toHaveLength(0);
-      expect(mockLoadThreadSummaries).not.toHaveBeenCalled();
-    });
+      await useChatStore.getState().loadThreads();
 
-    it('sets error state on adapter failure', async () => {
-      mockLoadThreadSummaries.mockRejectedValueOnce(new Error('Network failure'));
-      useChatStore.getState().setStorageAdapter(adapter);
-
-      await useChatStore.getState().loadThreads({ owner: OWNER, repo: REPO, branch: BRANCH });
-
+      expect(useChatStore.getState().threads.map((t) => t.id)).toEqual(['agent-1']);
       expect(useChatStore.getState().error).toBe('Failed to load chat threads');
-      expect(useChatStore.getState().isLoading).toBe(false);
-    });
-  });
-
-  describe('loadThread', () => {
-    it('loads thread via adapter and sets it as active', async () => {
-      const thread = makeThread({ messages: [makeMessage({ role: 'user', content: 'Hello' })] });
-      mockLoadThread.mockResolvedValueOnce(thread);
-      useChatStore.getState().setStorageAdapter(adapter);
-
-      const result = await useChatStore.getState().loadThread({ owner: OWNER, repo: REPO, branch: BRANCH, threadId: thread.id });
-
-      expect(result?.id).toBe(thread.id);
-      expect(useChatStore.getState().activeThread?.id).toBe(thread.id);
-    });
-
-    it('returns null when adapter is not set', async () => {
-      const result = await useChatStore.getState().loadThread({ owner: OWNER, repo: REPO, branch: BRANCH, threadId: 'any-id' });
-
-      expect(result).toBeNull();
-    });
-
-    it('updates existing thread in threads list when loaded', async () => {
-      const existing = makeThread({ id: 'existing-id' });
-      const updated = makeThread({ id: 'existing-id', title: 'Updated Title' });
-      useChatStore.setState({ threads: [existing] });
-      mockLoadThread.mockResolvedValueOnce(updated);
-      useChatStore.getState().setStorageAdapter(adapter);
-
-      await useChatStore.getState().loadThread({ owner: OWNER, repo: REPO, branch: BRANCH, threadId: 'existing-id' });
-
-      const threads = useChatStore.getState().threads;
-      expect(threads.find((t) => t.id === 'existing-id')?.title).toBe('Updated Title');
-    });
-  });
-
-  describe('createThread', () => {
-    it('creates a new thread and sets it as active', () => {
-      const thread = useChatStore.getState().createThread({
-        repoOwner: OWNER,
-        repoName: REPO,
-        branch: BRANCH,
-        filePath: 'chat/new.json',
-        title: 'New Chat',
-      });
-
-      expect(thread.id).toBeTruthy();
-      expect(thread.title).toBe('New Chat');
-      expect(useChatStore.getState().activeThread?.id).toBe(thread.id);
-    });
-
-    it('uses default title when none provided', () => {
-      const thread = useChatStore.getState().createThread({
-        repoOwner: OWNER,
-        repoName: REPO,
-        branch: BRANCH,
-        filePath: 'chat/new.json',
-      });
-
-      expect(thread.title).toBe('New Chat');
-    });
-
-    it('adds thread to threads list', () => {
-      const thread = useChatStore.getState().createThread({
-        repoOwner: OWNER,
-        repoName: REPO,
-        branch: BRANCH,
-        filePath: 'chat/new.json',
-      });
-
-      expect(useChatStore.getState().threads.some((t) => t.id === thread.id)).toBe(true);
-    });
-  });
-
-  describe('addMessage', () => {
-    it('appends a message to the active thread', () => {
-      const thread = makeThread();
-      useChatStore.setState({ activeThread: thread });
-
-      const msg = makeMessage({ role: 'user', content: 'Hello there' });
-      useChatStore.getState().addMessage(msg);
-
-      expect(useChatStore.getState().activeThread?.messages).toHaveLength(1);
-      expect(useChatStore.getState().activeThread?.messages[0].content).toBe('Hello there');
-    });
-
-    it('derives chat title from first user message when title is default', () => {
-      const thread = makeThread({ title: 'New Chat' });
-      useChatStore.setState({ activeThread: thread });
-
-      const msg = makeMessage({ role: 'user', content: 'What is GitNotes?' });
-      useChatStore.getState().addMessage(msg);
-
-      // Title should now be derived from the message
-      expect(useChatStore.getState().activeThread?.title).not.toBe('New Chat');
-    });
-
-    it('does nothing when no active thread', () => {
-      useChatStore.setState({ activeThread: null });
-
-      const msg = makeMessage();
-      useChatStore.getState().addMessage(msg);
-
-      expect(useChatStore.getState().threads).toHaveLength(0);
-    });
-  });
-
-  describe('updateMessage', () => {
-    it('updates an existing message', () => {
-      const msg1 = makeMessage({ id: 'msg-1', content: 'Original' });
-      const msg2 = makeMessage({ id: 'msg-2', content: 'Second' });
-      const thread = makeThread({ messages: [msg1, msg2] });
-      useChatStore.setState({ activeThread: thread });
-
-      useChatStore.getState().updateMessage('msg-1', { content: 'Updated' });
-
-      expect(useChatStore.getState().activeThread?.messages.find((m) => m.id === 'msg-1')?.content).toBe('Updated');
-      expect(useChatStore.getState().activeThread?.messages.find((m) => m.id === 'msg-2')?.content).toBe('Second');
-    });
-
-    it('does nothing when message does not exist', () => {
-      const thread = makeThread({ messages: [makeMessage({ id: 'msg-1' })] });
-      useChatStore.setState({ activeThread: thread });
-
-      useChatStore.getState().updateMessage('non-existent', { content: 'Updated' });
-
-      expect(useChatStore.getState().activeThread?.messages[0].content).toBe('Test message');
-    });
-  });
-
-  describe('removeMessage', () => {
-    it('removes a message by id', () => {
-      const msg1 = makeMessage({ id: 'msg-1' });
-      const msg2 = makeMessage({ id: 'msg-2' });
-      const thread = makeThread({ messages: [msg1, msg2] });
-      useChatStore.setState({ activeThread: thread });
-
-      useChatStore.getState().removeMessage('msg-1');
-
-      expect(useChatStore.getState().activeThread?.messages).toHaveLength(1);
-      expect(useChatStore.getState().activeThread?.messages[0].id).toBe('msg-2');
-    });
-
-    it('does nothing when thread has no messages', () => {
-      const thread = makeThread({ messages: [] });
-      useChatStore.setState({ activeThread: thread });
-
-      useChatStore.getState().removeMessage('any-id');
-
-      expect(useChatStore.getState().activeThread?.messages).toHaveLength(0);
-    });
-  });
-
-  describe('truncateAfter', () => {
-    it('removes all messages after the specified message (exclusive)', () => {
-      const msgs = [
-        makeMessage({ id: 'msg-1', role: 'user', content: 'First' }),
-        makeMessage({ id: 'msg-2', role: 'assistant', content: 'Second' }),
-        makeMessage({ id: 'msg-3', role: 'user', content: 'Third' }),
-      ];
-      const thread = makeThread({ messages: msgs });
-      useChatStore.setState({ activeThread: thread });
-
-      useChatStore.getState().truncateAfter('msg-2');
-
-      const remaining = useChatStore.getState().activeThread?.messages ?? [];
-      expect(remaining).toHaveLength(2);
-      expect(remaining.map((m) => m.id)).toEqual(['msg-1', 'msg-2']);
-    });
-
-    it('removes specified message and all after when inclusive=true', () => {
-      const msgs = [
-        makeMessage({ id: 'msg-1' }),
-        makeMessage({ id: 'msg-2' }),
-        makeMessage({ id: 'msg-3' }),
-      ];
-      const thread = makeThread({ messages: msgs });
-      useChatStore.setState({ activeThread: thread });
-
-      useChatStore.getState().truncateAfter('msg-2', { inclusive: true });
-
-      const remaining = useChatStore.getState().activeThread?.messages ?? [];
-      expect(remaining).toHaveLength(1);
-      expect(remaining[0].id).toBe('msg-1');
-    });
-
-    it('does nothing when message id not found', () => {
-      const thread = makeThread({ messages: [makeMessage({ id: 'msg-1' })] });
-      useChatStore.setState({ activeThread: thread });
-
-      useChatStore.getState().truncateAfter('non-existent');
-
-      expect(useChatStore.getState().activeThread?.messages).toHaveLength(1);
     });
   });
 
   describe('deleteThread', () => {
-    it('removes thread via adapter and clears activeThread if it was selected', async () => {
-      const thread = makeThread({ id: 'to-delete' });
-      mockDeleteThread.mockResolvedValueOnce(true);
-      useChatStore.setState({
-        threads: [thread],
-        activeThread: thread,
-        storageAdapter: adapter,
-      });
+    it('removes an agent chat locally, stops its session and releases the bridge connection', async () => {
+      const removed = jest.fn();
+      const off = onThreadRemoved(removed);
+      const agent = summary({ id: 'agent-1', backend: 'agent' });
+      useChatStore.setState({ threads: [agent, summary({ id: 'model-1' })] });
 
-      const result = await useChatStore.getState().deleteThread({
-        owner: OWNER,
-        repo: REPO,
-        branch: BRANCH,
-        threadId: 'to-delete',
-      });
+      const ok = await useChatStore.getState().deleteThread(agent);
+      off();
 
-      expect(result).toBe(true);
-      expect(useChatStore.getState().threads.find((t) => t.id === 'to-delete')).toBeUndefined();
-      expect(useChatStore.getState().activeThread).toBeNull();
+      expect(ok).toBe(true);
+      expect(mockLocal.remove).toHaveBeenCalledWith('agent-1');
+      expect(mockRepo.remove).not.toHaveBeenCalled();
+      expect(mockRelease).toHaveBeenCalledWith('agent-1');
+      expect(removed).toHaveBeenCalledWith('agent-1');
+      expect(useChatStore.getState().threads.map((t) => t.id)).toEqual(['model-1']);
     });
 
-    it('returns false when adapter is not set', async () => {
-      const result = await useChatStore.getState().deleteThread({
-        owner: OWNER,
-        repo: REPO,
-        branch: BRANCH,
-        threadId: 'any-id',
-      });
+    it('keeps the thread listed and reports an error when the repo delete fails', async () => {
+      const model = summary({ id: 'model-1' });
+      useChatStore.setState({ threads: [model] });
+      mockRepo.remove.mockRejectedValue(new Error('network down'));
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
-      expect(result).toBe(false);
+      const ok = await useChatStore.getState().deleteThread(model);
+
+      expect(ok).toBe(false);
+      expect(useChatStore.getState().threads).toHaveLength(1);
+      expect(useChatStore.getState().error).toBeTruthy();
+    });
+
+    it('fails a model chat delete when no chat repo is configured', async () => {
+      mockRepoConfigured = false;
+      const model = summary({ id: 'model-1' });
+      useChatStore.setState({ threads: [model] });
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      expect(await useChatStore.getState().deleteThread(model)).toBe(false);
+      expect(useChatStore.getState().threads).toHaveLength(1);
     });
   });
 
   describe('renameThread', () => {
-    it('renames thread title in both activeThread and threads list', () => {
-      const thread = makeThread({ id: 'thread-1', title: 'Old Title' });
-      useChatStore.setState({
-        threads: [thread],
-        activeThread: thread,
+    it('falls back to the default title for blank input', () => {
+      useChatStore.setState({ threads: [summary({ id: 'a', title: 'Custom' })] });
+      mockLocal.load.mockResolvedValue(null);
+      mockRepo.load.mockResolvedValue(null);
+
+      useChatStore.getState().renameThread({ threadId: 'a', title: '   ' });
+
+      expect(useChatStore.getState().threads[0].title).toBe('New Chat');
+    });
+
+    it('lets a live session persist the rename instead of writing storage', () => {
+      const renamed = jest.fn();
+      const off = onThreadRenamed((id, title) => {
+        renamed(id, title);
+        return true;
+      });
+      useChatStore.setState({ threads: [summary({ id: 'a' })] });
+
+      useChatStore.getState().renameThread({ threadId: 'a', title: 'Renamed' });
+      off();
+
+      expect(renamed).toHaveBeenCalledWith('a', 'Renamed');
+      expect(mockRepo.load).not.toHaveBeenCalled();
+      expect(mockLocal.load).not.toHaveBeenCalled();
+    });
+
+    it('persists the new title through the owning storage when no session is live', async () => {
+      useChatStore.setState({ threads: [summary({ id: 'agent-1', backend: 'agent' })] });
+      const stored = { id: 'agent-1', title: 'old', messages: [] };
+      mockLocal.load.mockResolvedValue(stored);
+
+      useChatStore.getState().renameThread({ threadId: 'agent-1', title: 'Fix login' });
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(mockLocal.save).toHaveBeenCalledWith(expect.objectContaining({ id: 'agent-1', title: 'Fix login' }));
+      expect(mockRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('upsertSummary', () => {
+    it('replaces an existing summary rather than duplicating it', () => {
+      useChatStore.setState({ threads: [summary({ id: 'a', title: 'old', updatedAt: 1 })] });
+
+      useChatStore.getState().upsertSummary({
+        id: 'a',
+        title: 'new',
+        messages: [{ id: 'm', role: 'user', content: 'hi', timestamp: 2 }],
+        createdAt: 1,
+        updatedAt: 2,
+        repoOwner: '',
+        repoName: '',
+        branch: '',
+        filePath: '',
       });
 
-      useChatStore.getState().renameThread({ threadId: 'thread-1', title: 'New Title' });
-
-      expect(useChatStore.getState().activeThread?.title).toBe('New Title');
-      expect(useChatStore.getState().threads.find((t) => t.id === 'thread-1')?.title).toBe('New Title');
-    });
-
-    it('uses default title when given empty string', () => {
-      const thread = makeThread({ id: 'thread-1' });
-      useChatStore.setState({ threads: [thread], activeThread: thread });
-
-      useChatStore.getState().renameThread({ threadId: 'thread-1', title: '' });
-
-      expect(useChatStore.getState().activeThread?.title).toBe('New Chat');
-    });
-  });
-
-  describe('setStreaming / clearActiveThread', () => {
-    it('sets isStreaming flag', () => {
-      expect(useChatStore.getState().isStreaming).toBe(false);
-
-      useChatStore.getState().setStreaming(true);
-
-      expect(useChatStore.getState().isStreaming).toBe(true);
-    });
-
-    it('clears activeThread and resets isStreaming', () => {
-      const thread = makeThread();
-      useChatStore.setState({ activeThread: thread, isStreaming: true });
-
-      useChatStore.getState().clearActiveThread();
-
-      expect(useChatStore.getState().activeThread).toBeNull();
-      expect(useChatStore.getState().isStreaming).toBe(false);
-    });
-  });
-
-  describe('clearError', () => {
-    it('clears error state', () => {
-      useChatStore.setState({ error: 'Some error' });
-
-      useChatStore.getState().clearError();
-
-      expect(useChatStore.getState().error).toBeNull();
+      const threads = useChatStore.getState().threads;
+      expect(threads).toHaveLength(1);
+      expect(threads[0].title).toBe('new');
+      expect(threads[0].messageCount).toBe(1);
     });
   });
 });

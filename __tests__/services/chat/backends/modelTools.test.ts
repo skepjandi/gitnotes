@@ -1,10 +1,10 @@
-import type { ActionExecutorResult } from '../../../src/services/ai/actionExecutor';
-import { executeToolCall } from '../../../src/services/ai/actionExecutor';
-import { executeWithTimeout } from '../../../src/components/chat/continuationHelpers';
-import { TOOL_EXECUTION_TIMEOUT_MS } from '../../../src/services/ai/config';
-import { formatExecutorResult } from '../../../src/components/chat/chatScreenShared';
+import type { ActionExecutorResult } from '../../../../src/services/ai/actionExecutor';
+import { executeToolCall } from '../../../../src/services/ai/actionExecutor';
+import { executeWithTimeout } from '../../../../src/services/chat/backends/modelTools';
+import { TOOL_EXECUTION_TIMEOUT_MS } from '../../../../src/services/ai/config';
+import { formatExecutorResult } from '../../../../src/services/chat/backends/modelHistory';
 
-jest.mock('../../../src/services/ai/actionExecutor');
+jest.mock('../../../../src/services/ai/actionExecutor');
 
 const mockExecuteToolCall = executeToolCall as jest.MockedFunction<typeof executeToolCall>;
 

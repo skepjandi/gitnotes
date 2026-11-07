@@ -47,6 +47,7 @@ function firstMeaningfulLine(value: string): string {
 }
 
 function previewFromMessage(message: ChatMessage): string {
+  if (message.kind === 'thought' || message.kind === 'plan') return '';
   const visibleContent = firstMeaningfulLine(stripThoughtContent(message.content ?? ''));
   if (visibleContent) return visibleContent;
 
@@ -100,5 +101,8 @@ export function buildThreadSummary(thread: ChatThread): ChatThreadSummary {
     updatedAt: Number.isFinite(thread.updatedAt) ? thread.updatedAt : Date.now(),
     messageCount: thread.messages.length,
     ...(preview ? { preview } : {}),
+    ...(thread.backend?.type === 'agent'
+      ? { backend: 'agent' as const, agentName: thread.backend.agentName }
+      : {}),
   };
 }

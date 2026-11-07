@@ -10,6 +10,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-11-07
 
+### perf(startup): stop blocking first render on the RevenueCat entitlement
+
+**What:** Cold start sat on the splash for ~1–2s because `checkOnboarding` awaited `bootstrapEntitlement()` (RevenueCat `configure` → `getCustomerInfo` → `logIn`, all network-capable, with retries) before navigation could mount.
+
+**Fix:** The entitlement now resolves in the background unless persisted data is over the free-tier caps (`exceedsFreeTierCaps()`), the only case where tier enforcement (#1233) can truncate restored data and must precede rendering. Over-cap launches keep the blocking path. `bootstrapStorage()` is also started at module load and shares one in-flight `multiGet`, overlapping it with telemetry init. Pro surfaces already treat `status === 'loading'` as gated, so Pro features unlock as soon as the entitlement resolves.
+
 ### fix(chat): store chats on self-hosted Gitea/Forgejo repos and report 401s clearly
 
 **What:** Chat storage only spoke to `api.github.com`, so choosing a chat repo on a Forgejo/Gitea host sent that host's token to GitHub and failed with `401 Bad credentials` ("Error initializing chat storage"). Separately, `loadThreadSummaries` tested `'code' in error` to spot its own errors, but AxiosErrors carry their own `code`, so 401s leaked raw and 5xx/network errors never used the cached thread list.

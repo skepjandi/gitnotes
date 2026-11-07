@@ -52,6 +52,7 @@ import { reconcileThoughtDumps } from './src/services/ai/thoughtDumpIndexing';
 import { LastSelectionPreferenceService } from './src/services/LastSelectionPreferenceService';
 import * as PushNotificationService from './src/services/PushNotificationService';
 import { bootstrapEntitlement } from './src/bootstrap/bootstrapEntitlement';
+import { exceedsFreeTierCaps } from './src/services/TierLimits';
 import { hideDevMenuFloatingActionButton } from './src/utils/devMenuFab';
 import { TelemetryBootstrap } from './src/components/TelemetryBootstrap';
 
@@ -73,6 +74,12 @@ const queryClient = new QueryClient({
 if (__DEV__) {
   hideDevMenuFloatingActionButton();
 }
+
+// Start the startup storage read at module load so it overlaps telemetry init
+// instead of waiting for AppRoot to mount.
+bootstrapStorage().catch(() => {
+  /* retried by checkOnboarding */
+});
 
 export function AppRoot({
   observeNavigationContainer,
@@ -97,14 +104,16 @@ export function AppRoot({
     // Restore the floating git button visibility preference before the
     // navigator renders so the button never flashes for users who hid it.
     void useFloatingGitButtonStore.getState().hydrate();
-    // Resolve Pro entitlement before surfacing restored data so the free-tier
-    // repo/account caps can be enforced on data brought back by Android backup
-    // restore (#1233) — before the stores render it, not after.
-    try {
-      await bootstrapEntitlement();
-    } catch (error) {
+    // Free-tier caps must be enforced before stores surface data restored from
+    // an Android backup (#1233). That only matters when persisted data is
+    // actually over the cap; otherwise enforcement is a no-op and resolving
+    // the entitlement (RevenueCat network round trips) must not hold up first
+    // render. Over-cap data keeps the blocking path.
+    const overFreeCap = await exceedsFreeTierCaps();
+    const entitlementReady = bootstrapEntitlement().catch((error) => {
       console.warn('[App] tier-limit enforcement failed:', error);
-    }
+    });
+    if (overFreeCap) await entitlementReady;
     const completed = await OnboardingService.isOnboardingCompleted();
     // Unblock navigation immediately — do not await notification permission first.
     setShowOnboarding(!completed);

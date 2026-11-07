@@ -6,6 +6,8 @@ import { buildThreadSummary, isDefaultChatTitle } from '../utils/chatThreadSumma
 import { GitHubService } from './GitHubService';
 import { AccountStorage } from './AccountStorage';
 import { GitFsService } from './git/GitFsService';
+import { GIT_HOST_API_BASES } from './git/GitHost';
+import type { ChatRepoProvider } from '../models/AIProvider';
 import { emitGitContentRefresh } from '../hooks/useGitRefreshEvent';
 
 const GITHUB_API = 'https://api.github.com';
@@ -73,6 +75,12 @@ function getStatus(error: unknown): number | undefined {
 }
 
 let chatRepoAccountId: string | null = null;
+let chatRepoHost: { provider: ChatRepoProvider; hostId: string | null } = { provider: 'github', hostId: null };
+
+/** Binds chat-repo requests to the git host the repo lives on (GitHub by default). */
+export function setChatRepoHost(host: { provider: ChatRepoProvider; hostId: string | null } | null): void {
+  chatRepoHost = host ?? { provider: 'github', hostId: null };
+}
 
 /**
  * Bind chat-repo requests to a specific account's token. When set, all
@@ -119,6 +127,69 @@ async function getToken(): Promise<string> {
   throw new Error('GitHub not authenticated');
 }
 
+interface ContentsRequest {
+  owner: string;
+  repo: string;
+  path: string;
+  method?: 'GET' | 'PUT' | 'DELETE';
+  branch?: string;
+  data?: Record<string, unknown>;
+}
+
+interface GiteaCredentials {
+  token: string;
+  apiBase: string;
+}
+
+async function getGiteaCredentials(): Promise<GiteaCredentials | null> {
+  const { provider, hostId } = chatRepoHost;
+  if (!hostId) return null;
+  const [token, connection] = await Promise.all([
+    AccountStorage.getHostToken(hostId),
+    AccountStorage.getHostConnection(hostId),
+  ]);
+  if (!token) return null;
+  const apiBase = (connection?.instanceBaseUrl || GIT_HOST_API_BASES[provider]).replace(/\/+$/, '');
+  return { token, apiBase };
+}
+
+/**
+ * Gitea/Forgejo contents API. Unlike GitHub's single PUT it creates with POST (a PUT without
+ * `sha` is rejected with 422 "[SHA]: Required") and updates with PUT + `sha`; a stale-`sha`
+ * delete answers 400 where GitHub answers 409, so it is mapped to 409 for the shared retry logic.
+ */
+async function giteaRequest<T>(params: ContentsRequest): Promise<T> {
+  const credentials = await getGiteaCredentials();
+  if (!credentials) throw new Error(`${chatRepoHost.provider} not authenticated`);
+  const { owner, repo, path, method = 'GET', branch, data } = params;
+  const url = `${credentials.apiBase}/repos/${owner}/${repo}/contents/${encodePath(path)}`;
+  const httpMethod = method === 'PUT' && !data?.sha ? 'POST' : method;
+  try {
+    const response = await axios.request<T>({
+      url,
+      method: httpMethod,
+      headers: { Accept: 'application/json', Authorization: `token ${credentials.token}` },
+      params: method === 'GET' && branch ? { ref: branch } : undefined,
+      data,
+    });
+    return response.data;
+  } catch (error) {
+    if (
+      method === 'DELETE' &&
+      axios.isAxiosError(error) &&
+      error.response?.status === 400 &&
+      /sha does not match/i.test(JSON.stringify(error.response.data ?? ''))
+    ) {
+      error.response.status = 409;
+    }
+    throw error;
+  }
+}
+
+async function contentsRequest<T>(params: ContentsRequest): Promise<T> {
+  return chatRepoHost.provider === 'github' ? githubRequest<T>(params) : giteaRequest<T>(params);
+}
+
 async function githubRequest<T>(params: {
   owner: string;
   repo: string;
@@ -146,7 +217,7 @@ async function githubRequest<T>(params: {
 
 async function getFile(owner: string, repo: string, path: string, branch: string): Promise<GitHubContentResponse | null> {
   try {
-    return await githubRequest<GitHubContentResponse>({ owner, repo, path, branch });
+    return await contentsRequest<GitHubContentResponse>({ owner, repo, path, branch });
   } catch (error) {
     if (getStatus(error) === 404) {
       return null;
@@ -169,7 +240,7 @@ async function putFile(params: {
 
   for (let attempt = 0; attempt < GITHUB_WRITE_RETRIES; attempt++) {
     try {
-      await githubRequest({
+      await contentsRequest({
         owner,
         repo,
         path,
@@ -208,7 +279,7 @@ async function deleteFile(params: {
 
   for (let attempt = 0; attempt < GITHUB_WRITE_RETRIES; attempt++) {
     try {
-      await githubRequest({
+      await contentsRequest({
         owner,
         repo,
         path,
@@ -392,7 +463,11 @@ async function persistThreadRepair(
 }
 
 export async function initializeChatStorage(owner: string, repo: string, branch: string = 'main'): Promise<boolean> {
-  if (!await GitHubService.isAuthenticatedAsync()) {
+  const authenticated =
+    chatRepoHost.provider === 'github'
+      ? await GitHubService.isAuthenticatedAsync()
+      : (await getGiteaCredentials()) !== null;
+  if (!authenticated) {
     return false;
   }
 
@@ -414,6 +489,7 @@ export async function initializeChatStorage(owner: string, repo: string, branch:
       await putFile({ owner, repo, path: file.path, branch, message: file.message, content: file.content });
     } catch (error) {
       const status = getStatus(error);
+      if (status === 401) throw classifyError(error);
       if (status !== 409 && status !== 422) {
         throw error;
       }
@@ -477,7 +553,7 @@ function classifyError(error: unknown, fallbackMessage?: string): ChatStorageErr
     return new ChatStorageError(ChatStorageErrorCode.NOT_FOUND, 'Chat index not found', status);
   }
   if (status === 401) {
-    return new ChatStorageError(ChatStorageErrorCode.UNAUTHORIZED, 'GitHub credentials are invalid or expired', status);
+    return new ChatStorageError(ChatStorageErrorCode.UNAUTHORIZED, 'Git host credentials are invalid or expired', status);
   }
   if (status === 403) {
     return new ChatStorageError(ChatStorageErrorCode.FORBIDDEN, 'Token lacks repository access permissions', status);
@@ -551,8 +627,8 @@ async function loadThreadSummariesInternal(owner: string, repo: string, branch: 
     }
     return repairedThreads;
   } catch (error) {
-    if (error instanceof Error && 'code' in error) {
-      const chatError = error as ChatStorageError;
+    if (error instanceof ChatStorageError) {
+      const chatError = error;
       if (chatError.code === ChatStorageErrorCode.NOT_FOUND) {
         await AsyncStorage.setItem(cacheKey, JSON.stringify([]));
         return [];

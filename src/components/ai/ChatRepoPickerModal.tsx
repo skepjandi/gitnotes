@@ -179,16 +179,27 @@ export const ChatRepoPickerModal: React.FC<ChatRepoPickerModalProps> = ({
     const activeBranchState = repoId ? await getActiveBranch(repoId) : null;
     const branch = activeBranchState?.activeBranch ?? 'main';
 
+    const provider = repo?.provider ?? 'github';
+    if (provider !== 'github' && provider !== 'gitea' && provider !== 'forgejo') {
+      setInitError('Chat storage supports GitHub, Gitea and Forgejo repositories. Pick a repository on one of those hosts.');
+      return;
+    }
+
     setIsInitializing(true);
     setInitError(null);
     try {
-      await setChatRepo(owner, name, branch);
+      await setChatRepo(owner, name, branch, null, { provider, hostId: repo?.hostId ?? null });
       await ChatStorageService.initializeChatStorage(owner, name, branch);
       HapticService.success();
       onSelected();
     } catch (error) {
-      console.error('[ChatRepoPickerModal] Error initializing chat storage:', error);
       HapticService.error();
+      if (error instanceof ChatStorageService.ChatStorageError && error.code === ChatStorageService.ChatStorageErrorCode.UNAUTHORIZED) {
+        console.warn('[ChatRepoPickerModal] GitHub rejected the stored credentials');
+        setInitError('The git host rejected your credentials (expired or revoked). Reconnect it in Settings, then tap Retry.');
+        return;
+      }
+      console.error('[ChatRepoPickerModal] Error initializing chat storage:', error);
       const detail = error instanceof Error ? error.message : 'Unknown error';
       setInitError(
         `Couldn't write to ${selectedRepoPath}/chats/. ${detail}. Check network and repository write access, then tap Retry.`,

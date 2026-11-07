@@ -108,24 +108,33 @@ interface Hotspot {
 **File:** `src/models/Chat.ts`
 
 ```typescript
-interface Chat {
-  id: string;
-  threadId: string;
-  messages: ChatMessage[];
-  repo?: string;                 // Repo context for this chat
-  branch?: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
-  model?: string;               // Which AI model was used
-  createdAt: number;
+  timestamp: number;
+  kind?: 'text' | 'thought' | 'tool' | 'plan';   // absent on legacy messages
+  toolCallId?: string; toolCallName?: string; toolCallArgs?: Record<string, unknown>; toolCallResult?: string;
+  toolTitle?: string; toolKind?: ToolKind; toolStatus?: ToolStatus;   // pending | awaiting-approval | running | completed | failed | rejected
+  toolDiffs?: ToolDiff[]; toolLocations?: ToolLocation[];
+  plan?: PlanEntry[];
+  attachedContexts?: AIContextItem[];
 }
+
+type ThreadBackend =
+  | { type: 'model' }
+  | { type: 'agent'; bridgeId; agentId; agentName; cwd; sessionId?; connectionId?; lastSeq?; pendingPromptId?; modeId?; availableModes? };
+
+interface ChatThread {
+  id; title; messages: ChatMessage[]; createdAt; updatedAt;
+  repoOwner; repoName; branch; filePath;   // chat-repo location (model threads)
+  backend?: ThreadBackend;                 // absent = model
+}
+
+interface ChatThreadSummary { id; title; updatedAt; messageCount; preview?; backend?: 'model' | 'agent'; agentName? }
 ```
+
+`lastSeq` is persisted in the same snapshot as `messages`, so replaying a bridge after an app restart never duplicates or drops text.
 
 ---
 

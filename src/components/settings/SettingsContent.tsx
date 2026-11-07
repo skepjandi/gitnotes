@@ -146,6 +146,7 @@ onRemoveAccount: (id: string, login: string) => void;
   onOpenModelSelector: () => void;
   onToggleActionMode: () => void;
   onOpenChatRepoPicker: () => void;
+  onOpenAgentBridges: () => void;
   onProviderPress: (provider: AIProviderConfig) => void;
   onAddProvider: () => void;
   dailyQuoteEnabled: boolean;
@@ -269,6 +270,7 @@ export function SettingsContent(props: SettingsContentProps) {
     onOpenModelSelector,
     onToggleActionMode,
     onOpenChatRepoPicker,
+    onOpenAgentBridges,
     onProviderPress,
     onAddProvider,
     dailyQuoteEnabled,
@@ -1467,6 +1469,26 @@ export function SettingsContent(props: SettingsContentProps) {
             </Text>
             <Text style={[styles.settingValue, { color: colors.textSecondary, fontSize: 12, marginTop: 2 }]}>
               {t('settings.githubTools.description', { defaultValue: "Let AI manage issues, PRs, and repos via your active GitHub account." })}
+            </Text>
+          </View>
+        </GroupRow>
+        <GroupRow
+          testID={isPro ? 'settings.row.coding-agents' : 'settings.row.ai-locked-coding-agents'}
+          onPress={isPro ? onOpenAgentBridges : () => promptProUpgrade(t, onOpenPaywall)}
+          trailing={
+            <Ionicons
+              name={isPro ? 'chevron-forward' : 'lock-closed'}
+              size={isPro ? 16 : 18}
+              color={colors.textSecondary}
+            />
+          }
+        >
+          <View>
+            <Text style={[styles.settingLabel, { color: colors.text }]}>
+              {t('settings.codingAgents.title')}
+            </Text>
+            <Text style={[styles.settingValue, { color: colors.textSecondary, fontSize: 12, marginTop: 2 }]}>
+              {t('settings.codingAgents.description')}
             </Text>
           </View>
         </GroupRow>

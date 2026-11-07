@@ -1,0 +1,35 @@
+{
+  "name": "gitnotes-bridge",
+  "version": "0.1.0",
+  "description": "Host daemon that lets the GitNotēs mobile app drive local ACP coding agents (Claude Code, OpenCode, Pi, Codex, Gemini).",
+  "license": "MPL-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "gitnotes-bridge": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "prepare": "npm run build",
+    "start": "node dist/cli.js",
+    "test": "npm run build && node --test dist/",
+    "test:smoke": "npm run build && node test/smoke-opencode.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.7.2"
+  }
+}

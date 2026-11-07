@@ -20,3 +20,4 @@ metro.config.js
 README.md
 tsconfig.json
 yarn.lock
+bridge/package-lock.json

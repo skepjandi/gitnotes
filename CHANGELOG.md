@@ -10,6 +10,16 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-11-07
 
+### feat(chat): chat with Claude Code, opencode, pi and other ACP agents from your phone
+
+**What:** Chat can now drive coding agents running on your own computer. A small host daemon, `gitnotes-bridge` (`bridge/`), spawns [ACP](https://agentclientprotocol.com) agents (Claude Code, opencode, pi, Codex, Gemini CLI, or any custom ACP agent) and exposes them over an authenticated WebSocket. Pair it from **Settings → Coding agents** (pairing link or URL + token), start a new chat, pick an agent and a workspace, and work on the go.
+
+**Resilient by design:** the agent keeps running when the phone sleeps, switches network or the app is killed. The bridge keeps a replay log; the app re-attaches (`resume`) and catches up without duplicating or dropping output. Agent permission prompts, tool calls with diffs, plans, thoughts and agent modes render natively. Agent transcripts stay on the device (never pushed to the GitHub chat repo). The bridge binds to localhost by default and authenticates with a random token; see `bridge/README.md` for Tailscale / tunnel setups.
+
+**Chat rework:** replaced the 900-line `useChatScreenController` and the global `activeThread`/`isStreaming` store with per-thread `ChatSession`s fed by typed `ChatEvent` streams. Fixes: a stream could write into whichever thread was open when you navigated away mid-turn; tool events were JSON-encoded into the text stream and re-parsed (model text that looked like JSON was misread); first-message and reply saves raced into GitHub 409s (saves are now serialised per thread); per-chunk O(n) store updates; iOS-only message editing (`Alert.prompt`); tool confirmations rebuilt by re-executing tools on mount (confirmations and agent permissions are now one mechanism). The message list uses FlashList with stay-at-bottom-only-if-near-bottom behaviour.
+
+**Platform notes:** iOS allows `ws://` to local-network/IP hosts (`NSAllowsLocalNetworking`); for remote access or Android release builds use `wss://` (e.g. `tailscale serve`).
+
 ### feat(ui): upgrade mobile Home, empty states and tab bar
 
 **What:** The Home dashboard tiles overlapped their icon badge when copy wrapped (Thought Dump), used a fixed white ink that falls under 3:1 on bright fills, and the Notes/Todos empty states were a bare icon with no way forward.

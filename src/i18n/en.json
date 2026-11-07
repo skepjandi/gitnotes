@@ -220,7 +220,125 @@
       "a4": "A4"
     }
   },
+  "agents": {
+    "title": "Coding agents",
+    "bridgesTitle": "Your computers",
+    "empty": {
+      "title": "No computers paired",
+      "body": "Run the bridge on the machine where your coding agents live, then pair it with this app."
+    },
+    "add": {
+      "title": "Add a computer",
+      "linkHint": "Paste the pairing link the bridge printed.",
+      "manualHint": "Enter the bridge address and its token.",
+      "linkPlaceholder": "gitnotes://agents/pair?url=…",
+      "urlPlaceholder": "Address, e.g. ws://192.168.1.20:7878",
+      "tokenPlaceholder": "Token",
+      "useManual": "Enter address and token instead",
+      "useLink": "Use a pairing link instead",
+      "namePlaceholder": "Name (optional)"
+    },
+    "confirm": {
+      "title": "Connect to this computer?",
+      "host": "Host",
+      "body": "Coding agents on this computer will be able to read and change the files you point them at. Only continue if you started the bridge yourself.",
+      "cleartext": "This connection is not encrypted (ws://). Use it only on a network you trust, or put the bridge behind wss:// or Tailscale.",
+      "alreadyPaired": "This computer is already paired. Connecting again refreshes its token.",
+      "connect": "Connect"
+    },
+    "status": {
+      "checking": "Checking…",
+      "online": "Online",
+      "offline": "Offline"
+    },
+    "noAgentsAvailable": "No agents found on this computer",
+    "noAgentsReported": "This computer didn't report any agents.",
+    "agentNotInstalled": "Not installed ({{command}})",
+    "menu": {
+      "recheck": "Check connection",
+      "rename": "Rename"
+    },
+    "rename": {
+      "title": "Rename computer"
+    },
+    "remove": {
+      "title": "Remove {{name}}?",
+      "body": "Chats with this computer stay on this device but can't continue until you pair it again."
+    },
+    "help": {
+      "title": "How to run the bridge",
+      "body": "On your computer, run this in a terminal. It prints a pairing link to paste here.",
+      "copied": "Copied",
+      "readme": "Read the bridge README",
+      "footer": "Requires Node.js 20 or newer."
+    },
+    "errors": {
+      "unreachable": "Couldn't reach the bridge. Check that it is running and that your phone can reach this address.",
+      "unauthorized": "The bridge rejected the token. Pair again with a fresh link.",
+      "protocolMismatch": "This bridge version isn't compatible with the app. Update gitnotes-bridge or the app.",
+      "cleartextBlocked": "This phone blocks unencrypted ws:// connections to this address. Use a wss:// address, a local network address, or Tailscale.",
+      "timeout": "The bridge took too long to answer.",
+      "unknown": "Something went wrong talking to the bridge.",
+      "invalidLink": "That doesn't look like a pairing link.",
+      "invalidUrl": "That isn't a valid bridge address.",
+      "missingToken": "Enter the bridge token.",
+      "saveFailed": "Couldn't save this computer on the device."
+    },
+    "picker": {
+      "title": "New chat",
+      "aiModel": "AI model",
+      "aiModelHint": "Chat with the model configured in GitNotēs",
+      "agentOn": "{{agent}} · {{bridge}}",
+      "chooseWorkspace": "Choose a folder",
+      "workspaceEmpty": "No folders are available. Add a root when starting the bridge.",
+      "lastUsed": "Last used"
+    }
+  },
   "chat": {
+    "thoughtTitle": "Thinking",
+    "toolStatus": {
+      "pending": "Pending",
+      "awaitingApproval": "Needs approval",
+      "running": "Running",
+      "completed": "Done",
+      "failed": "Failed",
+      "rejected": "Rejected"
+    },
+    "toolDetails": {
+      "arguments": "Arguments",
+      "result": "Result",
+      "showAll": "Show all ({{count}} more characters)",
+      "moreLines": "… {{count}} more lines",
+      "openNote": "Open note"
+    },
+    "planTitle": "Plan",
+    "planStatus": {
+      "pending": "Pending",
+      "inProgress": "In progress",
+      "completed": "Completed"
+    },
+    "permissionRequired": "Approval needed",
+    "actions": {
+      "editResend": "Edit & resend"
+    },
+    "jumpToLatest": "Jump to latest",
+    "notFoundTitle": "Chat not found",
+    "notFoundBody": "This conversation no longer exists on this device.",
+    "loadErrorTitle": "Couldn't open this chat",
+    "loadErrorBody": "Something went wrong while loading the conversation.",
+    "agentSubtitle": "{{agent}} · {{folder}}",
+    "agentEmptyTitle": "Ask {{agent}}",
+    "agentEmptyBody": "Your message runs on your computer, in {{folder}}. You can leave the app; the agent keeps working and you will catch up when you return.",
+    "agentMode": "Agent mode: {{mode}}",
+    "agentModeUnknown": "Mode",
+    "pickMode": "Agent mode",
+    "menu": {
+      "open": "Open",
+      "rename": "Rename"
+    },
+    "createFailed": "Couldn't start a new chat.",
+    "listLoadFailed": "Couldn't load chats",
+    "toolTimedOut": "The tool timed out.",
     "title": "GitNotēs AI",
     "askAI": "Ask AI",
     "typeMessage": "Type a message...",
@@ -317,6 +435,10 @@
     "openSettings": "Open Settings"
   },
   "settings": {
+    "codingAgents": {
+      "title": "Coding agents",
+      "description": "Chat with Claude Code, opencode and more running on your computer"
+    },
     "title": "Settings",
     "dailyQuote": {
       "title": "Daily Quote"

@@ -50,19 +50,26 @@
 
 ## Chat Store (`src/stores/chatStore.ts`)
 
-**Purpose:** Manages AI chat threads and messages.
+**Purpose:** The chat **thread list** only. An open conversation lives in its own `ChatSession` (`src/services/chat/ChatSession.ts`), not here — see [Coding Agents & Chat Runtime](./agent-bridge.md).
 
 **State:**
-- `threads: ChatThreadSummary[]` — loaded thread summaries
-- `activeThread: ChatThread | null` — currently open thread (null if none)
+- `threads: ChatThreadSummary[]` — chat-repo summaries (model threads) merged with device-local summaries (agent threads), newest first
 - `isLoading: boolean`
 - `error: string | null`
-- `isStreaming: boolean`
-- `storageAdapter: ChatStorageAdapter | null`
 
-**Key Actions:** `loadThreads`, `loadThread`, `createThread`, `deleteThread`, `renameThread`, `addMessage`, `updateMessage`, `removeMessage`, `truncateAfter`, `setStreaming`, `clearActiveThread`, `clearError`, `setStorageAdapter`
+**Key Actions:** `loadThreads()`, `deleteThread(summary)`, `renameThread({ threadId, title })`, `upsertSummary(thread)`, `clearError()`
 
-**Error handling with cached summaries:** When `loadThreads` encounters a `ChatStorageError` with cached data (transient network or 5xx error from `ChatStorageService`), it preserves the cached thread list and surfaces the warning via `error` while still displaying available threads. First-message persistence: new user messages are persisted via `persistPrimedThread` before the assistant response begins streaming.
+**Error handling with cached summaries:** When the chat repo raises a `ChatStorageError` with cached data (transient network or 5xx error from `ChatStorageService`), `loadThreads` keeps the cached repo summaries, still lists device-local agent threads, and surfaces the warning via `error`. Without a configured chat repo only agent threads are listed. Deleting a thread first stops its live session, then removes it from its own storage (and kills the agent process for agent threads).
+
+---
+
+## Agent Bridge Store (`src/stores/agentBridgeStore.ts`)
+
+**Purpose:** Paired `gitnotes-bridge` hosts (persisted to AsyncStorage as `agent-bridges`).
+
+**State:** `bridges: AgentBridge[]` (`id`, `name`, `url`, `addedAt`, `lastWorkspace?`), `hydrated: boolean`
+
+**Key Actions:** `addBridge({ name, url, token })` (re-pairing the same URL refreshes token and name), `updateBridge`, `removeBridge`, `setLastWorkspace`. Tokens are never in this store — they live in `expo-secure-store` (`src/services/agent/bridgeSecrets.ts`).
 
 ---
 
@@ -271,7 +278,7 @@ Storage key `@gitnotes:publish_site`. Hydrate and `updateConfig` run values thro
 
 ## AI Hub Store (`src/stores/aiHubStore.ts`)
 
-**Purpose:** Manages AI Hub (multi-provider AI chat) state and picker visibility.
+**Purpose:** Manages AI Hub (multi-provider AI chat) state and picker visibility. `goNewChat` opens the model/agent picker when at least one bridge is paired (`newChatPickerVisible`), otherwise starts a model chat directly (`startModelChat`).
 
 **State:**
 - `pickerVisible: boolean`

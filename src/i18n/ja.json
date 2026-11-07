@@ -192,6 +192,10 @@
     }
   },
   "settings": {
+    "codingAgents": {
+      "title": "コーディングエージェント",
+      "description": "お使いのコンピュータ上の Claude Code や opencode などとチャット"
+    },
     "title": "設定",
     "dailyQuote": {
       "title": "毎日の名言"
@@ -450,7 +454,125 @@
       "llamaNotInstalled": "Llamaランタイムがインストールされていません"
     }
   },
+  "agents": {
+    "title": "コーディングエージェント",
+    "bridgesTitle": "あなたのコンピュータ",
+    "empty": {
+      "title": "ペアリング済みのコンピュータはありません",
+      "body": "コーディングエージェントがあるマシンでブリッジを起動し、このアプリとペアリングしてください。"
+    },
+    "add": {
+      "title": "コンピュータを追加",
+      "linkHint": "ブリッジが表示したペアリングリンクを貼り付けてください。",
+      "manualHint": "ブリッジのアドレスとトークンを入力してください。",
+      "linkPlaceholder": "gitnotes://agents/pair?url=…",
+      "urlPlaceholder": "アドレス(例: ws://192.168.1.20:7878)",
+      "tokenPlaceholder": "トークン",
+      "useManual": "アドレスとトークンを入力する",
+      "useLink": "ペアリングリンクを使う",
+      "namePlaceholder": "名前(任意)"
+    },
+    "confirm": {
+      "title": "このコンピュータに接続しますか?",
+      "host": "ホスト",
+      "body": "このコンピュータ上のエージェントは、指定したファイルを読み取り・変更できます。ご自身でブリッジを起動した場合のみ続行してください。",
+      "cleartext": "この接続は暗号化されていません(ws://)。信頼できるネットワークでのみ使うか、ブリッジを wss:// または Tailscale 経由にしてください。",
+      "alreadyPaired": "このコンピュータはすでにペアリング済みです。再接続するとトークンが更新されます。",
+      "connect": "接続"
+    },
+    "status": {
+      "checking": "確認中…",
+      "online": "オンライン",
+      "offline": "オフライン"
+    },
+    "noAgentsAvailable": "このコンピュータにエージェントが見つかりません",
+    "noAgentsReported": "このコンピュータからエージェントが報告されませんでした。",
+    "agentNotInstalled": "未インストール({{command}})",
+    "menu": {
+      "recheck": "接続を確認",
+      "rename": "名前を変更"
+    },
+    "rename": {
+      "title": "コンピュータの名前を変更"
+    },
+    "remove": {
+      "title": "{{name}} を削除しますか?",
+      "body": "このコンピュータとのチャットはこのデバイスに残りますが、再度ペアリングするまで続けられません。"
+    },
+    "help": {
+      "title": "ブリッジの起動方法",
+      "body": "お使いのコンピュータのターミナルで次を実行してください。ここに貼り付けるペアリングリンクが表示されます。",
+      "copied": "コピーしました",
+      "readme": "ブリッジの README を読む",
+      "footer": "Node.js 20 以降が必要です。"
+    },
+    "errors": {
+      "unreachable": "ブリッジに接続できません。起動していること、スマートフォンからこのアドレスに届くことを確認してください。",
+      "unauthorized": "ブリッジがトークンを拒否しました。新しいリンクでペアリングし直してください。",
+      "protocolMismatch": "このブリッジのバージョンはアプリと互換性がありません。gitnotes-bridge またはアプリを更新してください。",
+      "cleartextBlocked": "このスマートフォンは、このアドレスへの暗号化されていない ws:// 接続をブロックしています。wss:// のアドレス、ローカルネットワークのアドレス、または Tailscale を使ってください。",
+      "timeout": "ブリッジの応答に時間がかかりすぎています。",
+      "unknown": "ブリッジとの通信中に問題が発生しました。",
+      "invalidLink": "ペアリングリンクではないようです。",
+      "invalidUrl": "有効なブリッジのアドレスではありません。",
+      "missingToken": "ブリッジのトークンを入力してください。",
+      "saveFailed": "このコンピュータをデバイスに保存できませんでした。"
+    },
+    "picker": {
+      "title": "新しいチャット",
+      "aiModel": "AI モデル",
+      "aiModelHint": "GitNotēs で設定したモデルとチャット",
+      "agentOn": "{{agent}} · {{bridge}}",
+      "chooseWorkspace": "フォルダを選択",
+      "workspaceEmpty": "利用できるフォルダがありません。ブリッジの起動時にルートを追加してください。",
+      "lastUsed": "最後に使用"
+    }
+  },
   "chat": {
+    "thoughtTitle": "考え中",
+    "toolStatus": {
+      "pending": "保留中",
+      "awaitingApproval": "承認待ち",
+      "running": "実行中",
+      "completed": "完了",
+      "failed": "失敗",
+      "rejected": "拒否"
+    },
+    "toolDetails": {
+      "arguments": "引数",
+      "result": "結果",
+      "showAll": "すべて表示(残り {{count}} 文字)",
+      "moreLines": "… 残り {{count}} 行",
+      "openNote": "ノートを開く"
+    },
+    "planTitle": "プラン",
+    "planStatus": {
+      "pending": "保留中",
+      "inProgress": "進行中",
+      "completed": "完了"
+    },
+    "permissionRequired": "承認が必要です",
+    "actions": {
+      "editResend": "編集して再送信"
+    },
+    "jumpToLatest": "最新へ移動",
+    "notFoundTitle": "チャットが見つかりません",
+    "notFoundBody": "この会話はこのデバイスに存在しません。",
+    "loadErrorTitle": "このチャットを開けませんでした",
+    "loadErrorBody": "会話の読み込み中に問題が発生しました。",
+    "agentSubtitle": "{{agent}} · {{folder}}",
+    "agentEmptyTitle": "{{agent}} に聞いてみよう",
+    "agentEmptyBody": "メッセージはあなたのコンピュータの {{folder}} で実行されます。アプリを離れてもエージェントは作業を続け、戻ったときに続きが表示されます。",
+    "agentMode": "エージェントモード:{{mode}}",
+    "agentModeUnknown": "モード",
+    "pickMode": "エージェントモード",
+    "menu": {
+      "open": "開く",
+      "rename": "名前を変更"
+    },
+    "createFailed": "新しいチャットを開始できませんでした。",
+    "listLoadFailed": "チャットを読み込めませんでした",
+    "toolTimedOut": "ツールがタイムアウトしました。",
     "askAI": "AIに質問",
     "typeMessage": "メッセージを入力...",
     "thinking": "思考中...",

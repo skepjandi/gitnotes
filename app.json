@@ -46,6 +46,10 @@
         "UIFileSharingEnabled": true,
         "LSSupportsOpeningDocumentsInPlace": true,
         "NSDocumentsFolderUsageDescription": "GitNotēs stores your cloned repositories and note files here so you can browse and back them up from the Files app.",
+        "NSLocalNetworkUsageDescription": "GitNotēs connects to coding agents running on your computer on your local network.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        },
         "EXDevMenuShowFloatingActionButton": false
       }
     },

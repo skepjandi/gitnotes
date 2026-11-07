@@ -133,6 +133,7 @@
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "29.5.14",
     "@types/react": "~19.2.10",
+    "@types/ws": "^8.18.2",
     "@typescript-eslint/eslint-plugin": "^8.60.0",
     "@typescript-eslint/parser": "^8.60.0",
     "babel-jest": "^30.3.0",
@@ -152,7 +153,8 @@
     "react-test-renderer": "19.2.3",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "ws": "^8"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

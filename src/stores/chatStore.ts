@@ -1,31 +1,18 @@
 import { create } from 'zustand';
-import { ChatMessage, ChatThread, ChatThreadSummary } from '../models/Chat';
+import type { ChatThread, ChatThreadSummary } from '../models/Chat';
 import { ChatStorageError } from '../services/ChatStorageService';
 import { formatSyncError } from '../services/git/formatSyncError';
-import { buildThreadSummary, deriveChatTitleFromText, isDefaultChatTitle } from '../utils/chatThreadSummary';
-
-export interface ChatStorageAdapter {
-  loadThreadSummaries: (owner: string, repo: string, branch: string) => Promise<ChatThreadSummary[]>;
-  loadThread: (owner: string, repo: string, branch: string, threadId: string) => Promise<ChatThread | null>;
-  saveThread: (thread: ChatThread) => Promise<void>;
-  deleteThread: (owner: string, repo: string, branch: string, threadId: string) => Promise<void>;
-}
+import { releaseAgentConnection } from '../services/chat/backends/agentBackend';
+import { chatT } from '../services/chat/copy';
+import { localThreadStorage } from '../services/chat/storage/localThreadStorage';
+import { configuredRepoStorage } from '../services/chat/storage/threadStorage';
+import { emitThreadRemoved, emitThreadRenamed } from '../services/chat/threadEvents';
+import { buildThreadSummary, DEFAULT_CHAT_TITLE } from '../utils/chatThreadSummary';
 
 interface ChatState {
   threads: ChatThreadSummary[];
-  activeThread: ChatThread | null;
   isLoading: boolean;
   error: string | null;
-  isStreaming: boolean;
-  storageAdapter: ChatStorageAdapter | null;
-}
-
-interface CreateThreadInput {
-  repoOwner: string;
-  repoName: string;
-  branch: string;
-  filePath: string;
-  title?: string;
 }
 
 interface RenameThreadInput {
@@ -33,150 +20,78 @@ interface RenameThreadInput {
   title: string;
 }
 
-interface ThreadLookupInput {
-  owner: string;
-  repo: string;
-  branch: string;
-  threadId: string;
-}
-
-interface ThreadListInput {
-  owner: string;
-  repo: string;
-  branch: string;
-}
-
 interface ChatActions {
-  loadThreads: (input: ThreadListInput) => Promise<void>;
-  loadThread: (input: ThreadLookupInput) => Promise<ChatThread | null>;
-  createThread: (input: CreateThreadInput) => ChatThread;
-  deleteThread: (input: ThreadLookupInput) => Promise<boolean>;
+  /** Chat-repo summaries (when a chat repo is configured) merged with device-local agent summaries. */
+  loadThreads: () => Promise<void>;
+  deleteThread: (summary: ChatThreadSummary) => Promise<boolean>;
+  /** Updates the list and persists the new title for the thread's own storage. */
   renameThread: (input: RenameThreadInput) => void;
-  addMessage: (message: ChatMessage) => void;
-  updateMessage: (messageId: string, updates: Partial<ChatMessage>) => void;
-  removeMessage: (messageId: string) => void;
-  truncateAfter: (messageId: string, options?: { inclusive?: boolean }) => void;
-  setStreaming: (isStreaming: boolean) => void;
-  clearActiveThread: () => void;
+  upsertSummary: (thread: ChatThread) => void;
   clearError: () => void;
-  setStorageAdapter: (adapter: ChatStorageAdapter) => void;
 }
 
 const sortThreadSummaries = (threads: ChatThreadSummary[]): ChatThreadSummary[] =>
   [...threads].sort((a, b) => b.updatedAt - a.updatedAt);
 
-const upsertThreadSummary = (
-  summaries: ChatThreadSummary[],
-  thread: ChatThread,
-): ChatThreadSummary[] => {
-  const summary = buildThreadSummary(thread);
-  const existingIndex = summaries.findIndex((item) => item.id === thread.id);
+const isAgentSummary = (summary: ChatThreadSummary): boolean => summary.backend === 'agent';
 
-  if (existingIndex === -1) {
-    return sortThreadSummaries([summary, ...summaries]);
+async function releaseAgentConnectionFor(threadId: string): Promise<void> {
+  try {
+    await releaseAgentConnection(threadId);
+  } catch (error) {
+    console.warn('[chatStore] releasing agent connection failed:', error);
   }
-
-  return sortThreadSummaries(
-    summaries.map((item) => (item.id === thread.id ? summary : item)),
-  );
-};
+}
 
 export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   threads: [],
-  activeThread: null,
   isLoading: false,
   error: null,
-  isStreaming: false,
-  storageAdapter: null,
 
-  loadThreads: async ({ owner, repo, branch }) => {
-    const { storageAdapter } = get();
-    if (!storageAdapter) {
-      return;
-    }
+  loadThreads: async () => {
+    set({ isLoading: true, error: null });
 
-    try {
-      set({ isLoading: true, error: null });
-      const threads = await storageAdapter.loadThreadSummaries(owner, repo, branch);
-      set({ threads: sortThreadSummaries(threads), isLoading: false });
-    } catch (err) {
-      if (err instanceof ChatStorageError && err.cachedData !== undefined) {
-        set({
-          threads: sortThreadSummaries(err.cachedData),
-          error: err.warning ?? err.message,
-          isLoading: false,
-        });
-        return;
+    const localSummaries = await localThreadStorage.listSummaries().catch((error: unknown) => {
+      console.warn('[chatStore] loading device-local chats failed:', error);
+      return [] as ChatThreadSummary[];
+    });
+
+    let repoSummaries = get().threads.filter((summary) => !isAgentSummary(summary));
+    let error: string | null = null;
+    const repoStorage = configuredRepoStorage();
+    if (repoStorage) {
+      try {
+        repoSummaries = await repoStorage.listSummaries();
+      } catch (err) {
+        if (err instanceof ChatStorageError && err.cachedData !== undefined) {
+          repoSummaries = err.cachedData;
+          error = err.warning ?? err.message;
+        } else {
+          error = err instanceof ChatStorageError ? err.message : 'Failed to load chat threads';
+          console.error('Error loading chat threads:', err);
+        }
       }
-      const errorMessage = err instanceof ChatStorageError
-        ? err.message
-        : 'Failed to load chat threads';
-      set({ error: errorMessage, isLoading: false });
-      console.error('Error loading chat threads:', err);
+    } else {
+      repoSummaries = [];
     }
+
+    set({ threads: sortThreadSummaries([...repoSummaries, ...localSummaries]), isLoading: false, error });
   },
 
-  loadThread: async ({ owner, repo, branch, threadId }) => {
-    const { storageAdapter } = get();
-    if (!storageAdapter) {
-      return null;
-    }
-
+  deleteThread: async (summary) => {
+    set({ error: null });
+    // Stop the thread's session first so a running turn cannot save the thread back after it is gone.
+    emitThreadRemoved(summary.id);
     try {
-      set({ isLoading: true, error: null });
-      const thread = await storageAdapter.loadThread(owner, repo, branch, threadId);
-      set((state) => ({
-        activeThread: thread,
-        threads: thread ? upsertThreadSummary(state.threads, thread) : state.threads,
-        isLoading: false,
-      }));
-      return thread;
-    } catch (err) {
-      const errorMessage = err instanceof ChatStorageError
-        ? err.message
-        : 'Failed to load chat thread';
-      set({ error: errorMessage, isLoading: false });
-      console.error('Error loading chat thread:', err);
-      return null;
-    }
-  },
-
-  createThread: ({ repoOwner, repoName, branch, filePath, title }) => {
-    const now = Date.now();
-    const thread: ChatThread = {
-      id: `${now}-${Math.random().toString(36).substring(2, 11)}`,
-      title: title?.trim() || 'New Chat',
-      messages: [],
-      createdAt: now,
-      updatedAt: now,
-      repoOwner,
-      repoName,
-      branch,
-      filePath,
-    };
-
-    set((state) => ({
-      activeThread: thread,
-      threads: upsertThreadSummary(state.threads, thread),
-      error: null,
-    }));
-
-    return thread;
-  },
-
-  deleteThread: async ({ owner, repo, branch, threadId }) => {
-    const { storageAdapter } = get();
-    if (!storageAdapter) {
-      return false;
-    }
-
-    try {
-      set({ error: null });
-      await storageAdapter.deleteThread(owner, repo, branch, threadId);
-      set((state) => ({
-        threads: state.threads.filter((thread) => thread.id !== threadId),
-        activeThread: state.activeThread?.id === threadId ? null : state.activeThread,
-      }));
+      if (isAgentSummary(summary)) {
+        await localThreadStorage.remove(summary.id);
+        await releaseAgentConnectionFor(summary.id);
+      } else {
+        const repoStorage = configuredRepoStorage();
+        if (!repoStorage) throw new Error(chatT('chat.storageRepoNotConfigured'));
+        await repoStorage.remove(summary.id);
+      }
+      set((state) => ({ threads: state.threads.filter((thread) => thread.id !== summary.id) }));
       return true;
     } catch (err) {
       const raw = err instanceof Error ? err.message : typeof err === 'string' ? err : String(err);
@@ -187,134 +102,37 @@ export const useChatStore = create<ChatState & ChatActions>()((set, get) => ({
   },
 
   renameThread: ({ threadId, title }) => {
-    const trimmedTitle = title.trim() || 'New Chat';
+    const trimmedTitle = title.trim() || DEFAULT_CHAT_TITLE;
+    const updatedAt = Date.now();
+    const summary = get().threads.find((thread) => thread.id === threadId);
 
-    set((state) => {
-      const updatedAt = Date.now();
-      const activeThread =
-        state.activeThread?.id === threadId
-          ? {
-              ...state.activeThread,
-              title: trimmedTitle,
-              updatedAt,
-            }
-          : state.activeThread;
+    set((state) => ({
+      threads: sortThreadSummaries(
+        state.threads.map((thread) => (thread.id === threadId ? { ...thread, title: trimmedTitle, updatedAt } : thread)),
+      ),
+    }));
 
-      return {
-        activeThread,
-        threads: sortThreadSummaries(
-          state.threads.map((thread) =>
-            thread.id === threadId
-              ? {
-                  ...thread,
-                  title: trimmedTitle,
-                  updatedAt,
-                }
-              : thread,
-          ),
-        ),
-      };
-    });
-  },
-
-  addMessage: (message) => {
-    set((state) => {
-      if (!state.activeThread) {
-        return state;
+    // A live session saves its own (newest) state; only persist from storage when there is none.
+    if (emitThreadRenamed(threadId, trimmedTitle) || !summary) return;
+    const storage = isAgentSummary(summary) ? localThreadStorage : configuredRepoStorage();
+    if (!storage) return;
+    void (async () => {
+      try {
+        const stored = await storage.load(threadId);
+        if (stored) await storage.save({ ...stored, title: trimmedTitle, updatedAt });
+      } catch (err) {
+        const raw = err instanceof Error ? err.message : String(err);
+        set({ error: formatSyncError(raw, 'upsert') });
       }
-
-      const nextTitle =
-        message.role === 'user' && isDefaultChatTitle(state.activeThread.title)
-          ? deriveChatTitleFromText(message.content)
-          : state.activeThread.title;
-
-      const updatedThread: ChatThread = {
-        ...state.activeThread,
-        title: nextTitle,
-        messages: [...state.activeThread.messages, message],
-        updatedAt: Math.max(message.timestamp, Date.now()),
-      };
-
-      return {
-        activeThread: updatedThread,
-        threads: upsertThreadSummary(state.threads, updatedThread),
-      };
-    });
+    })();
   },
 
-  updateMessage: (messageId, updates) => {
-    set((state) => {
-      if (!state.activeThread) {
-        return state;
-      }
-
-      const messageExists = state.activeThread.messages.some((message) => message.id === messageId);
-      if (!messageExists) {
-        return state;
-      }
-
-      const updatedThread: ChatThread = {
-        ...state.activeThread,
-        messages: state.activeThread.messages.map((message) =>
-          message.id === messageId
-            ? {
-                ...message,
-                ...updates,
-              }
-            : message,
-        ),
-        updatedAt: Date.now(),
-      };
-
-      return {
-        activeThread: updatedThread,
-        threads: upsertThreadSummary(state.threads, updatedThread),
-      };
-    });
+  upsertSummary: (thread) => {
+    const summary = buildThreadSummary(thread);
+    set((state) => ({
+      threads: sortThreadSummaries([...state.threads.filter((item) => item.id !== thread.id), summary]),
+    }));
   },
-
-  removeMessage: (messageId) => {
-    set((state) => {
-      if (!state.activeThread) return state;
-      const messages = state.activeThread.messages;
-      if (!messages.some((message) => message.id === messageId)) return state;
-      const updatedThread: ChatThread = {
-        ...state.activeThread,
-        messages: messages.filter((message) => message.id !== messageId),
-        updatedAt: Date.now(),
-      };
-      return {
-        activeThread: updatedThread,
-        threads: upsertThreadSummary(state.threads, updatedThread),
-      };
-    });
-  },
-
-  truncateAfter: (messageId, options) => {
-    set((state) => {
-      if (!state.activeThread) return state;
-      const messages = state.activeThread.messages;
-      const index = messages.findIndex((m) => m.id === messageId);
-      if (index < 0) return state;
-      const cutoff = options?.inclusive ? index : index + 1;
-      if (cutoff >= messages.length) return state;
-      const updatedThread: ChatThread = {
-        ...state.activeThread,
-        messages: messages.slice(0, cutoff),
-        updatedAt: Date.now(),
-      };
-      return {
-        activeThread: updatedThread,
-        threads: upsertThreadSummary(state.threads, updatedThread),
-      };
-    });
-  },
-
-  setStreaming: (isStreaming) => set({ isStreaming }),
-
-  clearActiveThread: () => set({ activeThread: null, isStreaming: false }),
 
   clearError: () => set({ error: null }),
-
-  setStorageAdapter: (adapter) => set({ storageAdapter: adapter }),
 }));

@@ -12,6 +12,7 @@ type ProductionStackParamList = {
   GraphView: undefined;
   ChatThreadList: undefined;
   ChatScreen: { threadId: string };
+  AgentBridges: { pair?: string; url?: string; token?: string; name?: string } | undefined;
   RenderStyleSettings: undefined;
   RenderStyleEditor: { format: 'markdown' | 'org' | 'neorg' };
   PublishSite: undefined;

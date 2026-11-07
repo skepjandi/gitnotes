@@ -1,5 +1,5 @@
 import { generateText, streamText } from 'ai';
-import type { LanguageModel, ModelMessage, Tool } from 'ai';
+import type { LanguageModel, ModelMessage, TextStreamPart, Tool } from 'ai';
 import { Platform } from 'react-native';
 import type { AIModelConfig, AIProviderConfig } from '../models/AIProvider';
 import { chatTools, githubTools } from './ai/tools';
@@ -171,61 +171,34 @@ function isEmptyInput(value: unknown): boolean {
   return false;
 }
 
-function serializeToolEvent(part: unknown): string | null {
-  if (!part || typeof part !== 'object' || !("type" in part)) {
-    return null;
-  }
+/** Typed model output consumed by the model chat backend. Errors are thrown, not yielded. */
+export type ModelStreamPart =
+  | { type: 'text-delta'; text: string }
+  | { type: 'tool-input-start'; toolCallId: string; toolName: string }
+  | { type: 'tool-input-delta'; toolCallId: string; delta: string }
+  | { type: 'tool-call'; toolCallId: string; toolName: string; input: unknown }
+  | { type: 'tool-result'; toolCallId: string; toolName: string; output: unknown };
 
-  const event = part as {
-    type: string;
-    id?: string;
-    toolCallId?: string;
-    toolName?: string;
-    input?: unknown;
-    args?: unknown;
-    delta?: string;
-    argsTextDelta?: string;
-    result?: unknown;
-    output?: unknown;
-  };
-
-  const toolCallId = event.toolCallId ?? event.id;
-  const rawName = event.toolName ?? '';
-  const { name: toolName, embeddedArgs } = normalizeToolName(rawName);
-
-  switch (event.type) {
-    case 'tool-call': {
-      const rawInput = event.input ?? event.args;
-      const input = embeddedArgs && isEmptyInput(rawInput) ? embeddedArgs : rawInput;
-      return JSON.stringify({
-        type: 'tool-call',
-        toolCallId,
-        toolName,
-        input,
-      });
-    }
+function toModelStreamPart(part: TextStreamPart<Record<string, Tool>>): ModelStreamPart | null {
+  switch (part.type) {
+    case 'text-delta':
+      return part.text.length > 0 ? { type: 'text-delta', text: part.text } : null;
     case 'tool-input-start':
-    case 'tool-call-streaming-start':
-      return JSON.stringify({
-        type: 'tool-call-streaming-start',
-        toolCallId,
-        toolName,
-      });
+      return { type: 'tool-input-start', toolCallId: part.id, toolName: normalizeToolName(part.toolName).name };
     case 'tool-input-delta':
-    case 'tool-call-delta':
-      return JSON.stringify({
-        type: 'tool-call-delta',
-        toolCallId,
-        toolName,
-        argsTextDelta: event.delta ?? event.argsTextDelta ?? '',
-      });
+      return { type: 'tool-input-delta', toolCallId: part.id, delta: part.delta };
+    case 'tool-call': {
+      const { name, embeddedArgs } = normalizeToolName(part.toolName);
+      const input = embeddedArgs && isEmptyInput(part.input) ? embeddedArgs : part.input;
+      return { type: 'tool-call', toolCallId: part.toolCallId, toolName: name, input };
+    }
     case 'tool-result':
-      return JSON.stringify({
+      return {
         type: 'tool-result',
-        toolCallId,
-        toolName,
-        result: event.output ?? event.result,
-      });
+        toolCallId: part.toolCallId,
+        toolName: normalizeToolName(part.toolName).name,
+        output: part.output,
+      };
     default:
       return null;
   }
@@ -261,7 +234,7 @@ async function* runGenerateTextFallback(
   messages: ModelMessage[],
   tools: Record<string, Tool> | undefined,
   abortSignal: AbortSignal | undefined,
-): AsyncGenerator<string> {
+): AsyncGenerator<ModelStreamPart> {
   const { system, rest } = splitSystemMessages(messages);
   // `generateText` has no `onError` hook (unlike `streamText`), so the
   // SDK's parser-error path logs via `console.error` before re-throwing
@@ -272,24 +245,26 @@ async function* runGenerateTextFallback(
     .finally(() => {
       console.error = originalConsoleError;
     });
-  if (typeof result.text === 'string' && result.text.length > 0) {
-    yield result.text;
+  if (result.text.length > 0) {
+    yield { type: 'text-delta', text: result.text };
   }
-  const toolCalls = (result as { toolCalls?: unknown[] }).toolCalls;
-  if (Array.isArray(toolCalls)) {
-    for (const call of toolCalls) {
-      const event = serializeToolEvent({ ...(call as object), type: 'tool-call' });
-      if (event) yield event;
-    }
+  for (const call of result.toolCalls) {
+    const part = toModelStreamPart({ ...call, type: 'tool-call' });
+    if (part) yield part;
   }
 }
 
-export async function* streamChatResponse(
+/**
+ * Streams one model step as typed parts straight from `streamText().fullStream`.
+ * Tool calls are reported, never executed here. Errors are humanised and thrown;
+ * an aborted `abortSignal` ends the stream quietly.
+ */
+export async function* streamChatEvents(
   model: LanguageModel,
   messages: ModelMessage[],
   tools?: Record<string, Tool>,
   abortSignal?: AbortSignal,
-): AsyncGenerator<string> {
+): AsyncGenerator<ModelStreamPart> {
   let yielded = false;
   let lastEmptyBodyError: unknown = null;
   const { system, rest } = splitSystemMessages(messages);
@@ -311,16 +286,8 @@ export async function* streamChatResponse(
         onError: () => {/* noop */},
       });
 
-      for await (const part of result.fullStream as AsyncIterable<any>) {
-        if (part.type === 'text-delta' || part.type === 'text') {
-          const delta = typeof part.text === 'string' ? part.text : part.textDelta;
-          if (typeof delta === 'string' && delta.length > 0) {
-            yielded = true;
-            yield delta;
-          }
-          continue;
-        }
-
+      for await (const raw of result.fullStream) {
+        const part = raw as TextStreamPart<Record<string, Tool>>;
         if (part.type === 'error') {
           // Preserve the original error shape (e.g. AI_APICallError with
           // statusCode) so the outer catch's extractErrorDetails can
@@ -328,20 +295,21 @@ export async function* streamChatResponse(
           // fallback. Wrapping in `new Error(message)` previously stripped
           // the error name, so the parser-error branch never fired for
           // stream-emitted errors (#691).
-          const err = part.error;
+          const err: unknown = part.error;
           if (err instanceof Error) throw err;
           if (typeof err === 'string') throw new Error(err);
           throw new Error('Stream error');
         }
 
-        const toolEvent = serializeToolEvent(part);
-        if (toolEvent) {
+        const mapped = toModelStreamPart(part);
+        if (mapped) {
           yielded = true;
-          yield toolEvent;
+          yield mapped;
         }
       }
       return;
     } catch (error) {
+      if (abortSignal?.aborted) return;
       const details = extractErrorDetails(error);
 
       if (!yielded && attempt === 0 && details.isEmptyBody) {
@@ -352,18 +320,17 @@ export async function* streamChatResponse(
 
       if (!yielded && (details.isParserError || details.isEmptyBody)) {
         try {
-          // Collect fallback chunks before re-yielding to avoid blocking the UI loop.
-          const chunks: string[] = [];
-          await (async () => {
-            for await (const chunk of runGenerateTextFallback(model, messages, tools, abortSignal)) {
-              chunks.push(chunk);
-            }
-          })();
-          for (const chunk of chunks) {
-            yield chunk;
+          // Collect fallback parts before re-yielding to avoid blocking the UI loop.
+          const parts: ModelStreamPart[] = [];
+          for await (const part of runGenerateTextFallback(model, messages, tools, abortSignal)) {
+            parts.push(part);
+          }
+          for (const part of parts) {
+            yield part;
           }
           return;
         } catch {
+          if (abortSignal?.aborted) return;
           throw new Error(humanizeStreamError(error));
         }
       }
@@ -376,8 +343,6 @@ export async function* streamChatResponse(
     throw new Error(humanizeStreamError(lastEmptyBodyError));
   }
 }
-
-export const sendMessage = streamChatResponse;
 
 export async function generateChatTitle(
   model: LanguageModel,

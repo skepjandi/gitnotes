@@ -19,12 +19,14 @@ module.exports = {
     '^expo-image$': '<rootDir>/__mocks__/expo-image.ts',
     '^expo-secure-store$': '<rootDir>/__mocks__/expo-secure-store.ts',
     '^@shopify/react-native-skia$': '<rootDir>/__mocks__/react-native-skia.ts',
+    '^@shopify/flash-list$': '<rootDir>/__mocks__/flash-list.tsx',
     '^@ai-sdk/anthropic$': '<rootDir>/__mocks__/ai-sdk-anthropic.ts',
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   setupFiles: ['<rootDir>/jest.setup.ts'],
   testPathIgnorePatterns: [
     '/node_modules/',
+    '<rootDir>/bridge/',
     // Ignore the shared .worktrees/ directory at the repo root (not this worktree's tests)
     '<rootDir>/../.worktrees/',
   ],

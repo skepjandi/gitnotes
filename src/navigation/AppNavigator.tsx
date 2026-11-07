@@ -13,6 +13,8 @@ import { LinkingOptions } from '@react-navigation/native';
 
 import TabNavigator from './TabNavigator';
 import ChatScreen from '../screens/ChatScreen';
+import AgentBridgesScreen from '../screens/AgentBridgesScreen';
+import { NewChatPickerHost } from '../components/agent/NewChatPickerHost';
 import GraphViewScreen from '../screens/GraphViewScreen';
 import ChatThreadListScreen from '../screens/ChatThreadListScreen';
 import NoteEditorScreen from '../screens/NoteEditorScreen';
@@ -48,6 +50,7 @@ import { RootStackParamList } from './types';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAIStore } from '../stores/aiStore';
 import { useAIHubStore } from '../stores/aiHubStore';
+import { useAgentBridgeStore } from '../stores/agentBridgeStore';
 import { selectIsPro, useProStore } from '../stores/proStore';
 import { useFloatingGitButtonStore } from '../stores/floatingGitButtonStore';
 import { ReferralService } from '../services/ReferralService';
@@ -90,6 +93,7 @@ const getLinkingConfig = (): LinkingOptions<RootStackParamList> => {
         CanvasEditor: 'canvas/:canvasId',
         ChatThreadList: 'chat',
         ChatScreen: 'chat/:threadId',
+        AgentBridges: 'agents/:pair?',
         ThoughtDump: 'thought-dump',
         OAuthCallback: 'oauth/callback',
         AppCallback: 'app/callback',
@@ -133,6 +137,7 @@ export default function AppNavigator({
   const showChatRepoPicker = useAIHubStore((state) => state.pickerVisible);
   const openChatRepoPicker = useAIHubStore((state) => state.openChatRepoPicker);
   const closeChatRepoPicker = useAIHubStore((state) => state.closeChatRepoPicker);
+  const hasBridges = useAgentBridgeStore((state) => state.bridges.length > 0);
   const [currentRouteName, setCurrentRouteName] = useState<string | undefined>(undefined);
   const [navigationReady, setNavigationReady] = useState(false);
   const isPro = useProStore(selectIsPro);
@@ -204,24 +209,25 @@ export default function AppNavigator({
     },
   };
   const hasChatRepo = Boolean(chatRepoOwner && chatRepoName);
+  const canUseChat = hasChatRepo || hasBridges;
   const Navigation = observeNavigationContainer ?? NavigationContainer;
 
   const handleStateChange = useCallback(() => {
     const routeName = navigationRef.current?.getCurrentRoute()?.name;
     setCurrentRouteName(routeName);
 
-    if (routeName === 'ChatThreadList' && !hasChatRepo) {
+    if (routeName === 'ChatThreadList' && !canUseChat) {
       openChatRepoPicker();
     }
-  }, [hasChatRepo, navigationRef, openChatRepoPicker]);
+  }, [canUseChat, navigationRef, openChatRepoPicker]);
 
   const handleCloseChatRepoPicker = useCallback(() => {
     closeChatRepoPicker();
 
-    if (navigationRef.current?.isReady() && navigationRef.current.getCurrentRoute()?.name === 'ChatThreadList' && !hasChatRepo && navigationRef.current.canGoBack()) {
+    if (navigationRef.current?.isReady() && navigationRef.current.getCurrentRoute()?.name === 'ChatThreadList' && !canUseChat && navigationRef.current.canGoBack()) {
       navigationRef.current.goBack();
     }
-  }, [hasChatRepo, navigationRef, closeChatRepoPicker]);
+  }, [canUseChat, navigationRef, closeChatRepoPicker]);
 
   const handleChatRepoSelected = useCallback(() => {
     closeChatRepoPicker();
@@ -339,6 +345,11 @@ export default function AppNavigator({
               options={{ headerShown: false }}
             />
             <Stack.Screen
+              name="AgentBridges"
+              component={AgentBridgesScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
               name="RenderStyleSettings"
               component={RenderStyleSettingsScreen}
               options={{ headerShown: false }}
@@ -437,6 +448,7 @@ export default function AppNavigator({
             )}
           </Stack.Navigator>
           <FloatingAIButton currentRouteName={currentRouteName} />
+          <NewChatPickerHost />
           {!showOnboarding && floatingGitButtonHydrated && floatingGitButtonVisible ? (
             <AppFloatingGitButton />
           ) : null}

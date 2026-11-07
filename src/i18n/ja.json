@@ -274,6 +274,8 @@
     "build": "ビルド",
     "reportIssue": "バグや機能リクエストを報告",
     "manageTemplates": "テンプレートを管理",
+    "publishSite": "Webサイトとして公開",
+    "publishSiteHint": "Pro · ノートをテーマ付き静的サイトとして書き出し",
     "artificialIntelligence": "AI（人工知能）",
     "enableAI": "AIを有効にする",
     "model": "モデル",
@@ -1137,6 +1139,10 @@
         "title": "レンダースタイル",
         "description": "Markdown・NORG・Orgの表示テーマを設定"
       },
+      "publishSite": {
+        "title": "Webサイトとして公開",
+        "description": "ノートをテーマ付き静的サイトとして書き出し"
+      },
       "multiAccount": {
         "title": "複数のGitHubアカウント",
         "description": "複数のGitHubアカウントを並行して同期"
@@ -1226,5 +1232,139 @@
     "body": "テレメトリー機能を含むリリースでは、設定の1つのスイッチでExpo診断情報とWorker利用カウンターを制御します。診断情報は仮名インストール識別子を使用し、法的分類は運営者が確認する必要があります。アプリコードはノート、リポジトリ、認証情報を意図的に添付しませんが、未処理エラーにはコードが埋め込んだ機微な値が含まれる場合があります。SDKのimport前にオフならSDKはimportされません。import後はアンロードできませんが、送信は無効になりWorkerへのリクエストは停止します。ローカルのエラー捕捉はプロセス終了まで続く場合があります。収集済みカウンターは消去されません。ExpoとCloudflareはサービス提供者としてデータを処理します。",
     "readPolicy": "ポリシーを読む",
     "dismiss": "了解"
+  },
+  "publishSite": {
+    "title": "サイトを公開",
+    "intro": "ノートをどこにでもホスティングできるWebサイトにできます。ノートを選び、デザインを整え、ZIPを書き出します。",
+    "design": "デザイン",
+    "customizeDesign": "デザインをカスタマイズ",
+    "siteDetails": "サイトの詳細",
+    "siteTitle": "サイトタイトル",
+    "tagline": "キャッチフレーズ",
+    "author": "作者",
+    "footer": "フッターのテキスト",
+    "favicon": "アイコン（絵文字）",
+    "baseUrl": "公開URL（任意）",
+    "baseUrlHint": "canonicalリンクとサイトマップを追加します。サイトをホスティングするhttpsアドレスを入力してください。",
+    "invalidBaseUrl": "https:// から始まる完全なアドレスを入力してください。",
+    "navLinks": "ヘッダーリンク",
+    "navLabel": "ラベル",
+    "navUrl": "リンクURL",
+    "addLink": "リンクを追加",
+    "removeLink": "リンクを削除",
+    "invalidUrl": "http(s):// または mailto: のアドレスを使用してください。",
+    "notes": "公開するノート",
+    "selectAll": "すべて選択",
+    "clearSelection": "クリア",
+    "filterNotes": "タイトルまたはタグで絞り込み",
+    "notesSelected": "{{total}}件中{{count}}件を選択",
+    "noNotes": "公開できるノートがまだありません。",
+    "preview": "プレビュー",
+    "previewTitle": "サイトのプレビュー",
+    "sampleContent": "サンプルを表示中です。ノートを選ぶとあなたのサイトを確認できます。",
+    "export": "ZIPを書き出し",
+    "building": "作成中…",
+    "exportFailedTitle": "書き出しに失敗しました",
+    "exportFailedBody": "サイトを書き出せませんでした。{{message}}",
+    "shareUnavailable": "このデバイスでは共有を利用できません。",
+    "warnings": "ご確認ください（{{count}}）",
+    "warning": {
+      "image-unresolved": "{{note}}：画像を含められませんでした（{{detail}}）",
+      "unsupported-format": "{{note}}：{{detail}}ノートは公開できないためスキップしました",
+      "empty-note": "{{note}}は空です",
+      "link-unselected": "{{note}}：「{{detail}}」へのリンク先は公開されていません"
+    },
+    "hostTitle": "無料でホスティング",
+    "publicWarning": "画像を含め、公開した内容はホスティングされたサイトを開けるすべての人に表示されます。",
+    "hosts": {
+      "netlify": {
+        "name": "Netlify Drop",
+        "steps": "ZIPをページにドロップすれば数秒で公開"
+      },
+      "cloudflare": {
+        "name": "Cloudflare Pages",
+        "steps": "Pagesプロジェクトを作成してZIPをアップロード"
+      },
+      "github": {
+        "name": "GitHub Pages",
+        "steps": "リポジトリに展開してPagesを有効化"
+      }
+    },
+    "theme": {
+      "title": "サイトデザイン",
+      "presetsTitle": "テーマ",
+      "presets": {
+        "paper": "ペーパー",
+        "docs": "ドキュメント",
+        "journal": "ジャーナル",
+        "midnight": "ミッドナイト",
+        "terminal": "ターミナル",
+        "brutalist": "ブルータリスト"
+      },
+      "colorsTitle": "カラー",
+      "colorMode": "カラーモード",
+      "colorModes": {
+        "auto": "訪問者に合わせる",
+        "light": "ライト",
+        "dark": "ダーク"
+      },
+      "accent": "アクセントカラー",
+      "editPalette": "編集するパレット",
+      "palette": {
+        "background": "背景",
+        "surface": "サーフェス",
+        "text": "テキスト",
+        "muted": "薄いテキスト",
+        "border": "罫線",
+        "link": "リンク",
+        "codeBackground": "コードの背景"
+      },
+      "typographyTitle": "タイポグラフィ",
+      "bodyFont": "本文フォント",
+      "headingFont": "見出しフォント",
+      "fonts": {
+        "system": "システム",
+        "serif": "明朝・セリフ",
+        "mono": "等幅",
+        "rounded": "丸ゴシック",
+        "humanist": "ヒューマニスト",
+        "editorial": "エディトリアル"
+      },
+      "textSize": "文字サイズ",
+      "lineHeight": "行間",
+      "contentWidth": "ページ幅",
+      "layoutTitle": "レイアウト",
+      "cornerRadius": "角の丸み",
+      "headerStyle": "ヘッダー",
+      "headerStyles": {
+        "left": "左寄せ",
+        "centered": "中央",
+        "banner": "バナー",
+        "minimal": "ミニマル"
+      },
+      "indexLayout": "ホームページ",
+      "indexLayouts": {
+        "list": "リスト",
+        "cards": "カード",
+        "grid": "グリッド",
+        "compact": "コンパクト"
+      },
+      "linkStyle": "リンクのスタイル",
+      "linkStyles": {
+        "underline": "下線",
+        "hover": "ホバー時",
+        "highlight": "ハイライト"
+      },
+      "detailsTitle": "ページの詳細",
+      "showDates": "日付を表示",
+      "showTags": "タグを表示",
+      "showReadingTime": "読了時間を表示",
+      "showToc": "目次",
+      "showPrevNext": "新しい／古いノートへのリンク",
+      "advancedTitle": "詳細設定",
+      "customCss": "カスタムCSS",
+      "customCssHint": "テーマのスタイルの後に追加され、すべてのページに適用されます。",
+      "previewHint": "フォントは訪問者のデバイスのものを使うため、サイトは高速に読み込まれオフラインでも動作します。"
+    }
   }
 }

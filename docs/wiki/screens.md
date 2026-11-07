@@ -396,6 +396,18 @@ Behavior:
 
 ---
 
+### PublishSiteScreen / SiteThemeEditorScreen / SitePreviewScreen
+
+**Purpose:** Pro-only flow that turns notes into a themed static website and exports it as a ZIP. All three call `useProScreenGuard()`; the Settings row (`settings.button.publish-site`) shows a lock and the upgrade prompt for Free users. Routes: `PublishSite`, `SiteThemeEditor`, `SitePreview` (no deep links).
+
+- **PublishSiteScreen** — site details, header links, note checklist, hosting guides, Preview and Export ZIP actions.
+- **SiteThemeEditorScreen** — live preview pinned on top; presets, colors, typography, layout, page details, custom CSS.
+- **SitePreviewScreen** — full-screen sandboxed preview (sample content when no notes are selected).
+
+See [Site Publishing](./site-publishing.md).
+
+---
+
 ### TemplateManagerScreen
 
 **Purpose:** Create and manage note templates.

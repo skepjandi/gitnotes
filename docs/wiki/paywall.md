@@ -14,6 +14,7 @@ GitNotēs has two tiers: **Free** and **Pro**.
 | Retrofuturistic UI | ❌ | ✅ |
 | Neo-Brutalist UI | ✅ | ✅ |
 | Customizable accent color | ❌ | ✅ |
+| Publish notes as a website (themed static site, ZIP export) | ❌ | ✅ |
 | Advanced AI (Claude 3.5, GPT-4o) | ❌ | ✅ |
 | Multi-host (GitLab, Gitea) | ❌ | ✅ |
 | Repositories | 1 | Unlimited |

@@ -16,6 +16,16 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **Change:** Home tiles lay out in flow with a themed watermark glyph and arrow affordance, and the header greets by time of day with the date. `readableInk` picks white or dark ink per fill by WCAG contrast. Empty states gain a tinted halo and a call-to-action (New Note / New Todo). The flat-theme tab bar marks the active tab with an accent pill. `ScreenHeader` badges use the theme accent. Adds `home.greeting.*` and `home.bento.openCalendar` to all six locales.
 
+### feat(publish): publish notes as a themed static website (Pro)
+
+**What:** Pro users can turn selected notes into a static website and export it as a ZIP that works on any static host (Netlify Drop, Cloudflare Pages, GitHub Pages, …).
+
+**Feature:** Settings → Publish as website. Six presets (Paper, Docs, Journal, Midnight, Terminal, Brutalist) with customizable colors per light/dark mode, accent, fonts, text size, spacing, page width, corners, header and home layouts, link style, page details, header links, public URL (canonical + sitemap) and custom CSS. Markdown, Org, Neorg and JSON notes are supported; raw HTML is escaped and unsafe link schemes are dropped. Live preview in a sandboxed WebView. The export re-checks the Pro entitlement.
+
+**Docs:** [Site Publishing](./docs/wiki/site-publishing.md)
+
+**PR:** TBD
+
 ## 2026-11-06
 
 ### fix(git): clone over HTTPS from TLS 1.3-only servers on iOS

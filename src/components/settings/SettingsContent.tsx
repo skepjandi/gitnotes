@@ -139,6 +139,8 @@ onRemoveAccount: (id: string, login: string) => void;
   /** Opens the HexColorPickerModal (Pro only); free users go to paywall via onOpenPaywall. */
   onOpenAccentColorPicker: () => void;
   onManageTemplates: () => void;
+  /** Opens the site publishing flow (Pro only). The row is hidden when omitted. */
+  onPublishSite?: () => void;
   onToggleAI: () => void;
   onQuickSetup?: () => void;
   onOpenModelSelector: () => void;
@@ -261,6 +263,7 @@ export function SettingsContent(props: SettingsContentProps) {
     accentColor,
     onOpenAccentColorPicker,
     onManageTemplates,
+    onPublishSite,
     onToggleAI,
     onQuickSetup,
     onOpenModelSelector,
@@ -1229,6 +1232,28 @@ export function SettingsContent(props: SettingsContentProps) {
           <Text style={[styles.settingLabel, { color: colors.text }]}>{t('settings.customizeRenderStyles')}</Text>
         </GroupRow>
       </Group>
+
+      {onPublishSite ? (
+        <Group title={t('publishSite.title')}>
+          <GroupRow
+            testID={isPro ? 'settings.button.publish-site' : 'settings.row.publish-site-locked'}
+            onPress={isPro ? onPublishSite : () => promptProUpgrade(t, onOpenPaywall)}
+            leading={<Ionicons name="globe-outline" size={20} color={colors.text} />}
+            trailing={
+              isPro ? (
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              ) : (
+                <Ionicons name="lock-closed" size={18} color={colors.textSecondary} />
+              )
+            }
+          >
+            <View>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>{t('settings.publishSite')}</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{t('settings.publishSiteHint')}</Text>
+            </View>
+          </GroupRow>
+        </Group>
+      ) : null}
 
       <Group title={t('common.sync')}>
         <GroupRow

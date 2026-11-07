@@ -1612,6 +1612,7 @@ export default function SettingsScreen() {
         setAccentColor={setAccentColor}
         onOpenAccentColorPicker={() => setShowAccentColorPicker(true)}
         onManageTemplates={() => navigation.navigate('TemplateManager' as never)}
+        onPublishSite={() => navigation.navigate('PublishSite')}
         onToggleAI={() => { void toggleAI(); }}
         dailyQuoteEnabled={dailyQuoteEnabled}
         onToggleDailyQuote={() => { void toggleDailyQuote(); }}

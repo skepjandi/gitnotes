@@ -23,6 +23,9 @@ import ImageViewerScreen from '../screens/ImageViewerScreen';
 import VideoViewerScreen from '../screens/VideoViewerScreen';
 import RenderStyleSettingsScreen from '../screens/RenderStyleSettingsScreen';
 import RenderStyleEditorScreen from '../screens/RenderStyleEditorScreen';
+import PublishSiteScreen from '../screens/PublishSiteScreen';
+import SiteThemeEditorScreen from '../screens/SiteThemeEditorScreen';
+import SitePreviewScreen from '../screens/SitePreviewScreen';
 import TemplateManagerScreen from '../screens/TemplateManagerScreen';
 import SyncStatusScreen from '../screens/SyncStatusScreen';
 import { FloatingAIButton } from '../components/ai/FloatingAIButton';
@@ -343,6 +346,21 @@ export default function AppNavigator({
             <Stack.Screen
               name="RenderStyleEditor"
               component={RenderStyleEditorScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="PublishSite"
+              component={PublishSiteScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="SiteThemeEditor"
+              component={SiteThemeEditorScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="SitePreview"
+              component={SitePreviewScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen

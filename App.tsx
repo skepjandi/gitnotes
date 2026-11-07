@@ -42,6 +42,7 @@ import { SyncBlockOverlay } from './src/components/ui/SyncBlockOverlay';
 import { bootstrapStorage } from './src/services/StorageBootstrap';
 import { hydrate as hydrateGitOperationRegistry } from './src/stores/gitOperationStore';
 import { useRenderStyleStore } from './src/stores/renderStyleStore';
+import { useSitePublishStore } from './src/stores/sitePublishStore';
 import { useFloatingGitButtonStore } from './src/stores/floatingGitButtonStore';
 import { startForegroundWatcher, stopForegroundWatcher } from './src/services/ForegroundSyncService';
 import { loadForegroundSyncConfig } from './src/hooks/useForegroundSyncSettings';
@@ -92,6 +93,7 @@ export function AppRoot({
     // before StartupSyncGate drains/pulls and the UI reads lock state.
     void hydrateGitOperationRegistry();
     void useRenderStyleStore.getState().hydrate();
+    void useSitePublishStore.getState().hydrate();
     // Restore the floating git button visibility preference before the
     // navigator renders so the button never flashes for users who hid it.
     void useFloatingGitButtonStore.getState().hydrate();

@@ -409,6 +409,8 @@
     "build": "Build",
     "reportIssue": "Report bugs and feature requests",
     "manageTemplates": "Manage templates",
+    "publishSite": "Publish as website",
+    "publishSiteHint": "Pro · Export notes as a themed static site",
     "artificialIntelligence": "Artificial Intelligence",
     "enableAI": "Enable Artificial Intelligence",
     "model": "Model",
@@ -1151,6 +1153,10 @@
         "title": "Render styles",
         "description": "Theme how Markdown, NORG, and Org render"
       },
+      "publishSite": {
+        "title": "Publish as website",
+        "description": "Export notes as a themed static site"
+      },
       "multiAccount": {
         "title": "Multiple GitHub accounts",
         "description": "Sync multiple GitHub accounts side by side"
@@ -1240,5 +1246,139 @@
     "body": "In releases that include telemetry, one Settings switch controls Expo diagnostics and Worker usage counters. Diagnostics use a pseudonymous installation identifier; its legal classification must be reviewed by the operator. App code does not intentionally attach note, repository, or authentication data, but unhandled error messages or stacks may contain sensitive values embedded by app code. If off before SDK import, the SDK is not imported. After import, it cannot be unloaded; dispatch is disabled, Worker requests stop, and local error capture may continue until process exit. Previously collected counters are not erased. Expo and Cloudflare process data as service providers.",
     "readPolicy": "Read the policy",
     "dismiss": "Got it"
+  },
+  "publishSite": {
+    "title": "Publish site",
+    "intro": "Turn your notes into a website you can host anywhere. Pick notes, style the site, export a ZIP.",
+    "design": "Design",
+    "customizeDesign": "Customize design",
+    "siteDetails": "Site details",
+    "siteTitle": "Site title",
+    "tagline": "Tagline",
+    "author": "Author",
+    "footer": "Footer text",
+    "favicon": "Icon (emoji)",
+    "baseUrl": "Public URL (optional)",
+    "baseUrlHint": "Adds canonical links and a sitemap. Use the https address where you'll host the site.",
+    "invalidBaseUrl": "Enter a full https:// address.",
+    "navLinks": "Header links",
+    "navLabel": "Label",
+    "navUrl": "Link URL",
+    "addLink": "Add link",
+    "removeLink": "Remove link",
+    "invalidUrl": "Use an http(s):// or mailto: address.",
+    "notes": "Notes to publish",
+    "selectAll": "Select all",
+    "clearSelection": "Clear",
+    "filterNotes": "Filter by title or tag",
+    "notesSelected": "{{count}} of {{total}} selected",
+    "noNotes": "No notes to publish yet.",
+    "preview": "Preview",
+    "previewTitle": "Site preview",
+    "sampleContent": "Showing sample content. Select notes to preview yours.",
+    "export": "Export ZIP",
+    "building": "Building…",
+    "exportFailedTitle": "Export failed",
+    "exportFailedBody": "The site could not be exported. {{message}}",
+    "shareUnavailable": "Sharing isn't available on this device.",
+    "warnings": "Heads up ({{count}})",
+    "warning": {
+      "image-unresolved": "{{note}}: an image couldn't be included ({{detail}})",
+      "unsupported-format": "{{note}}: {{detail}} notes can't be published and were skipped",
+      "empty-note": "{{note}} is empty",
+      "link-unselected": "{{note}}: the link to “{{detail}}” points to a note that is not published"
+    },
+    "hostTitle": "Host it for free",
+    "publicWarning": "Everything you publish, including images, is visible to anyone who can open the hosted site.",
+    "hosts": {
+      "netlify": {
+        "name": "Netlify Drop",
+        "steps": "Drop the ZIP on the page and go live in seconds"
+      },
+      "cloudflare": {
+        "name": "Cloudflare Pages",
+        "steps": "Create a Pages project, then upload the ZIP"
+      },
+      "github": {
+        "name": "GitHub Pages",
+        "steps": "Unzip into a repository and enable Pages"
+      }
+    },
+    "theme": {
+      "title": "Site design",
+      "presetsTitle": "Themes",
+      "presets": {
+        "paper": "Paper",
+        "docs": "Docs",
+        "journal": "Journal",
+        "midnight": "Midnight",
+        "terminal": "Terminal",
+        "brutalist": "Brutalist"
+      },
+      "colorsTitle": "Colors",
+      "colorMode": "Color mode",
+      "colorModes": {
+        "auto": "Match visitor",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "accent": "Accent color",
+      "editPalette": "Edit palette for",
+      "palette": {
+        "background": "Background",
+        "surface": "Surface",
+        "text": "Text",
+        "muted": "Muted text",
+        "border": "Borders",
+        "link": "Links",
+        "codeBackground": "Code background"
+      },
+      "typographyTitle": "Typography",
+      "bodyFont": "Body font",
+      "headingFont": "Heading font",
+      "fonts": {
+        "system": "System",
+        "serif": "Serif",
+        "mono": "Monospace",
+        "rounded": "Rounded",
+        "humanist": "Humanist",
+        "editorial": "Editorial"
+      },
+      "textSize": "Text size",
+      "lineHeight": "Line spacing",
+      "contentWidth": "Page width",
+      "layoutTitle": "Layout",
+      "cornerRadius": "Corner radius",
+      "headerStyle": "Header",
+      "headerStyles": {
+        "left": "Left",
+        "centered": "Centered",
+        "banner": "Banner",
+        "minimal": "Minimal"
+      },
+      "indexLayout": "Home page",
+      "indexLayouts": {
+        "list": "List",
+        "cards": "Cards",
+        "grid": "Grid",
+        "compact": "Compact"
+      },
+      "linkStyle": "Link style",
+      "linkStyles": {
+        "underline": "Underline",
+        "hover": "On hover",
+        "highlight": "Highlight"
+      },
+      "detailsTitle": "Page details",
+      "showDates": "Show dates",
+      "showTags": "Show tags",
+      "showReadingTime": "Show reading time",
+      "showToc": "Table of contents",
+      "showPrevNext": "Newer / older links",
+      "advancedTitle": "Advanced",
+      "customCss": "Custom CSS",
+      "customCssHint": "Added after the theme styles and applied to every page.",
+      "previewHint": "Fonts come from each visitor's device, so the site loads fast and works offline."
+    }
   }
 }

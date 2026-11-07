@@ -322,6 +322,20 @@ Themes apply the GitNotes color scheme. Icons replace the launcher icon on iOS a
 - Fallback: `openStoreListing()` opens the platform store listing URL (also reachable from Settings at any time)
 - No button-triggered prompt: expo-store-review prohibits calling `requestReview()` from a Settings button press; the prompt fires only after usage events
 
+## Site Publishing (`src/services/site/`)
+
+Pro-only static-site generation. Pure TypeScript apart from `siteExport.ts`; see [Site Publishing](./site-publishing.md) for the full design.
+
+| File | Purpose |
+|------|---------|
+| `siteTypes.ts` | `SiteConfig` types and `normalizeSiteConfig` (validates every value that reaches CSS/HTML). |
+| `siteThemes.ts` | Six presets, accent/preset application, contrast helper, font stacks. |
+| `siteCss.ts` | `buildSiteCss(config)` — the generated `assets/style.css`. |
+| `siteHtml.ts` | Markdown/Org/Neorg/JSON → HTML, `sanitizeHref`, `escapeHtml`. |
+| `siteBuilder.ts` | `buildSite(notes, config)` → `SiteArtifact`; `renderPreviewPage`, `resolveSitePath`. |
+| `siteExport.ts` | `createSiteZip`, `shareSiteZip` (re-checks Pro entitlement), typed errors. |
+| `siteSample.ts` | Sample notes for the design preview. |
+
 ## See Also
 
 - [Architecture](./architecture.md) — How these services fit together

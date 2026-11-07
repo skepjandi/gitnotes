@@ -14,6 +14,9 @@ type ProductionStackParamList = {
   ChatScreen: { threadId: string };
   RenderStyleSettings: undefined;
   RenderStyleEditor: { format: 'markdown' | 'org' | 'neorg' };
+  PublishSite: undefined;
+  SiteThemeEditor: undefined;
+  SitePreview: undefined;
   TemplateManager: undefined;
   SyncStatus: undefined;
   Stage: undefined;

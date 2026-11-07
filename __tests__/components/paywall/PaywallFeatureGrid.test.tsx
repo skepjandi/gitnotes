@@ -63,7 +63,7 @@ jest.mock('../../../src/theme/tokens', () => ({
 
 import PaywallFeatureGrid from '../../../src/components/paywall/PaywallFeatureGrid';
 
-// All 16 expected feature IDs in order
+// All 17 expected feature IDs in order
 const EXPECTED_FEATURE_IDS = [
   'aiChat',
   'aiActions',
@@ -74,6 +74,7 @@ const EXPECTED_FEATURE_IDS = [
   'canvases',
   'templates',
   'renderStyles',
+  'publishSite',
   'multiAccount',
   'accentColor',
   'proAppIcons',
@@ -84,25 +85,25 @@ const EXPECTED_FEATURE_IDS = [
 ];
 
 describe('PaywallFeatureGrid', () => {
-  it('renders all 16 feature cards', () => {
+  it('renders all 17 feature cards', () => {
     const { getByTestId } = render(<PaywallFeatureGrid />);
 
     // Verify grid container exists
     expect(getByTestId('paywall.features')).toBeTruthy();
 
-    // Verify all 16 cards render with correct testIDs
+    // Verify all 17 cards render with correct testIDs
     for (const id of EXPECTED_FEATURE_IDS) {
       expect(getByTestId(`paywall.feature.${id}`)).toBeTruthy();
     }
   });
 
-  it('renders exactly 16 cards', () => {
+  it('renders exactly 17 cards', () => {
     const { getAllByTestId, getByTestId } = render(<PaywallFeatureGrid />);
 
     // Verify grid container exists
     const grid = getByTestId('paywall.features');
     const cards = getAllByTestId(/^paywall\.feature\./);
-    expect(cards).toHaveLength(16);
+    expect(cards).toHaveLength(17);
     expect(grid).toBeTruthy();
   });
 

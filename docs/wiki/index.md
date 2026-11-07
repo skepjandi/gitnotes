@@ -19,6 +19,7 @@
 | [Git Engine](./git-engine.md) | Rust native Git module architecture and build process |
 | [Paywall & Pro Tier](./paywall.md) | RevenueCat, StoreKit 2, entitlements, feature gates |
 | [Note File Format](./note-file-format.md) | How notes are stored on disk — frontmatter, file format, DocumentIndex, wiki-links |
+| [Site Publishing (Pro)](./site-publishing.md) | Themed static-site export from notes — generator, customization, safety, preview |
 
 ## Quick Start
 

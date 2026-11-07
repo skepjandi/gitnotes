@@ -191,6 +191,21 @@
 
 ---
 
+## Site Publish Store (`src/stores/sitePublishStore.ts`)
+
+**Purpose:** Persists the Pro "Publish as website" settings — the site design/identity config and the ids of the notes chosen for publishing. See [Site Publishing](./site-publishing.md).
+
+**State:**
+- `config: SiteConfig` — design (preset, colors, fonts, layout, toggles) plus identity (title, links, public URL, custom CSS)
+- `noteIds: string[]`
+- `hasHydrated: boolean`
+
+**Key Actions:** `hydrate`, `updateConfig`, `setPreset`, `setAccent`, `setPaletteColor`, `toggleNote`, `setNoteIds`
+
+Storage key `@gitnotes:publish_site`. Hydrate and `updateConfig` run values through `normalizeSiteConfig`; the store is hydrated in `App.tsx`.
+
+---
+
 ## Conflict Store (`src/stores/conflictStore.ts`)
 
 **Purpose:** Manages sync conflicts requiring user resolution.

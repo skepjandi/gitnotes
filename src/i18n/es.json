@@ -274,6 +274,8 @@
     "build": "Compilación",
     "reportIssue": "Reportar errores y solicitudes de funciones",
     "manageTemplates": "Gestionar plantillas",
+    "publishSite": "Publicar como sitio web",
+    "publishSiteHint": "Pro · Exporta notas como un sitio estático con tema",
     "artificialIntelligence": "Inteligencia artificial",
     "enableAI": "Habilitar inteligencia artificial",
     "model": "Modelo",
@@ -1141,6 +1143,10 @@
         "title": "Estilos de renderizado",
         "description": "Personaliza cómo se muestran Markdown, NORG y Org"
       },
+      "publishSite": {
+        "title": "Publicar como sitio web",
+        "description": "Exporta notas como un sitio estático con tema"
+      },
       "multiAccount": {
         "title": "Múltiples cuentas de GitHub",
         "description": "Sincroniza varias cuentas de GitHub a la vez"
@@ -1230,5 +1236,139 @@
     "body": "En las versiones que incluyan telemetría, un interruptor en Ajustes controla los diagnósticos de Expo y los contadores de uso del Worker. Los diagnósticos usan un identificador de instalación seudónimo; el operador debe revisar su clasificación legal. El código de la app no adjunta intencionadamente notas, datos de repositorios ni autenticación, pero los errores no controlados pueden incluir valores sensibles insertados por el código. Si se desactiva antes de importar el SDK, este no se importa. Después de importarlo, no se puede descargar; se desactiva el envío y cesan las solicitudes al Worker, aunque la captura local de errores puede continuar hasta que termine el proceso. Los contadores recopilados anteriormente no se borran. Expo y Cloudflare procesan datos como proveedores de servicios.",
     "readPolicy": "Leer la política",
     "dismiss": "Entendido"
+  },
+  "publishSite": {
+    "title": "Publicar sitio",
+    "intro": "Convierte tus notas en un sitio web que puedes alojar donde quieras. Elige notas, diseña el sitio y exporta un ZIP.",
+    "design": "Diseño",
+    "customizeDesign": "Personalizar diseño",
+    "siteDetails": "Datos del sitio",
+    "siteTitle": "Título del sitio",
+    "tagline": "Lema",
+    "author": "Autor",
+    "footer": "Texto del pie",
+    "favicon": "Icono (emoji)",
+    "baseUrl": "URL pública (opcional)",
+    "baseUrlHint": "Añade enlaces canónicos y un sitemap. Usa la dirección https donde alojarás el sitio.",
+    "invalidBaseUrl": "Introduce una dirección completa https://.",
+    "navLinks": "Enlaces del encabezado",
+    "navLabel": "Etiqueta",
+    "navUrl": "URL del enlace",
+    "addLink": "Añadir enlace",
+    "removeLink": "Quitar enlace",
+    "invalidUrl": "Usa una dirección http(s):// o mailto:.",
+    "notes": "Notas a publicar",
+    "selectAll": "Seleccionar todo",
+    "clearSelection": "Borrar",
+    "filterNotes": "Filtrar por título o etiqueta",
+    "notesSelected": "{{count}} de {{total}} seleccionadas",
+    "noNotes": "Aún no hay notas para publicar.",
+    "preview": "Vista previa",
+    "previewTitle": "Vista previa del sitio",
+    "sampleContent": "Mostrando contenido de ejemplo. Selecciona notas para ver las tuyas.",
+    "export": "Exportar ZIP",
+    "building": "Generando…",
+    "exportFailedTitle": "Error al exportar",
+    "exportFailedBody": "No se pudo exportar el sitio. {{message}}",
+    "shareUnavailable": "Compartir no está disponible en este dispositivo.",
+    "warnings": "Avisos ({{count}})",
+    "warning": {
+      "image-unresolved": "{{note}}: no se pudo incluir una imagen ({{detail}})",
+      "unsupported-format": "{{note}}: las notas {{detail}} no se pueden publicar y se omitieron",
+      "empty-note": "{{note}} está vacía",
+      "link-unselected": "{{note}}: el enlace a «{{detail}}» apunta a una nota que no se publica"
+    },
+    "hostTitle": "Alójalo gratis",
+    "publicWarning": "Todo lo que publiques, incluidas las imágenes, será visible para cualquiera que abra el sitio alojado.",
+    "hosts": {
+      "netlify": {
+        "name": "Netlify Drop",
+        "steps": "Suelta el ZIP en la página y publica en segundos"
+      },
+      "cloudflare": {
+        "name": "Cloudflare Pages",
+        "steps": "Crea un proyecto de Pages y sube el ZIP"
+      },
+      "github": {
+        "name": "GitHub Pages",
+        "steps": "Descomprime en un repositorio y activa Pages"
+      }
+    },
+    "theme": {
+      "title": "Diseño del sitio",
+      "presetsTitle": "Temas",
+      "presets": {
+        "paper": "Papel",
+        "docs": "Docs",
+        "journal": "Diario",
+        "midnight": "Medianoche",
+        "terminal": "Terminal",
+        "brutalist": "Brutalista"
+      },
+      "colorsTitle": "Colores",
+      "colorMode": "Modo de color",
+      "colorModes": {
+        "auto": "Según el visitante",
+        "light": "Claro",
+        "dark": "Oscuro"
+      },
+      "accent": "Color de acento",
+      "editPalette": "Editar paleta de",
+      "palette": {
+        "background": "Fondo",
+        "surface": "Superficie",
+        "text": "Texto",
+        "muted": "Texto atenuado",
+        "border": "Bordes",
+        "link": "Enlaces",
+        "codeBackground": "Fondo del código"
+      },
+      "typographyTitle": "Tipografía",
+      "bodyFont": "Fuente del texto",
+      "headingFont": "Fuente de títulos",
+      "fonts": {
+        "system": "Sistema",
+        "serif": "Serif",
+        "mono": "Monoespaciada",
+        "rounded": "Redondeada",
+        "humanist": "Humanista",
+        "editorial": "Editorial"
+      },
+      "textSize": "Tamaño del texto",
+      "lineHeight": "Interlineado",
+      "contentWidth": "Ancho de página",
+      "layoutTitle": "Diseño de página",
+      "cornerRadius": "Radio de las esquinas",
+      "headerStyle": "Encabezado",
+      "headerStyles": {
+        "left": "Izquierda",
+        "centered": "Centrado",
+        "banner": "Banner",
+        "minimal": "Mínimo"
+      },
+      "indexLayout": "Página de inicio",
+      "indexLayouts": {
+        "list": "Lista",
+        "cards": "Tarjetas",
+        "grid": "Cuadrícula",
+        "compact": "Compacta"
+      },
+      "linkStyle": "Estilo de enlaces",
+      "linkStyles": {
+        "underline": "Subrayado",
+        "hover": "Al pasar el cursor",
+        "highlight": "Resaltado"
+      },
+      "detailsTitle": "Detalles de página",
+      "showDates": "Mostrar fechas",
+      "showTags": "Mostrar etiquetas",
+      "showReadingTime": "Mostrar tiempo de lectura",
+      "showToc": "Tabla de contenidos",
+      "showPrevNext": "Enlaces a notas más nuevas / antiguas",
+      "advancedTitle": "Avanzado",
+      "customCss": "CSS personalizado",
+      "customCssHint": "Se añade tras los estilos del tema y se aplica a todas las páginas.",
+      "previewHint": "Las fuentes son las del dispositivo de cada visitante, así el sitio carga rápido y funciona sin conexión."
+    }
   }
 }

@@ -274,6 +274,8 @@
     "build": "Build",
     "reportIssue": "Fehler und Funktionswünsche melden",
     "manageTemplates": "Vorlagen verwalten",
+    "publishSite": "Als Website veröffentlichen",
+    "publishSiteHint": "Pro · Notizen als statische Website mit Theme exportieren",
     "artificialIntelligence": "Künstliche Intelligenz",
     "enableAI": "Künstliche Intelligenz aktivieren",
     "model": "Modell",
@@ -1139,6 +1141,10 @@
         "title": "Renderstile",
         "description": "Bestimme, wie Markdown, NORG und Org gerendert werden"
       },
+      "publishSite": {
+        "title": "Als Website veröffentlichen",
+        "description": "Notizen als statische Website mit Theme exportieren"
+      },
       "multiAccount": {
         "title": "Mehrere GitHub-Konten",
         "description": "Synchronisiere mehrere GitHub-Konten nebeneinander"
@@ -1228,5 +1234,139 @@
     "body": "In Versionen mit Telemetrie steuert ein Schalter in den Einstellungen Expo-Diagnosedaten und Nutzungszähler des Workers. Diagnosedaten verwenden eine pseudonyme Installationskennung; ihre rechtliche Einstufung muss vom Betreiber geprüft werden. Notizen, Repository- oder Authentifizierungsdaten werden vom App-Code nicht absichtlich angehängt, doch unbehandelte Fehlermeldungen oder Stacktraces können eingebettete sensible Werte enthalten. Vor dem SDK-Import bedeutet „aus“, dass das SDK nicht importiert wird. Nach dem Import kann es nicht entladen werden; der Versand wird deaktiviert, Worker-Anfragen stoppen, und lokale Fehlererfassung kann bis zum Prozessende weiterlaufen. Bereits erfasste Zähler werden nicht gelöscht. Expo und Cloudflare verarbeiten Daten als Dienstleister.",
     "readPolicy": "Erklärung lesen",
     "dismiss": "Verstanden"
+  },
+  "publishSite": {
+    "title": "Website veröffentlichen",
+    "intro": "Mach aus deinen Notizen eine Website, die du überall hosten kannst. Notizen wählen, Design anpassen, ZIP exportieren.",
+    "design": "Design",
+    "customizeDesign": "Design anpassen",
+    "siteDetails": "Website-Details",
+    "siteTitle": "Website-Titel",
+    "tagline": "Untertitel",
+    "author": "Autor",
+    "footer": "Fußzeilentext",
+    "favicon": "Symbol (Emoji)",
+    "baseUrl": "Öffentliche URL (optional)",
+    "baseUrlHint": "Fügt kanonische Links und eine Sitemap hinzu. Nutze die https-Adresse, unter der die Website gehostet wird.",
+    "invalidBaseUrl": "Gib eine vollständige https://-Adresse ein.",
+    "navLinks": "Kopfzeilen-Links",
+    "navLabel": "Beschriftung",
+    "navUrl": "Link-URL",
+    "addLink": "Link hinzufügen",
+    "removeLink": "Link entfernen",
+    "invalidUrl": "Verwende eine http(s)://- oder mailto:-Adresse.",
+    "notes": "Zu veröffentlichende Notizen",
+    "selectAll": "Alle auswählen",
+    "clearSelection": "Leeren",
+    "filterNotes": "Nach Titel oder Tag filtern",
+    "notesSelected": "{{count}} von {{total}} ausgewählt",
+    "noNotes": "Noch keine Notizen zum Veröffentlichen.",
+    "preview": "Vorschau",
+    "previewTitle": "Website-Vorschau",
+    "sampleContent": "Beispielinhalt wird angezeigt. Wähle Notizen aus, um deine zu sehen.",
+    "export": "ZIP exportieren",
+    "building": "Wird erstellt…",
+    "exportFailedTitle": "Export fehlgeschlagen",
+    "exportFailedBody": "Die Website konnte nicht exportiert werden. {{message}}",
+    "shareUnavailable": "Teilen ist auf diesem Gerät nicht verfügbar.",
+    "warnings": "Hinweise ({{count}})",
+    "warning": {
+      "image-unresolved": "{{note}}: Ein Bild konnte nicht eingebunden werden ({{detail}})",
+      "unsupported-format": "{{note}}: {{detail}}-Notizen können nicht veröffentlicht werden und wurden übersprungen",
+      "empty-note": "{{note}} ist leer",
+      "link-unselected": "{{note}}: Der Link zu „{{detail}}“ verweist auf eine nicht veröffentlichte Notiz"
+    },
+    "hostTitle": "Kostenlos hosten",
+    "publicWarning": "Alles, was du veröffentlichst, auch Bilder, ist für jeden sichtbar, der die gehostete Website öffnet.",
+    "hosts": {
+      "netlify": {
+        "name": "Netlify Drop",
+        "steps": "ZIP auf die Seite ziehen und in Sekunden online sein"
+      },
+      "cloudflare": {
+        "name": "Cloudflare Pages",
+        "steps": "Pages-Projekt erstellen und das ZIP hochladen"
+      },
+      "github": {
+        "name": "GitHub Pages",
+        "steps": "In ein Repository entpacken und Pages aktivieren"
+      }
+    },
+    "theme": {
+      "title": "Website-Design",
+      "presetsTitle": "Themes",
+      "presets": {
+        "paper": "Papier",
+        "docs": "Docs",
+        "journal": "Journal",
+        "midnight": "Mitternacht",
+        "terminal": "Terminal",
+        "brutalist": "Brutalistisch"
+      },
+      "colorsTitle": "Farben",
+      "colorMode": "Farbmodus",
+      "colorModes": {
+        "auto": "Wie Besucher",
+        "light": "Hell",
+        "dark": "Dunkel"
+      },
+      "accent": "Akzentfarbe",
+      "editPalette": "Palette bearbeiten für",
+      "palette": {
+        "background": "Hintergrund",
+        "surface": "Fläche",
+        "text": "Text",
+        "muted": "Gedämpfter Text",
+        "border": "Rahmen",
+        "link": "Links",
+        "codeBackground": "Code-Hintergrund"
+      },
+      "typographyTitle": "Typografie",
+      "bodyFont": "Textschrift",
+      "headingFont": "Überschriftenschrift",
+      "fonts": {
+        "system": "System",
+        "serif": "Serif",
+        "mono": "Monospace",
+        "rounded": "Abgerundet",
+        "humanist": "Humanistisch",
+        "editorial": "Redaktionell"
+      },
+      "textSize": "Textgröße",
+      "lineHeight": "Zeilenabstand",
+      "contentWidth": "Seitenbreite",
+      "layoutTitle": "Layout",
+      "cornerRadius": "Eckenradius",
+      "headerStyle": "Kopfbereich",
+      "headerStyles": {
+        "left": "Links",
+        "centered": "Zentriert",
+        "banner": "Banner",
+        "minimal": "Minimal"
+      },
+      "indexLayout": "Startseite",
+      "indexLayouts": {
+        "list": "Liste",
+        "cards": "Karten",
+        "grid": "Raster",
+        "compact": "Kompakt"
+      },
+      "linkStyle": "Link-Stil",
+      "linkStyles": {
+        "underline": "Unterstrichen",
+        "hover": "Beim Überfahren",
+        "highlight": "Hervorgehoben"
+      },
+      "detailsTitle": "Seitendetails",
+      "showDates": "Datum anzeigen",
+      "showTags": "Tags anzeigen",
+      "showReadingTime": "Lesezeit anzeigen",
+      "showToc": "Inhaltsverzeichnis",
+      "showPrevNext": "Links zu neueren / älteren Notizen",
+      "advancedTitle": "Erweitert",
+      "customCss": "Eigenes CSS",
+      "customCssHint": "Wird nach den Theme-Stilen eingefügt und gilt für alle Seiten.",
+      "previewHint": "Schriften stammen vom Gerät des Besuchers, daher lädt die Website schnell und funktioniert offline."
+    }
   }
 }

@@ -24,7 +24,7 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **Docs:** [Site Publishing](./docs/wiki/site-publishing.md)
 
-**PR:** TBD
+**PR:** [#1844](https://github.com/skepjandi/gitnotes/pull/1844)
 
 ## 2026-11-06
 

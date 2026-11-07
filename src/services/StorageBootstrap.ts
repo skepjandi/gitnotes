@@ -32,18 +32,27 @@ const STARTUP_KEYS = [
 type StartupKey = (typeof STARTUP_KEYS)[number];
 
 let bootCache: Map<string, string | null> | null = null;
+let bootPromise: Promise<Map<string, string | null>> | null = null;
 
 /**
  * Batch-reads all startup storage keys in a single AsyncStorage.multiGet call.
- * Call once at app init (before any provider mounts).
+ * Safe to kick off at module load (App.tsx does) so the read overlaps
+ * telemetry init and first render; concurrent callers share one in-flight read.
  * Subsequent calls return the cached result.
  */
-export async function bootstrapStorage(): Promise<Map<string, string | null>> {
-  if (bootCache) return bootCache;
-
-  const result = await AsyncStorage.multiGet([...STARTUP_KEYS]);
-  bootCache = new Map(result);
-  return bootCache;
+export function bootstrapStorage(): Promise<Map<string, string | null>> {
+  if (bootCache) return Promise.resolve(bootCache);
+  bootPromise ??= AsyncStorage.multiGet([...STARTUP_KEYS]).then(
+    (result) => {
+      bootCache = new Map(result);
+      return bootCache;
+    },
+    (error: unknown) => {
+      bootPromise = null;
+      throw error;
+    },
+  );
+  return bootPromise;
 }
 
 /**
@@ -74,6 +83,7 @@ export function getBootValue(key: StartupKey): string | null | undefined {
  */
 export function clearBootCache(): void {
   bootCache = null;
+  bootPromise = null;
 }
 
 /**

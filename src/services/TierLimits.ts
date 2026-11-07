@@ -2,6 +2,7 @@ import { AccountStorage, makeHostId } from './AccountStorage';
 import type { GitHostProvider } from './git/GitHost';
 import { StorageService } from './StorageService';
 import { selectIsPro, useProStore } from '../stores/proStore';
+import { bootstrapStorage } from './StorageBootstrap';
 
 /**
  * Free-tier caps. The UI add-flows (SettingsScreen / SettingsContent) refuse
@@ -15,6 +16,34 @@ export const FREE_TIER_MAX_ACCOUNTS = 1;
 
 function isPro(): boolean {
   return selectIsPro(useProStore.getState());
+}
+
+function storedArrayLength(raw: string | null | undefined): number {
+  if (!raw) return 0;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Cheap, entitlement-independent check: does persisted data exceed the
+ * free-tier caps? When it does not, `enforceTierLimits` is a no-op whatever
+ * the entitlement, so startup need not wait on RevenueCat before rendering.
+ * Reads the repo list from the boot snapshot without consuming it. Any read
+ * failure reports `true` so the caller falls back to the blocking path.
+ */
+export async function exceedsFreeTierCaps(): Promise<boolean> {
+  try {
+    const boot = await bootstrapStorage();
+    if (storedArrayLength(boot.get('@gitnotes:repos')) > FREE_TIER_MAX_REPOS) return true;
+    const accounts = await AccountStorage.listAccounts();
+    return accounts.length > FREE_TIER_MAX_ACCOUNTS;
+  } catch {
+    return true;
+  }
 }
 
 /**

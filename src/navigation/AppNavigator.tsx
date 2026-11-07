@@ -447,7 +447,9 @@ export default function AppNavigator({
               />
             )}
           </Stack.Navigator>
-          <FloatingAIButton currentRouteName={currentRouteName} />
+          {!showOnboarding && currentRouteName !== 'Onboarding' ? (
+            <FloatingAIButton currentRouteName={currentRouteName} />
+          ) : null}
           <NewChatPickerHost />
           {!showOnboarding && floatingGitButtonHydrated && floatingGitButtonVisible ? (
             <AppFloatingGitButton />

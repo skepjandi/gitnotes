@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -66,6 +68,8 @@ export default function OnboardingScreen({
   onSkip,
 }: OnboardingScreenProps) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const [footerHeight, setFooterHeight] = useState(0);
   const tx = useTourText();
 
   // Flow: 0 Welcome, 1 Connect Git Host, then one step per tour page, then the Pro summary.
@@ -74,7 +78,7 @@ export default function OnboardingScreen({
   const INFO_STEP_START = TOKEN_STEP + 1;
   const AI_STEP = INFO_STEP_START + TOUR_PAGE_IDS.length;
   const TOTAL_STEPS = AI_STEP + 1;
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Onboarding'>>();
   const { connectHost, refreshAccounts } = useAccounts();
@@ -353,7 +357,7 @@ export default function OnboardingScreen({
 
   const renderGitHubAuthMethodSelector = () => (
     <View className="w-full gap-4" style={{ paddingBottom: 20, paddingTop: 8 }}>
-      <View className="flex-row gap-2" style={{ alignSelf: 'center' }}>
+      <View className="flex-row gap-2" style={{ width: '100%' }}>
         <TouchableOpacity
           testID="onboarding.github-auth.pat"
           className="flex-1 items-center px-3 py-2.5 rounded-lg border"
@@ -379,7 +383,9 @@ export default function OnboardingScreen({
             }
           />
           <Text
-            className="text-xs font-medium mt-1.5"
+            className="text-xs font-medium mt-1.5 text-center"
+            numberOfLines={1}
+            adjustsFontSizeToFit
             style={{
               color:
                 githubAuthMethod === 'pat'
@@ -418,7 +424,9 @@ export default function OnboardingScreen({
             }
           />
           <Text
-            className="text-xs font-medium mt-1.5"
+            className="text-xs font-medium mt-1.5 text-center"
+            numberOfLines={1}
+            adjustsFontSizeToFit
             style={{
               color:
                 githubAuthMethod === 'oauth'
@@ -455,7 +463,9 @@ export default function OnboardingScreen({
             }
           />
           <Text
-            className="text-xs font-medium mt-1.5"
+            className="text-xs font-medium mt-1.5 text-center"
+            numberOfLines={1}
+            adjustsFontSizeToFit
             style={{
               color:
                 githubAuthMethod === 'app'
@@ -492,7 +502,9 @@ export default function OnboardingScreen({
             }
           />
           <Text
-            className="text-xs font-medium mt-1.5"
+            className="text-xs font-medium mt-1.5 text-center"
+            numberOfLines={1}
+            adjustsFontSizeToFit
             style={{
               color:
                 githubAuthMethod === 'quick'
@@ -654,7 +666,7 @@ export default function OnboardingScreen({
     <SafeAreaView
       className="flex-1"
       style={{ backgroundColor: colors.background }}
-      edges={['top', 'bottom']}
+      edges={['top']}
     >
       <KeyboardAvoidingView
         className="flex-1"
@@ -681,7 +693,7 @@ export default function OnboardingScreen({
         </View>
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: footerHeight }}
           keyboardShouldPersistTaps="handled"
         >
 
@@ -935,7 +947,13 @@ export default function OnboardingScreen({
           )}
         </ScrollView>
 
-          <View className="px-5 pb-8 pt-3">
+          <BlurView
+            intensity={60}
+            tint={isDark ? 'dark' : 'light'}
+            onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
+            className="px-5 pt-3"
+            style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingBottom: Math.max(insets.bottom, 12) + 8 }}
+          >
             <View className="mb-5">
               <OnboardingProgress current={currentStep} total={TOTAL_STEPS} />
             </View>
@@ -1018,7 +1036,7 @@ export default function OnboardingScreen({
                   iconAlign="edge"
                 />
               )}
-          </View>
+          </BlurView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

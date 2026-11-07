@@ -33,7 +33,10 @@ export function NotesInGitDemo() {
           {NODES.map((node, index) => {
             const reached = index <= stage;
             return (
-              <View key={node.label} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+              <View
+                key={node.label}
+                style={{ flex: index < NODES.length - 1 ? 1 : undefined, flexDirection: 'row', alignItems: 'center' }}
+              >
                 <View style={{ alignItems: 'center', width: 64 }}>
                   <View
                     style={{

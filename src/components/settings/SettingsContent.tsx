@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -1112,7 +1112,7 @@ export function SettingsContent(props: SettingsContentProps) {
               key={`${repo.id}-crdt`}
               trailing={
                 <View className="flex-row items-center gap-2">
-                  <Switch
+                  <Toggle
                     value={repo.crdtMergeEnabled === true}
                     onValueChange={(enabled) => onToggleCrdtMerge(repo, enabled)}
                     testID={`settings.toggle.crdt-merge.${repo.id}`}

@@ -18,18 +18,18 @@ const EDGE = 24;
 
 interface HubItemStyle {
   readonly icon: IoniconName;
-  readonly label: TourCopyKey;
   readonly size: number;
+  readonly iconSize: number;
   readonly tone: 'primary' | 'accent' | 'muted';
 }
 
-/** Icons, labels and size tiers mirror the real FloatingAIHubMenu. */
+/** Icons, size tiers and colors mirror the real FloatingAIHubMenu. */
 const HUB_ITEM_STYLES: Record<HubItemId, HubItemStyle> = {
-  'new-chat': { icon: 'add', label: 'ai.itemNewChat', size: 52, tone: 'primary' },
-  'voice-dump': { icon: 'mic', label: 'ai.itemVoice', size: 52, tone: 'primary' },
-  'chat-history': { icon: 'chatbubbles-outline', label: 'ai.itemHistory', size: 40, tone: 'muted' },
-  'ai-settings': { icon: 'options-outline', label: 'ai.itemSettings', size: 40, tone: 'muted' },
-  'thought-dump': { icon: 'bulb-outline', label: 'ai.itemThought', size: 46, tone: 'accent' },
+  'new-chat': { icon: 'add', size: 56, iconSize: 24, tone: 'primary' },
+  'voice-dump': { icon: 'mic', size: 56, iconSize: 24, tone: 'primary' },
+  'chat-history': { icon: 'chatbubbles-outline', size: 46, iconSize: 18, tone: 'muted' },
+  'ai-settings': { icon: 'options-outline', size: 46, iconSize: 18, tone: 'muted' },
+  'thought-dump': { icon: 'bulb-outline', size: 50, iconSize: 22, tone: 'accent' },
 };
 
 /** Stages: 0 idle, 1 holding, 2 hub open. */
@@ -46,22 +46,28 @@ interface HubBubbleProps {
 
 function HubBubble({ id, x, y, index, open, reduceMotion }: HubBubbleProps) {
   const { colors } = useTheme();
-  const tx = useTourText();
   const item = HUB_ITEM_STYLES[id];
-  const scale = useSharedValue(open ? 1 : 0);
+  const progress = useSharedValue(open ? 1 : 0);
 
   useEffect(() => {
     const target = open ? 1 : 0;
-    scale.value = reduceMotion
+    progress.value = reduceMotion
       ? target
-      : withDelay(open ? index * 70 : 0, withSpring(target, { damping: 13, stiffness: 220 }));
-  }, [open, index, reduceMotion, scale]);
+      : withDelay(open ? index * 50 : 0, withSpring(target, { damping: 14, stiffness: 200 }));
+  }, [open, index, reduceMotion, progress]);
 
-  const style = useAnimatedStyle(() => ({ opacity: scale.value, transform: [{ scale: scale.value }] }));
+  const style = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    // The hub opens to the left of the button, fanned out vertically.
+    transform: [
+      { translateX: -x * progress.value },
+      { translateY: y * progress.value },
+      { scale: 0.72 + 0.28 * progress.value },
+    ],
+  }));
 
   const background =
-    item.tone === 'primary' ? colors.accent : item.tone === 'accent' ? `${colors.accent}33` : colors.surfaceSecondary ?? colors.surface;
-  const foreground = item.tone === 'primary' ? '#FFFFFF' : item.tone === 'accent' ? colors.accent : colors.textSecondary;
+    item.tone === 'primary' ? colors.primary : item.tone === 'accent' ? colors.accent : colors.textSecondary;
 
   return (
     <Animated.View
@@ -70,34 +76,18 @@ function HubBubble({ id, x, y, index, open, reduceMotion }: HubBubbleProps) {
         style,
         {
           position: 'absolute',
-          // The hub opens to the left of the button, fanned out vertically (direction -1).
-          right: EDGE + FLOATING_AI_BUTTON_SIZE / 2 + x - item.size / 2,
-          top: FRAME_HEIGHT / 2 + y - item.size / 2,
-          flexDirection: 'row',
-          alignItems: 'center',
-        },
-      ]}
-    >
-      <Text
-        numberOfLines={1}
-        style={{ width: 84, marginRight: 6, textAlign: 'right', fontSize: 11, fontWeight: '600', color: colors.textSecondary }}
-      >
-        {tx(item.label)}
-      </Text>
-      <View
-        style={{
+          right: EDGE + (FLOATING_AI_BUTTON_SIZE - item.size) / 2,
+          top: FRAME_HEIGHT / 2 - item.size / 2,
           width: item.size,
           height: item.size,
           borderRadius: item.size / 2,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: background,
-          borderWidth: 1,
-          borderColor: item.tone === 'muted' ? colors.border : 'transparent',
-        }}
-      >
-        <Ionicons name={item.icon} size={item.size * 0.46} color={foreground} />
-      </View>
+        },
+      ]}
+    >
+      <Ionicons name={item.icon} size={item.iconSize} color={colors.surface} />
     </Animated.View>
   );
 }
@@ -128,13 +118,13 @@ export function AIHubDemo() {
           borderRadius: FLOATING_AI_BUTTON_SIZE / 2,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: colors.accent,
+          backgroundColor: colors.primary,
           borderWidth: stage === 1 ? 3 : 0,
-          borderColor: `${colors.accent}66`,
+          borderColor: `${colors.primary}66`,
           transform: [{ scale: stage === 1 ? 1.08 : 1 }],
         }}
       >
-        <Ionicons name="sparkles" size={24} color="#FFFFFF" />
+        <Ionicons name="sparkles" size={24} color={colors.surface} />
       </View>
     </DemoFrame>
   );

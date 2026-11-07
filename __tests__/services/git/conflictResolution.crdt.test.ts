@@ -111,6 +111,19 @@ describe('CRDT conflict resolution', () => {
     expect(CommitService.resolveAuthor).toHaveBeenCalledWith('repo-1');
   });
 
+  it('never commits with an empty author name or email', async () => {
+    (CommitService.resolveAuthor as jest.Mock).mockResolvedValue({ name: 'gitnotes', email: '' });
+    stubConflicts([NOTE, SIDECAR]);
+
+    await resolveConflictAndSync(repo(true), NOTE, 'ONE\ntwo\nTHREE\n');
+
+    expect(GitEngine.commit).toHaveBeenCalledWith(
+      'file:///repo',
+      expect.any(String),
+      { name: 'gitnotes', email: 'gitnotes@local' },
+    );
+  });
+
   describe('retrying after a failed commit/push', () => {
     // Staging a resolved path drops its conflict stages, like the real index.
     function stubStatefulConflicts() {

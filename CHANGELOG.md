@@ -16,7 +16,7 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **Fix:** `resolveConflictAndSync` only loads both sides while the note is still conflicted. Otherwise it reuses the sidecar the earlier attempt wrote (it already holds both histories) and records the final text on top, so edits made between attempts are kept. The note and sidecar are also written to disk before either is staged, so a failed write leaves the conflict intact.
 
-**Root cause of the first failure:** the resolve commit called `CommitService.resolveAuthor()` without the repo id, skipping the per-repo/host author lookup and producing an empty identity (`failed to parse signature - Signature cannot have an empty name or email`). It now passes `repo.id`, like the other commit paths. This failure left the note staged (the Git button showed "staged") but never committed.
+**Root cause of the first failure:** the resolve commit called `CommitService.resolveAuthor()` without the repo id, skipping the per-repo/host author lookup, and even with the id it can return an empty email when no author is saved and the host profile has none. Git rejects that (`failed to parse signature - Signature cannot have an empty name or email`) after the note is already staged, which is why the Git button showed "staged" while the conflict page kept erroring. The commit now passes `repo.id` and falls back to `GitNotes <gitnotes@local>` (same as the revert path) for any empty field. `rust/tests/conflict_resolve_flow.rs` drives the real engine ops (pull, conflict blobs, stage, commit, push) against a bare remote with CRDT on (note + sidecar conflict) and off (note only).
 
 ### feat(onboarding): redesigned onboarding with an interactive feature tour
 

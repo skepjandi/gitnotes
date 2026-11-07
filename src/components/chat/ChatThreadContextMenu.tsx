@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import ContextMenu from '../ContextMenu';
 import { ChatThreadSummary } from '../../models/Chat';
@@ -22,12 +23,14 @@ export function ChatThreadContextMenu({
   onDelete,
   bottomSheet,
 }: ChatThreadContextMenuProps) {
+  const { t } = useTranslation();
+
   return (
     <View testID="chat-thread-context-menu.item.close">
       <ContextMenu
         visible={visible}
         onClose={onClose}
-        title={thread?.title || 'Untitled'}
+        title={thread?.title || t('common.untitled')}
         headerIcon="chatbubble"
         bottomSheet={bottomSheet}
         sections={
@@ -37,19 +40,19 @@ export function ChatThreadContextMenu({
                   items: [
                     {
                       icon: 'eye-outline',
-                      label: 'Open',
+                      label: t('chat.menu.open'),
                       testID: 'chat-thread-context-menu.item.open',
                       onPress: () => onOpen(thread),
                     },
                     {
                       icon: 'pencil-outline',
-                      label: 'Rename',
+                      label: t('chat.menu.rename'),
                       testID: 'chat-thread-context-menu.item.rename',
                       onPress: () => onRename(thread),
                     },
                     {
                       icon: 'trash-outline',
-                      label: 'Delete',
+                      label: t('common.delete'),
                       destructive: true,
                       testID: 'chat-thread-context-menu.item.delete',
                       onPress: async () => {

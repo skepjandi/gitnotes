@@ -192,6 +192,10 @@
     }
   },
   "settings": {
+    "codingAgents": {
+      "title": "Coding-Agenten",
+      "description": "Chatte mit Claude Code, opencode und mehr auf deinem Computer"
+    },
     "title": "Einstellungen",
     "dailyQuote": {
       "title": "Tägliches Zitat"
@@ -449,7 +453,125 @@
       "llamaNotInstalled": "Llama-Runtime nicht installiert"
     }
   },
+  "agents": {
+    "title": "Coding-Agenten",
+    "bridgesTitle": "Deine Computer",
+    "empty": {
+      "title": "Kein Computer gekoppelt",
+      "body": "Starte die Bridge auf dem Rechner, auf dem deine Coding-Agenten laufen, und koppele sie mit dieser App."
+    },
+    "add": {
+      "title": "Computer hinzufügen",
+      "linkHint": "Füge den Kopplungslink ein, den die Bridge ausgegeben hat.",
+      "manualHint": "Gib die Adresse der Bridge und ihr Token ein.",
+      "linkPlaceholder": "gitnotes://agents/pair?url=…",
+      "urlPlaceholder": "Adresse, z. B. ws://192.168.1.20:7878",
+      "tokenPlaceholder": "Token",
+      "useManual": "Stattdessen Adresse und Token eingeben",
+      "useLink": "Stattdessen Kopplungslink verwenden",
+      "namePlaceholder": "Name (optional)"
+    },
+    "confirm": {
+      "title": "Mit diesem Computer verbinden?",
+      "host": "Host",
+      "body": "Coding-Agenten auf diesem Computer können Dateien lesen und ändern, auf die du sie ansetzt. Fahre nur fort, wenn du die Bridge selbst gestartet hast.",
+      "cleartext": "Diese Verbindung ist nicht verschlüsselt (ws://). Nutze sie nur in einem vertrauenswürdigen Netzwerk oder betreibe die Bridge hinter wss:// oder Tailscale.",
+      "alreadyPaired": "Dieser Computer ist bereits gekoppelt. Eine erneute Verbindung aktualisiert sein Token.",
+      "connect": "Verbinden"
+    },
+    "status": {
+      "checking": "Wird geprüft …",
+      "online": "Online",
+      "offline": "Offline"
+    },
+    "noAgentsAvailable": "Auf diesem Computer wurden keine Agenten gefunden",
+    "noAgentsReported": "Dieser Computer hat keine Agenten gemeldet.",
+    "agentNotInstalled": "Nicht installiert ({{command}})",
+    "menu": {
+      "recheck": "Verbindung prüfen",
+      "rename": "Umbenennen"
+    },
+    "rename": {
+      "title": "Computer umbenennen"
+    },
+    "remove": {
+      "title": "{{name}} entfernen?",
+      "body": "Chats mit diesem Computer bleiben auf diesem Gerät, lassen sich aber erst fortsetzen, wenn du ihn erneut koppelst."
+    },
+    "help": {
+      "title": "So startest du die Bridge",
+      "body": "Führe dies auf deinem Computer in einem Terminal aus. Es gibt einen Kopplungslink aus, den du hier einfügst.",
+      "copied": "Kopiert",
+      "readme": "Bridge-README lesen",
+      "footer": "Erfordert Node.js 20 oder neuer."
+    },
+    "errors": {
+      "unreachable": "Die Bridge ist nicht erreichbar. Prüfe, ob sie läuft und dein Telefon diese Adresse erreicht.",
+      "unauthorized": "Die Bridge hat das Token abgelehnt. Koppele sie erneut mit einem frischen Link.",
+      "protocolMismatch": "Diese Bridge-Version ist mit der App nicht kompatibel. Aktualisiere gitnotes-bridge oder die App.",
+      "cleartextBlocked": "Dieses Telefon blockiert unverschlüsselte ws://-Verbindungen zu dieser Adresse. Nutze eine wss://-Adresse, eine Adresse im lokalen Netzwerk oder Tailscale.",
+      "timeout": "Die Bridge hat zu lange nicht geantwortet.",
+      "unknown": "Bei der Kommunikation mit der Bridge ist etwas schiefgelaufen.",
+      "invalidLink": "Das sieht nicht nach einem Kopplungslink aus.",
+      "invalidUrl": "Das ist keine gültige Bridge-Adresse.",
+      "missingToken": "Gib das Bridge-Token ein.",
+      "saveFailed": "Dieser Computer konnte nicht auf dem Gerät gespeichert werden."
+    },
+    "picker": {
+      "title": "Neuer Chat",
+      "aiModel": "KI-Modell",
+      "aiModelHint": "Chatte mit dem in GitNotēs eingerichteten Modell",
+      "agentOn": "{{agent}} · {{bridge}}",
+      "chooseWorkspace": "Ordner wählen",
+      "workspaceEmpty": "Keine Ordner verfügbar. Füge beim Start der Bridge ein Stammverzeichnis hinzu.",
+      "lastUsed": "Zuletzt verwendet"
+    }
+  },
   "chat": {
+    "thoughtTitle": "Denkt nach",
+    "toolStatus": {
+      "pending": "Ausstehend",
+      "awaitingApproval": "Genehmigung nötig",
+      "running": "Läuft",
+      "completed": "Fertig",
+      "failed": "Fehlgeschlagen",
+      "rejected": "Abgelehnt"
+    },
+    "toolDetails": {
+      "arguments": "Argumente",
+      "result": "Ergebnis",
+      "showAll": "Alles anzeigen ({{count}} weitere Zeichen)",
+      "moreLines": "… {{count}} weitere Zeilen",
+      "openNote": "Notiz öffnen"
+    },
+    "planTitle": "Plan",
+    "planStatus": {
+      "pending": "Ausstehend",
+      "inProgress": "In Arbeit",
+      "completed": "Erledigt"
+    },
+    "permissionRequired": "Genehmigung erforderlich",
+    "actions": {
+      "editResend": "Bearbeiten und erneut senden"
+    },
+    "jumpToLatest": "Zur neuesten Nachricht",
+    "notFoundTitle": "Chat nicht gefunden",
+    "notFoundBody": "Diese Unterhaltung existiert auf diesem Gerät nicht mehr.",
+    "loadErrorTitle": "Chat konnte nicht geöffnet werden",
+    "loadErrorBody": "Beim Laden der Unterhaltung ist etwas schiefgelaufen.",
+    "agentSubtitle": "{{agent}} · {{folder}}",
+    "agentEmptyTitle": "Frag {{agent}}",
+    "agentEmptyBody": "Deine Nachricht läuft auf deinem Computer in {{folder}}. Du kannst die App verlassen; der Agent arbeitet weiter und du bist bei deiner Rückkehr wieder auf dem neuesten Stand.",
+    "agentMode": "Agent-Modus: {{mode}}",
+    "agentModeUnknown": "Modus",
+    "pickMode": "Agent-Modus",
+    "menu": {
+      "open": "Öffnen",
+      "rename": "Umbenennen"
+    },
+    "createFailed": "Neuer Chat konnte nicht gestartet werden.",
+    "listLoadFailed": "Chats konnten nicht geladen werden",
+    "toolTimedOut": "Das Werkzeug hat das Zeitlimit überschritten.",
     "askAI": "KI fragen",
     "typeMessage": "Nachricht eingeben...",
     "thinking": "Denke nach...",

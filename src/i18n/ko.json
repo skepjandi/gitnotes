@@ -192,6 +192,10 @@
     }
   },
   "settings": {
+    "codingAgents": {
+      "title": "코딩 에이전트",
+      "description": "내 컴퓨터에서 실행 중인 Claude Code, opencode 등과 채팅"
+    },
     "title": "설정",
     "dailyQuote": {
       "title": "일일의 명언"
@@ -449,7 +453,125 @@
       "llamaNotInstalled": "Llama 런타임이 설치되지 않았습니다"
     }
   },
+  "agents": {
+    "title": "코딩 에이전트",
+    "bridgesTitle": "내 컴퓨터",
+    "empty": {
+      "title": "연결된 컴퓨터가 없습니다",
+      "body": "코딩 에이전트가 있는 컴퓨터에서 브리지를 실행한 뒤 이 앱과 페어링하세요."
+    },
+    "add": {
+      "title": "컴퓨터 추가",
+      "linkHint": "브리지가 출력한 페어링 링크를 붙여넣으세요.",
+      "manualHint": "브리지 주소와 토큰을 입력하세요.",
+      "linkPlaceholder": "gitnotes://agents/pair?url=…",
+      "urlPlaceholder": "주소 (예: ws://192.168.1.20:7878)",
+      "tokenPlaceholder": "토큰",
+      "useManual": "주소와 토큰 직접 입력",
+      "useLink": "페어링 링크 사용",
+      "namePlaceholder": "이름 (선택)"
+    },
+    "confirm": {
+      "title": "이 컴퓨터에 연결할까요?",
+      "host": "호스트",
+      "body": "이 컴퓨터의 에이전트는 지정한 파일을 읽고 수정할 수 있습니다. 직접 브리지를 실행한 경우에만 계속하세요.",
+      "cleartext": "이 연결은 암호화되지 않습니다(ws://). 신뢰할 수 있는 네트워크에서만 사용하거나 브리지를 wss:// 또는 Tailscale 뒤에 두세요.",
+      "alreadyPaired": "이미 페어링된 컴퓨터입니다. 다시 연결하면 토큰이 갱신됩니다.",
+      "connect": "연결"
+    },
+    "status": {
+      "checking": "확인 중…",
+      "online": "온라인",
+      "offline": "오프라인"
+    },
+    "noAgentsAvailable": "이 컴퓨터에서 에이전트를 찾지 못했습니다",
+    "noAgentsReported": "이 컴퓨터가 에이전트를 보고하지 않았습니다.",
+    "agentNotInstalled": "설치되지 않음 ({{command}})",
+    "menu": {
+      "recheck": "연결 확인",
+      "rename": "이름 바꾸기"
+    },
+    "rename": {
+      "title": "컴퓨터 이름 바꾸기"
+    },
+    "remove": {
+      "title": "{{name}}을(를) 삭제할까요?",
+      "body": "이 컴퓨터와의 채팅은 이 기기에 남지만, 다시 페어링하기 전까지 이어갈 수 없습니다."
+    },
+    "help": {
+      "title": "브리지 실행 방법",
+      "body": "내 컴퓨터의 터미널에서 아래 명령을 실행하세요. 여기에 붙여넣을 페어링 링크가 출력됩니다.",
+      "copied": "복사됨",
+      "readme": "브리지 README 읽기",
+      "footer": "Node.js 20 이상이 필요합니다."
+    },
+    "errors": {
+      "unreachable": "브리지에 연결할 수 없습니다. 실행 중인지, 휴대폰에서 이 주소에 접근할 수 있는지 확인하세요.",
+      "unauthorized": "브리지가 토큰을 거부했습니다. 새 링크로 다시 페어링하세요.",
+      "protocolMismatch": "이 브리지 버전은 앱과 호환되지 않습니다. gitnotes-bridge 또는 앱을 업데이트하세요.",
+      "cleartextBlocked": "이 휴대폰은 이 주소로의 암호화되지 않은 ws:// 연결을 차단합니다. wss:// 주소, 로컬 네트워크 주소 또는 Tailscale을 사용하세요.",
+      "timeout": "브리지의 응답이 너무 오래 걸립니다.",
+      "unknown": "브리지와 통신하는 중 문제가 발생했습니다.",
+      "invalidLink": "페어링 링크가 아닌 것 같습니다.",
+      "invalidUrl": "올바른 브리지 주소가 아닙니다.",
+      "missingToken": "브리지 토큰을 입력하세요.",
+      "saveFailed": "이 컴퓨터를 기기에 저장할 수 없습니다."
+    },
+    "picker": {
+      "title": "새 채팅",
+      "aiModel": "AI 모델",
+      "aiModelHint": "GitNotēs에 설정된 모델과 채팅",
+      "agentOn": "{{agent}} · {{bridge}}",
+      "chooseWorkspace": "폴더 선택",
+      "workspaceEmpty": "사용 가능한 폴더가 없습니다. 브리지를 시작할 때 루트를 추가하세요.",
+      "lastUsed": "마지막 사용"
+    }
+  },
   "chat": {
+    "thoughtTitle": "생각 중",
+    "toolStatus": {
+      "pending": "대기 중",
+      "awaitingApproval": "승인 필요",
+      "running": "실행 중",
+      "completed": "완료",
+      "failed": "실패",
+      "rejected": "거부됨"
+    },
+    "toolDetails": {
+      "arguments": "인수",
+      "result": "결과",
+      "showAll": "모두 보기 ({{count}}자 더)",
+      "moreLines": "… {{count}}줄 더",
+      "openNote": "노트 열기"
+    },
+    "planTitle": "계획",
+    "planStatus": {
+      "pending": "대기 중",
+      "inProgress": "진행 중",
+      "completed": "완료"
+    },
+    "permissionRequired": "승인이 필요합니다",
+    "actions": {
+      "editResend": "수정 후 다시 보내기"
+    },
+    "jumpToLatest": "최신 메시지로 이동",
+    "notFoundTitle": "채팅을 찾을 수 없습니다",
+    "notFoundBody": "이 대화는 이 기기에 더 이상 없습니다.",
+    "loadErrorTitle": "이 채팅을 열 수 없습니다",
+    "loadErrorBody": "대화를 불러오는 중 문제가 발생했습니다.",
+    "agentSubtitle": "{{agent}} · {{folder}}",
+    "agentEmptyTitle": "{{agent}}에게 물어보세요",
+    "agentEmptyBody": "메시지는 내 컴퓨터의 {{folder}}에서 실행됩니다. 앱을 나가도 에이전트는 계속 작업하며, 돌아오면 이어서 확인할 수 있습니다.",
+    "agentMode": "에이전트 모드: {{mode}}",
+    "agentModeUnknown": "모드",
+    "pickMode": "에이전트 모드",
+    "menu": {
+      "open": "열기",
+      "rename": "이름 바꾸기"
+    },
+    "createFailed": "새 채팅을 시작할 수 없습니다.",
+    "listLoadFailed": "채팅을 불러올 수 없습니다",
+    "toolTimedOut": "도구 시간이 초과되었습니다.",
     "askAI": "AI에게 묻기",
     "typeMessage": "메시지 입력...",
     "thinking": "생각 중...",

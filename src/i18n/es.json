@@ -192,6 +192,10 @@
     }
   },
   "settings": {
+    "codingAgents": {
+      "title": "Agentes de programación",
+      "description": "Chatea con Claude Code, opencode y más desde tu ordenador"
+    },
     "title": "Ajustes",
     "dailyQuote": {
       "title": "Cita Diaria"
@@ -449,7 +453,125 @@
       "llamaNotInstalled": "El runtime de Llama no está instalado"
     }
   },
+  "agents": {
+    "title": "Agentes de programación",
+    "bridgesTitle": "Tus ordenadores",
+    "empty": {
+      "title": "Ningún ordenador vinculado",
+      "body": "Ejecuta el bridge en el equipo donde viven tus agentes de programación y vincúlalo con esta app."
+    },
+    "add": {
+      "title": "Añadir un ordenador",
+      "linkHint": "Pega el enlace de vinculación que mostró el bridge.",
+      "manualHint": "Introduce la dirección del bridge y su token.",
+      "linkPlaceholder": "gitnotes://agents/pair?url=…",
+      "urlPlaceholder": "Dirección, p. ej. ws://192.168.1.20:7878",
+      "tokenPlaceholder": "Token",
+      "useManual": "Introducir dirección y token",
+      "useLink": "Usar un enlace de vinculación",
+      "namePlaceholder": "Nombre (opcional)"
+    },
+    "confirm": {
+      "title": "¿Conectar con este ordenador?",
+      "host": "Host",
+      "body": "Los agentes de este ordenador podrán leer y modificar los archivos que les indiques. Continúa solo si has iniciado el bridge tú mismo.",
+      "cleartext": "Esta conexión no está cifrada (ws://). Úsala solo en una red de confianza o pon el bridge tras wss:// o Tailscale.",
+      "alreadyPaired": "Este ordenador ya está vinculado. Conectar de nuevo actualiza su token.",
+      "connect": "Conectar"
+    },
+    "status": {
+      "checking": "Comprobando…",
+      "online": "En línea",
+      "offline": "Sin conexión"
+    },
+    "noAgentsAvailable": "No se encontraron agentes en este ordenador",
+    "noAgentsReported": "Este ordenador no informó de ningún agente.",
+    "agentNotInstalled": "No instalado ({{command}})",
+    "menu": {
+      "recheck": "Comprobar conexión",
+      "rename": "Renombrar"
+    },
+    "rename": {
+      "title": "Renombrar ordenador"
+    },
+    "remove": {
+      "title": "¿Quitar {{name}}?",
+      "body": "Los chats con este ordenador se quedan en este dispositivo, pero no podrán continuar hasta que lo vincules de nuevo."
+    },
+    "help": {
+      "title": "Cómo ejecutar el bridge",
+      "body": "En tu ordenador, ejecuta esto en una terminal. Mostrará un enlace de vinculación para pegarlo aquí.",
+      "copied": "Copiado",
+      "readme": "Leer el README del bridge",
+      "footer": "Requiere Node.js 20 o superior."
+    },
+    "errors": {
+      "unreachable": "No se pudo contactar con el bridge. Comprueba que está en marcha y que tu teléfono puede llegar a esa dirección.",
+      "unauthorized": "El bridge rechazó el token. Vincúlalo de nuevo con un enlace nuevo.",
+      "protocolMismatch": "Esta versión del bridge no es compatible con la app. Actualiza gitnotes-bridge o la app.",
+      "cleartextBlocked": "Este teléfono bloquea las conexiones ws:// sin cifrar a esta dirección. Usa una dirección wss://, una dirección de red local o Tailscale.",
+      "timeout": "El bridge tardó demasiado en responder.",
+      "unknown": "Algo salió mal al comunicarse con el bridge.",
+      "invalidLink": "Eso no parece un enlace de vinculación.",
+      "invalidUrl": "Esa no es una dirección de bridge válida.",
+      "missingToken": "Introduce el token del bridge.",
+      "saveFailed": "No se pudo guardar este ordenador en el dispositivo."
+    },
+    "picker": {
+      "title": "Nuevo chat",
+      "aiModel": "Modelo de IA",
+      "aiModelHint": "Chatea con el modelo configurado en GitNotēs",
+      "agentOn": "{{agent}} · {{bridge}}",
+      "chooseWorkspace": "Elige una carpeta",
+      "workspaceEmpty": "No hay carpetas disponibles. Añade una raíz al iniciar el bridge.",
+      "lastUsed": "Última usada"
+    }
+  },
   "chat": {
+    "thoughtTitle": "Pensando",
+    "toolStatus": {
+      "pending": "Pendiente",
+      "awaitingApproval": "Requiere aprobación",
+      "running": "En curso",
+      "completed": "Listo",
+      "failed": "Error",
+      "rejected": "Rechazado"
+    },
+    "toolDetails": {
+      "arguments": "Argumentos",
+      "result": "Resultado",
+      "showAll": "Mostrar todo ({{count}} caracteres más)",
+      "moreLines": "… {{count}} líneas más",
+      "openNote": "Abrir nota"
+    },
+    "planTitle": "Plan",
+    "planStatus": {
+      "pending": "Pendiente",
+      "inProgress": "En curso",
+      "completed": "Completado"
+    },
+    "permissionRequired": "Se necesita aprobación",
+    "actions": {
+      "editResend": "Editar y reenviar"
+    },
+    "jumpToLatest": "Ir al último mensaje",
+    "notFoundTitle": "Chat no encontrado",
+    "notFoundBody": "Esta conversación ya no existe en este dispositivo.",
+    "loadErrorTitle": "No se pudo abrir este chat",
+    "loadErrorBody": "Algo salió mal al cargar la conversación.",
+    "agentSubtitle": "{{agent}} · {{folder}}",
+    "agentEmptyTitle": "Pregunta a {{agent}}",
+    "agentEmptyBody": "Tu mensaje se ejecuta en tu ordenador, en {{folder}}. Puedes salir de la app; el agente sigue trabajando y te pondrás al día al volver.",
+    "agentMode": "Modo del agente: {{mode}}",
+    "agentModeUnknown": "Modo",
+    "pickMode": "Modo del agente",
+    "menu": {
+      "open": "Abrir",
+      "rename": "Renombrar"
+    },
+    "createFailed": "No se pudo iniciar un chat nuevo.",
+    "listLoadFailed": "No se pudieron cargar los chats",
+    "toolTimedOut": "La herramienta agotó el tiempo de espera.",
     "askAI": "Preguntar a IA",
     "typeMessage": "Escribe un mensaje...",
     "thinking": "Pensando...",

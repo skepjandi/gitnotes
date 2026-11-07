@@ -44,15 +44,17 @@ export function ChatInputBar({
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const hasText = text.trim().length > 0;
+  const showStop = isStreaming && !hasText && Boolean(onStop);
 
   const handleSend = () => {
-    if (text.trim() && !isStreaming) {
+    if (hasText && !disabled && !isStreaming) {
       onSend(text);
       handleTextChange('');
     }
   };
 
-  const isSendDisabled = !text.trim() || isStreaming || disabled;
+  const isSendDisabled = !hasText || disabled || isStreaming;
 
   return (
     <BlurView
@@ -130,7 +132,7 @@ export function ChatInputBar({
         <IconButton
           variant="ghost"
           onPress={onAttach}
-          disabled={disabled || isStreaming}
+          disabled={disabled}
           style={{ marginRight: spacing[1] }}
         >
           <Ionicons name="attach" size={24} color={colors.textSecondary} />
@@ -140,7 +142,7 @@ export function ChatInputBar({
           <IconButton
             variant="ghost"
             onPress={onVoicePress}
-            disabled={disabled || isStreaming}
+            disabled={disabled}
             style={{ marginRight: spacing[1] }}
             accessibilityLabel={t('editor.voiceInput')}
           >
@@ -173,8 +175,9 @@ export function ChatInputBar({
           editable={!disabled}
         />
 
-        {isStreaming && onStop ? (
+        {showStop ? (
           <IconButton
+            testID="chat-input.button.stop"
             variant="ghost"
             onPress={onStop}
             style={{ marginLeft: spacing[1] }}
@@ -186,6 +189,7 @@ export function ChatInputBar({
           <IconButton
             testID="chat-input.button.send"
             variant="ghost"
+            accessibilityLabel={t('chat.send')}
             onPress={handleSend}
             disabled={isSendDisabled}
             style={{ marginLeft: spacing[1] }}

@@ -1624,6 +1624,7 @@ export default function SettingsScreen() {
         onOpenModelSelector={() => setShowModelSelector(true)}
         onToggleActionMode={() => { void setActionMode(actionMode === 'auto' ? 'confirm' : 'auto'); }}
         onOpenChatRepoPicker={() => { setShowTemplatesRepoPicker(false); setShowChatRepoPicker(true); }}
+        onOpenAgentBridges={() => navigation.navigate('AgentBridges')}
         onProviderPress={(provider) => {
           if (provider.type === 'openai-compatible' || provider.type === 'anthropic') {
             setEditingProvider(provider);

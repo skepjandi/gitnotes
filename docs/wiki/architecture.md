@@ -170,12 +170,15 @@ User opens NotesListScreen
 
 ```
 User sends message in ChatScreen
-  → chatStore.sendMessage()
-    → aiStore.provider.chat()              # Vercel AI SDK call
-      → Render streamed response
-        → chatStore.appendMessage()
-          → ChatStorageService.persist()  # Save to AsyncStorage
+  → useChatSession(threadId).send()
+    → ChatSession (per thread, outside React)
+      → resolveBackend(thread).run()          # modelBackend (AI SDK) | agentBackend (ACP via gitnotes-bridge)
+        → AsyncIterable<ChatEvent>
+          → applyChatEvent() → messages       # pure reducer
+            → ThreadStorage.save()            # chat repo (model) | AsyncStorage (agent)
 ```
+
+See [Coding Agents & Chat Runtime](./agent-bridge.md).
 
 ---
 

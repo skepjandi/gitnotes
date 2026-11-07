@@ -214,7 +214,29 @@ type BlobReadOutcome = BlobReadSuccess | BlobReadFailure;
 | `modelLimits.ts` | Token and rate limits per AI model. |
 | `thoughtDumpIndexing.ts` | Indexes thought dumps for chat recall. |
 | `AIMemoryIndexService.ts` | In-memory index for AI chat context. |
+| `AIService.ts` (top level) | Model init + `streamChatEvents()`: typed `streamText().fullStream` parts (text, tool input/call/result), empty-body retry and `generateText` fallback. No string-encoded tool events. |
 | Other AI services | Tool execution (`tools.ts`), system prompts (`systemPrompt.ts`), action execution (`actionExecutor.ts`). |
+
+## Chat runtime (`src/services/chat/`)
+
+| File | Purpose |
+|------|---------|
+| `types.ts` | `ChatEvent`, `ChatBackend`, `ChatRunInput`, `PermissionRequest`, `ChatSessionState/Actions`. |
+| `reducer.ts` | Pure `applyChatEvent` folding events into `ChatMessage[]`. |
+| `ChatSession.ts`, `sessions.ts`, `useChatSession.ts` | Per-thread runtime, registry, and React hook. |
+| `threads.ts` | `createModelThread()`, `createAgentThread()`. |
+| `storage/` | `RepoThreadStorage` (GitHub chat repo, wraps `ChatStorageService`) and `LocalThreadStorage` (AsyncStorage, agent threads). |
+| `backends/modelBackend.ts` | AI SDK turn loop with bounded tool rounds and confirmation via `requestPermission`. |
+| `backends/agentBackend.ts` | ACP agent turns through a bridge, including mid-turn reconnect and cold-start `resume`. |
+
+## Agent bridge client (`src/services/agent/`)
+
+| File | Purpose |
+|------|---------|
+| `BridgeConnection.ts` | WebSocket to `gitnotes-bridge`: auth, heartbeat, backoff reconnect with `resume`. |
+| `AcpClient.ts`, `acpMapper.ts`, `acpTypes.ts` | JSON-RPC ACP client and `session/update` → `ChatEvent` mapping. |
+| `agentConnections.ts` | One live agent connection per thread; session setup (`session/new` / `session/load`). |
+| `bridgeApi.ts`, `bridgeSecrets.ts`, `pairing.ts` | Probe / list workspaces, token storage, `gitnotes://agents/pair` links. |
 
 ## Top-Level Services
 
@@ -232,7 +254,7 @@ type BlobReadOutcome = BlobReadSuccess | BlobReadFailure;
 | `PushNotificationService.ts` | Registers for and handles push notifications from GitHub (PR mentions, sync alerts). |
 | `NotificationService.ts` | Local notification scheduling and delivery — reminders, sync reminders, conflict alerts. |
 | `DailyQuoteService.ts` | Serves the daily philosopher quote from `src/data/philosopher_quotes.json`. |
-| `ChatStorageService.ts` | Persists AI chat threads and messages locally. Classifies GitHub API errors into nine typed codes (`NETWORK_ERROR`, `SERVER_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `RATE_LIMITED`, `NOT_FOUND`, `INVALID_PAYLOAD`, `PARSE_ERROR`, `UNKNOWN`). Uses cached summaries as fallback only for transient network or 5xx errors, surfacing a warning with stale data. Auth errors (401/403), rate limits (429), and parse errors do not use cache. Branch-scoped via `chat-index-{owner}-{repo}-{branch}` cache key. |
+| `ChatStorageService.ts` | Persists model chat threads in the user's GitHub chat repo (agent threads use `LocalThreadStorage`). Classifies GitHub API errors into nine typed codes (`NETWORK_ERROR`, `SERVER_ERROR`, `UNAUTHORIZED`, `FORBIDDEN`, `RATE_LIMITED`, `NOT_FOUND`, `INVALID_PAYLOAD`, `PARSE_ERROR`, `UNKNOWN`). Uses cached summaries as fallback only for transient network or 5xx errors, surfacing a warning with stale data. Auth errors (401/403), rate limits (429), and parse errors do not use cache. Branch-scoped via `chat-index-{owner}-{repo}-{branch}` cache key. |
 | `BacklinksService.ts` | Computes and caches backlinks — notes that link to the current note via `[[wiki-links]]`. |
 | `ExportService.ts` | Exports notes/canvases to PDF, plain text, JSON, or GitHub-flavoured Markdown. |
 | `ShareService.ts` | Native share sheet integration — share notes via iOS/Android share UI. |

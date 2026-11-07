@@ -21,6 +21,7 @@ AppNavigator (Native Stack Navigator)
 ├── CanvasEditorScreen            # Stack screen — canvas/:canvasId
 ├── ChatThreadListScreen          # Stack screen — chat
 ├── ChatScreen                   # Stack screen — chat/:threadId
+├── AgentBridgesScreen           # Stack screen — agents (pairing links: agents/pair)
 ├── SyncStatusScreen             # Stack screen
 ├── AddReminderScreen            # Stack screen
 ├── TemplateManagerScreen        # Stack screen
@@ -54,6 +55,8 @@ GitNotēs uses the custom scheme `gitnotes://` for deep links.
 | Canvas | `gitnotes://canvas/:canvasId` | `gitnotes://canvas/1699876543-def456` |
 | Chat thread list | `gitnotes://chat` | `gitnotes://chat` |
 | Chat thread | `gitnotes://chat/:threadId` | `gitnotes://chat/1699876543-ghi789` |
+| Coding agents | `gitnotes://agents` | `gitnotes://agents` |
+| Pair a bridge | `gitnotes://agents/pair?url=&token=&name=` | `gitnotes://agents/pair?url=wss%3A%2F%2Fbox.ts.net&token=…` (opens a confirm step; never auto-saves) |
 | Home | `gitnotes://home` | `gitnotes://home` |
 | Notes list | `gitnotes://notes` | `gitnotes://notes` |
 | Explore | `gitnotes://explore` | `gitnotes://explore` |
@@ -71,6 +74,7 @@ The canonical route param types are in `src/navigation/types.ts`:
 | `NoteEditor` | `{ noteId?, format?, initialTitle?, initialContent?, initialTags?, repo?, branch?, folderPath?, anchor? }` |
 | `CanvasEditor` | `{ canvasId?, canvasWidth?, canvasHeight?, canvasTitle? }` |
 | `ChatScreen` | `{ threadId: string }` |
+| `AgentBridges` | `{ pair?, url?, token?, name? }` |
 | `ThoughtDump` | `{ openVoiceOnMount? }` |
 | `Explore` | `{ repoId? }` |
 | `ExploreDiff` | `{ repoId: string; path: string }` |
@@ -193,22 +197,28 @@ The `NoteHistoryModal` is accessible from both Preview mode (`NoteViewer`) and E
 
 ### ChatScreen
 
-**Purpose:** AI chat with context from the current note or repo.
+**Purpose:** Chat with an in-app AI model (with note/repo context) or a coding agent on the user's computer. Driven entirely by `useChatSession(threadId)`; see [Coding Agents & Chat Runtime](./agent-bridge.md).
 
 **Key components:**
-- `ChatMessageBubble` — user and AI message bubbles
-- `ChatInputBar` — message input with send button
-- `FloatingAIHubMenu` — AI provider picker
-- `ContextPickerModal` — pick which note/repo to chat about
-- `ModelSelector` — pick AI model
+- `ChatMessageList` — FlashList v2 message list; follows the tail only while the user is near the bottom, otherwise shows a "jump to latest" pill
+- `ChatMessageBubble` — markdown text, collapsible `ThoughtBlock`, `ToolCallCard` (status, args, result, diffs), `PlanCard`
+- `PermissionCard` — one card per pending permission (agent `session/request_permission` and model tool confirmations)
+- `AgentModeChip` — agent mode picker (e.g. plan / accept edits)
+- `ChatInputBar`, `MessageActionSheet` (edit & resend, regenerate, copy), `TextPromptModal`, `ContextPickerModal`
 
-**Tool-call continuation:** The controller uses a manual bounded multi-round continuation loop (not SDK auto-execution). Tool calls are wrapped in `executeWithTimeout` with a 30-second timeout (`TOOL_EXECUTION_TIMEOUT_MS`). The loop is capped at `MAX_TOOL_ROUNDS = 5` rounds per streaming session. Tool calls are deduplicated by `(toolName, argsJSON)` to prevent re-execution after a confirmation Apply. On confirmation prompt, the stream pauses and waits for user Apply/Cancel; Apply triggers a continuation round using `toContinuationMessages` to replay prior assistant and tool messages.
+**Turns survive navigation:** a turn runs in its `ChatSession`, not in the screen; leaving mid-stream keeps it running. Tool rounds are bounded by `MAX_TOOL_ROUNDS` and each tool call by `TOOL_EXECUTION_TIMEOUT_MS`.
+
+---
+
+### AgentBridgesScreen
+
+**Purpose:** Pair and manage `gitnotes-bridge` hosts (add by pairing link or URL + token with a host confirmation step, rename, remove, live status). Also hosts the new-chat picker (`NewChatPicker`): AI model, or agent → workspace.
 
 ---
 
 ### ChatThreadListScreen
 
-**Purpose:** List all AI chat threads.
+**Purpose:** List all chat threads (model threads from the chat repo and device-local agent threads, with an agent badge).
 
 **Key components:**
 - `ChatThreadCard` — thread preview with last message, timestamp

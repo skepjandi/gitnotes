@@ -17,6 +17,7 @@
 | [Contexts](./contexts.md) | Every React context with provider hierarchy |
 | [Sync Architecture](./sync-architecture.md) | Clone sync deep-dive |
 | [Git Engine](./git-engine.md) | Rust native Git module architecture and build process |
+| [Coding Agents & Chat Runtime](./agent-bridge.md) | Chat session architecture, `gitnotes-bridge`, ACP agents (Claude Code, opencode, pi, …), reconnect/resume |
 | [Paywall & Pro Tier](./paywall.md) | RevenueCat, StoreKit 2, entitlements, feature gates |
 | [Note File Format](./note-file-format.md) | How notes are stored on disk — frontmatter, file format, DocumentIndex, wiki-links |
 

@@ -1086,7 +1086,7 @@ export function SettingsContent(props: SettingsContentProps) {
             </View>
           </GroupRow>
         ) : (
-          repositories.map((repo) => (
+          repositories.flatMap((repo) => [
             <GroupRow
               key={repo.id}
               leading={<Ionicons name="git-branch-outline" size={18} color={colors.primary} />}
@@ -1107,20 +1107,24 @@ export function SettingsContent(props: SettingsContentProps) {
             >
               <Text style={[styles.repoName, { color: colors.text }]} numberOfLines={1}>{repo.name}</Text>
               <Text style={[styles.repoPath, { color: colors.textSecondary }]} numberOfLines={1}>{repo.path}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-                <View style={{ flex: 1, marginRight: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ color: colors.text, fontSize: type.sm, flexShrink: 1 }}>{t('settings.crdtMerge')}</Text>
-                  <HintIcon hintKey="hints.settings.crdtMerge" testID={`hint.crdt-merge.${repo.id}`} />
-                </View>
+            </GroupRow>,
+            <GroupRow
+              key={`${repo.id}-crdt`}
+              trailing={
                 <Switch
                   value={repo.crdtMergeEnabled === true}
                   onValueChange={(enabled) => onToggleCrdtMerge(repo, enabled)}
                   testID={`settings.toggle.crdt-merge.${repo.id}`}
                   accessibilityLabel={t('settings.crdtMerge')}
                 />
+              }
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ color: colors.text, fontSize: type.sm, flexShrink: 1 }}>{t('settings.crdtMerge')}</Text>
+                <HintIcon hintKey="hints.settings.crdtMerge" testID={`hint.crdt-merge.${repo.id}`} />
               </View>
-            </GroupRow>
-          ))
+            </GroupRow>,
+          ])
         )}
         <GroupRow
           testID={!isPro && repositories.length >= FREE_TIER_MAX_REPOS ? 'settings.row.add-repo-locked' : 'settings.button.repo-picker'}

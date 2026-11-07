@@ -7,7 +7,7 @@ import {
   resolveConflictAndSync,
   resolveSidecarConflictAndSync,
 } from '@/services/git/conflictResolution';
-import { sidecarForSave } from '@/services/crdt/noteCrdt';
+import { sidecarForSave, sidecarMatchesText } from '@/services/crdt/noteCrdt';
 import { sidecarPathForNote } from '@/services/crdt/crdtSidecar';
 
 const mockFiles = new Map<string, string>();
@@ -101,6 +101,50 @@ describe('CRDT conflict resolution', () => {
     expect(GitEngine.markConflictResolved).toHaveBeenCalledWith('file:///repo', NOTE);
     expect(GitEngine.markConflictResolved).toHaveBeenCalledWith('file:///repo', SIDECAR);
     expect(GitEngine.push).toHaveBeenCalledWith('file:///repo', 'origin', 'repo-1');
+  });
+
+  describe('retrying after a failed commit/push', () => {
+    // Staging a resolved path drops its conflict stages, like the real index.
+    function stubStatefulConflicts() {
+      const conflicted = new Set([NOTE, SIDECAR]);
+      (GitEngine.conflicts as jest.Mock).mockImplementation(async () =>
+        [...conflicted].map((path) => ({ path, kind: 'both modified' })),
+      );
+      (GitEngine.getConflictBlobs as jest.Mock).mockImplementation(async (_repo: string, path: string) => {
+        if (!conflicted.has(path)) throw new Error(`no unresolved conflict for path: ${path}`);
+        return path === NOTE
+          ? { base: BASE, ours: OURS, theirs: THEIRS }
+          : { base: '', ours: oursSidecar, theirs: theirsSidecar };
+      });
+      (GitEngine.markConflictResolved as jest.Mock).mockImplementation(async (_repo: string, path: string) => {
+        conflicted.delete(path);
+      });
+      (GitEngine.push as jest.Mock).mockResolvedValueOnce({ ok: false, error: 'rejected' });
+    }
+
+    it('re-resolves with the same text without needing the conflict stages again', async () => {
+      stubStatefulConflicts();
+      const merged = 'ONE\ntwo\nTHREE\n';
+
+      await expect(resolveConflictAndSync(repo(true), NOTE, merged)).rejects.toThrow('rejected');
+      const firstSidecar = mockFiles.get(`file:///repo/${SIDECAR}`);
+      await resolveConflictAndSync(repo(true), NOTE, merged);
+
+      expect(GitEngine.push).toHaveBeenCalledTimes(2);
+      expect(mockFiles.get(`file:///repo/${NOTE}`)).toBe(merged);
+      expect(mockFiles.get(`file:///repo/${SIDECAR}`)).toBe(firstSidecar);
+    });
+
+    it('records text edited between attempts in the sidecar', async () => {
+      stubStatefulConflicts();
+      const edited = 'ONE\ntwo\nTHREE\nfour\n';
+
+      await expect(resolveConflictAndSync(repo(true), NOTE, 'ONE\ntwo\nTHREE\n')).rejects.toThrow('rejected');
+      await resolveConflictAndSync(repo(true), NOTE, edited);
+
+      expect(mockFiles.get(`file:///repo/${NOTE}`)).toBe(edited);
+      expect(sidecarMatchesText(mockFiles.get(`file:///repo/${SIDECAR}`) ?? null, edited)).toBe(true);
+    });
   });
 
   it('leaves sidecars alone when CRDT merge is off for the repo', async () => {

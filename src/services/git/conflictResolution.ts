@@ -14,6 +14,7 @@ import {
 import {
   mergeNoteSides,
   sidecarForResolvedText,
+  sidecarForSave,
   sidecarMatchesText,
   splitNote,
   type NoteSide,
@@ -157,11 +158,35 @@ async function writeResolvedNote(
   content: string,
   sidecar: string | null,
 ): Promise<void> {
+  // Both files reach disk before either is staged: a failed write leaves the conflict stages intact.
   await FileSystem.writeAsStringAsync(`${localPath}/${notePath}`, content);
+  if (sidecar !== null) await writeSidecar(localPath, notePath, sidecar);
   await GitEngine.markConflictResolved(localPath, notePath);
-  if (sidecar === null) return;
-  await writeSidecar(localPath, notePath, sidecar);
-  await GitEngine.markConflictResolved(localPath, sidecarPathForNote(notePath));
+  if (sidecar !== null) await GitEngine.markConflictResolved(localPath, sidecarPathForNote(notePath));
+}
+
+/**
+ * Sidecar recording `content` as the resolved text. Staging a note drops its conflict stages, so when
+ * an earlier attempt already staged it (commit/push failed and the user retries) both sides are gone
+ * from the index; the sidecar that attempt wrote holds their union and just takes the new text on top.
+ */
+async function sidecarForResolution(
+  localPath: string,
+  notePath: string,
+  content: string,
+): Promise<string> {
+  const stillConflicted = (await GitEngine.conflicts(localPath)).some((entry) => entry.path === notePath);
+  if (stillConflicted) {
+    return sidecarForResolvedText({
+      ...(await loadNoteConflict(localPath, notePath)),
+      finalText: content,
+    });
+  }
+  return sidecarForSave({
+    sidecar: await readSidecar(localPath, notePath),
+    previousText: content,
+    content,
+  });
 }
 
 export async function resolveConflictAndSync(
@@ -170,12 +195,8 @@ export async function resolveConflictAndSync(
   content: string,
 ): Promise<void> {
   const localPath = GitFsService.workingTreeUri({ repoPath: repo.path });
-  // Conflict stages vanish once the note is marked resolved, so the sidecar is derived first.
   const sidecar = repo.crdtMergeEnabled === true && isCrdtNotePath(filePath)
-    ? sidecarForResolvedText({
-        ...(await loadNoteConflict(localPath, filePath)),
-        finalText: content,
-      })
+    ? await sidecarForResolution(localPath, filePath, content)
     : null;
   await writeResolvedNote(localPath, filePath, content, sidecar);
   await commitPushAndPull(repo, localPath, filePath);

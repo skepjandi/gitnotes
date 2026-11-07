@@ -10,6 +10,10 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-11-07
 
+### fix(settings): add a short description to the CRDT auto-merge row
+
+**What:** The "Auto-merge note edits (CRDT)" row in Settings → Repositories was a bare label. It now has a one-line caption ("Merge edits from several devices automatically"), styled like the other described rows; the longer explanation stays in the hint popup.
+
 ### fix(build): recompile libgit2-sys when the TLS patch changes
 
 **What:** After #1858 the iOS simulator still failed with `the SSL certificate is invalid`. Cargo treats registry crates as immutable, so a `rust/target` that had already compiled `libgit2-sys` kept the pre-fix TLS config (no `GIT_SKIP_SSL_VERIFY` in its generated `features.h`) and `scripts/build-rust.sh` relinked it into the staticlib it copies to `ios-local/rust/`.

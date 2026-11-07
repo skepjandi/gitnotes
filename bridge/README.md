@@ -19,17 +19,25 @@ re-attaches with `resume` and catches up on everything it missed.
 
 ## Install
 
-Requires **Node.js >= 20**.
+Requires **Node.js >= 20**, `curl` and `tar` (macOS and Linux).
 
 ```bash
-# from a checkout of this repository
-cd bridge
-npm install
-npm run build
-
-# or install globally
-npm install -g gitnotes-bridge
+curl -fsSL https://raw.githubusercontent.com/skepjandi/gitnotes/main/bridge/install.sh | sh
 ```
+
+The script downloads this repository's `bridge/` directory, builds it with npm into `~/.gitnotes-bridge/app`, and writes a `gitnotes-bridge` launcher to `~/.local/bin` (add that to your `PATH` if the script says so). Re-running it upgrades in place. Read the script first if you prefer: [`install.sh`](install.sh).
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `GITNOTES_BRIDGE_REF` | `main` | Branch, tag or commit to install |
+| `GITNOTES_BRIDGE_REPO` | `skepjandi/gitnotes` | `owner/name` on GitHub |
+| `GITNOTES_BRIDGE_HOME` | `~/.gitnotes-bridge/app` | Install directory |
+| `GITNOTES_BRIDGE_BIN_DIR` | `~/.local/bin` | Launcher directory |
+| `GITNOTES_BRIDGE_TARBALL_URL` | GitHub tarball | Full tarball URL (mirrors, testing) |
+
+Uninstall: `rm -rf ~/.gitnotes-bridge/app ~/.local/bin/gitnotes-bridge`. Your token stays in `~/.gitnotes-bridge/config.json`; delete it to unpair every phone.
+
+From a checkout instead: `cd bridge && npm install && node dist/cli.js`.
 
 ## Run
 

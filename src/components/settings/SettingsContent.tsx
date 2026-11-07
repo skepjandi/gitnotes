@@ -1111,18 +1111,18 @@ export function SettingsContent(props: SettingsContentProps) {
             <GroupRow
               key={`${repo.id}-crdt`}
               trailing={
-                <Switch
-                  value={repo.crdtMergeEnabled === true}
-                  onValueChange={(enabled) => onToggleCrdtMerge(repo, enabled)}
-                  testID={`settings.toggle.crdt-merge.${repo.id}`}
-                  accessibilityLabel={t('settings.crdtMerge')}
-                />
+                <View className="flex-row items-center gap-2">
+                  <Switch
+                    value={repo.crdtMergeEnabled === true}
+                    onValueChange={(enabled) => onToggleCrdtMerge(repo, enabled)}
+                    testID={`settings.toggle.crdt-merge.${repo.id}`}
+                    accessibilityLabel={t('settings.crdtMerge')}
+                  />
+                  <HintIcon hintKey="hints.settings.crdtMerge" testID={`hint.crdt-merge.${repo.id}`} />
+                </View>
               }
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ color: colors.text, fontSize: type.sm, flexShrink: 1 }}>{t('settings.crdtMerge')}</Text>
-                <HintIcon hintKey="hints.settings.crdtMerge" testID={`hint.crdt-merge.${repo.id}`} />
-              </View>
+              <Text style={{ color: colors.text, fontSize: type.sm }}>{t('settings.crdtMerge')}</Text>
             </GroupRow>,
           ])
         )}

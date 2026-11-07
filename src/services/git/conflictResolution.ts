@@ -134,7 +134,12 @@ async function commitPushAndPull(
   localPath: string,
   filePath: string,
 ): Promise<void> {
-  const author = await CommitService.resolveAuthor(repo.id);
+  const resolved = await CommitService.resolveAuthor(repo.id);
+  // resolveAuthor can return an empty email (no saved author, no host profile); git rejects that.
+  const author = {
+    name: resolved.name.trim() || 'GitNotes',
+    email: resolved.email.trim() || 'gitnotes@local',
+  };
   await GitEngine.commit(
     localPath,
     `Resolve conflict: ${filePath}`,

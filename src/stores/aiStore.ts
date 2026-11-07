@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
-import { AIActionMode, AIModelConfig, AIProviderConfig, AISettings } from '../models/AIProvider';
-import { setChatRepoAccount } from '../services/ChatStorageService';
+import { AIActionMode, AIModelConfig, AIProviderConfig, AISettings, ChatRepoProvider } from '../models/AIProvider';
+import { setChatRepoAccount, setChatRepoHost } from '../services/ChatStorageService';
 import { resolveProviderAvailability } from '../services/ai/providerAvailability';
 import { discoverModelsIfNeeded } from '../services/ai/modelDiscoveryService';
 
@@ -17,6 +17,8 @@ interface AIState {
   chatRepoName: string | null;
   chatRepoBranch: string;
   chatRepoAccountId: string | null;
+  chatRepoProvider: ChatRepoProvider;
+  chatRepoHostId: string | null;
   providers: AIProviderConfig[];
   isLoading: boolean;
   error: string | null;
@@ -36,7 +38,13 @@ interface AIActions {
   updateProvider: (providerId: string, updates: Partial<AIProviderConfig>) => Promise<void>;
   refreshProviderModels: (providerId: string) => Promise<void>;
   removeProvider: (providerId: string) => Promise<void>;
-  setChatRepo: (owner: string | null, name: string | null, branch?: string, accountId?: string | null) => Promise<void>;
+  setChatRepo: (
+    owner: string | null,
+    name: string | null,
+    branch?: string,
+    accountId?: string | null,
+    host?: { provider: ChatRepoProvider; hostId: string | null },
+  ) => Promise<void>;
   getAvailableModels: () => AIModelConfig[];
   getSelectedModel: () => AIModelConfig | undefined;
   persistSettings: () => Promise<void>;
@@ -97,6 +105,8 @@ const createDefaultSettings = (): AISettings => ({
   chatRepoName: null,
   chatRepoBranch: 'main',
   chatRepoAccountId: null,
+  chatRepoProvider: 'github',
+  chatRepoHostId: null,
   providers: createDefaultProviders(),
   dailyQuoteEnabled: false,
   aiPersonalizationEnabled: false,
@@ -324,15 +334,18 @@ export const useAIStore = create<AIState & AIActions>()((set, get) => ({
     await get().persistSettings();
   },
 
-  setChatRepo: async (owner, name, branch = 'main', accountId = null) => {
+  setChatRepo: async (owner, name, branch = 'main', accountId = null, host = { provider: 'github', hostId: null }) => {
     set({
       chatRepoOwner: owner,
       chatRepoName: name,
       chatRepoBranch: branch,
       chatRepoAccountId: accountId,
+      chatRepoProvider: host.provider,
+      chatRepoHostId: host.hostId,
       error: null,
     });
     setChatRepoAccount(accountId);
+    setChatRepoHost(host);
     await get().persistSettings();
   },
 
@@ -389,6 +402,8 @@ export const useAIStore = create<AIState & AIActions>()((set, get) => ({
         chatRepoName,
         chatRepoBranch,
         chatRepoAccountId,
+        chatRepoProvider,
+        chatRepoHostId,
         providers,
         dailyQuoteEnabled,
         aiPersonalizationEnabled,
@@ -418,6 +433,8 @@ export const useAIStore = create<AIState & AIActions>()((set, get) => ({
         chatRepoName,
         chatRepoBranch,
         chatRepoAccountId,
+        chatRepoProvider,
+        chatRepoHostId,
         providers: providers.map(stripProviderApiKey),
         dailyQuoteEnabled,
         aiPersonalizationEnabled,
@@ -460,6 +477,8 @@ export const useAIStore = create<AIState & AIActions>()((set, get) => ({
         ...savedSettings,
         chatRepoBranch: savedSettings.chatRepoBranch ?? defaultSettings.chatRepoBranch,
         chatRepoAccountId: savedSettings.chatRepoAccountId ?? defaultSettings.chatRepoAccountId,
+        chatRepoProvider: savedSettings.chatRepoProvider ?? defaultSettings.chatRepoProvider,
+        chatRepoHostId: savedSettings.chatRepoHostId ?? defaultSettings.chatRepoHostId,
         providers: mergeProviders(savedSettings.providers),
       };
 
@@ -478,6 +497,7 @@ export const useAIStore = create<AIState & AIActions>()((set, get) => ({
         error: null,
       });
       setChatRepoAccount(mergedSettings.chatRepoAccountId);
+      setChatRepoHost({ provider: mergedSettings.chatRepoProvider, hostId: mergedSettings.chatRepoHostId });
     } catch (err) {
       const defaultSettings = createDefaultSettings();
       set({

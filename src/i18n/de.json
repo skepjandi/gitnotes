@@ -502,7 +502,7 @@
     },
     "help": {
       "title": "So startest du die Bridge",
-      "body": "Führe dies auf deinem Computer in einem Terminal aus. Es gibt einen Kopplungslink aus, den du hier einfügst.",
+      "body": "Installiere die Bridge auf deinem Computer mit diesem Befehl und starte sie mit „gitnotes-bridge“. Sie gibt einen Kopplungslink aus, den du hier einfügst.",
       "copied": "Kopiert",
       "readme": "Bridge-README lesen",
       "footer": "Erfordert Node.js 20 oder neuer."

@@ -31,6 +31,9 @@ export interface AIProviderConfig {
 
 export type AIActionMode = 'auto' | 'confirm';
 
+/** Hosts whose contents API chat storage can read and write. */
+export type ChatRepoProvider = 'github' | 'gitlab' | 'gitea' | 'forgejo';
+
 export interface AISettings {
   isEnabled: boolean;
   selectedModelId: string | null;
@@ -39,6 +42,10 @@ export interface AISettings {
   chatRepoName: string | null;
   chatRepoBranch: string;
   chatRepoAccountId: string | null;
+  /** Git host that holds the chat repo; absent/`github` for repos created before multi-host support. */
+  chatRepoProvider: ChatRepoProvider;
+  /** Connected host (self-hosted Gitea/Forgejo) the chat repo lives on. */
+  chatRepoHostId: string | null;
   providers: AIProviderConfig[];
   dailyQuoteEnabled: boolean;
   aiPersonalizationEnabled: boolean;

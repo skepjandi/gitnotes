@@ -267,7 +267,7 @@
     },
     "help": {
       "title": "How to run the bridge",
-      "body": "On your computer, run this in a terminal. It prints a pairing link to paste here.",
+      "body": "On your computer, install the bridge with this command, then start it with “gitnotes-bridge”. It prints a pairing link to paste here.",
       "copied": "Copied",
       "readme": "Read the bridge README",
       "footer": "Requires Node.js 20 or newer."

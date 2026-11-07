@@ -502,7 +502,7 @@
     },
     "help": {
       "title": "Comment lancer le bridge",
-      "body": "Sur votre ordinateur, exécutez ceci dans un terminal. Il affiche un lien d'association à coller ici.",
+      "body": "Sur votre ordinateur, installez le pont avec cette commande, puis lancez-le avec « gitnotes-bridge ». Il affiche un lien d'appairage à coller ici.",
       "copied": "Copié",
       "readme": "Lire le README du bridge",
       "footer": "Nécessite Node.js 20 ou plus récent."

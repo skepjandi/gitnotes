@@ -10,6 +10,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-11-07
 
+### fix(chat): store chats on self-hosted Gitea/Forgejo repos and report 401s clearly
+
+**What:** Chat storage only spoke to `api.github.com`, so choosing a chat repo on a Forgejo/Gitea host sent that host's token to GitHub and failed with `401 Bad credentials` ("Error initializing chat storage"). Separately, `loadThreadSummaries` tested `'code' in error` to spot its own errors, but AxiosErrors carry their own `code`, so 401s leaked raw and 5xx/network errors never used the cached thread list.
+
+**Fix:** The chat repo remembers its host (`chatRepoProvider`, `chatRepoHostId`, set from the repo chosen in the picker) and `ChatStorageService` talks to that host's contents API with that host's token and base URL. Gitea/Forgejo differ from GitHub in three ways that are handled: create is `POST` (a `PUT` without `sha` is 422), update is `PUT` + `sha`, and a stale-`sha` delete is 400 (mapped to the 409 retry path). Verified against Forgejo 17: init, save, concurrent saves, update, delete, reload. A rejected token now shows "The git host rejected your credentials… Reconnect it in Settings" instead of "check network and write access". GitLab is supported through its repository files API (project path URL-encoded incl. subgroups, `PRIVATE-TOKEN`, create `POST` / update `PUT` with `last_commit_id` as the version, its 400 conflict messages mapped to the retry path). The GitLab adapter follows the API docs and the app's existing GitLab service and is covered by unit tests; it has not been run against a live GitLab.
+
+**Also:** `bridge/install.sh` — one-line installer for `gitnotes-bridge`: `curl -fsSL https://raw.githubusercontent.com/skepjandi/gitnotes/main/bridge/install.sh | sh`.
+
 ### feat(sync): optional per-repository CRDT merge for notes (#1690)
 
 **What:** Concurrent edits to the same note from several devices can now auto-merge instead of landing on the manual conflict screen. Turn it on per repository in **Settings → Repositories** (off by default; existing repos are unchanged).
@@ -18,7 +26,7 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ### feat(chat): chat with Claude Code, opencode, pi and other ACP agents from your phone
 
-**What:** Chat can now drive coding agents running on your own computer. A small host daemon, `gitnotes-bridge` (`bridge/`), spawns [ACP](https://agentclientprotocol.com) agents (Claude Code, opencode, pi, Codex, Gemini CLI, or any custom ACP agent) and exposes them over an authenticated WebSocket. Pair it from **Settings → Coding agents** (pairing link or URL + token), start a new chat, pick an agent and a workspace, and work on the go.
+**What:** Chat can now drive coding agents running on your own computer. A small host daemon, `gitnotes-bridge` (`bridge/`), spawns [ACP](https://agentclientprotocol.com) agents (Claude Code, opencode, pi, Codex, Gemini CLI, or any custom ACP agent) and exposes them over an authenticated WebSocket. Install it with the one-line `curl … | sh` installer in `bridge/install.sh`, then pair it from **Settings → Coding agents** (pairing link or URL + token), start a new chat, pick an agent and a workspace, and work on the go.
 
 **Resilient by design:** the agent keeps running when the phone sleeps, switches network or the app is killed. The bridge keeps a replay log; the app re-attaches (`resume`) and catches up without duplicating or dropping output. Agent permission prompts, tool calls with diffs, plans, thoughts and agent modes render natively. Agent transcripts stay on the device (never pushed to the GitHub chat repo). The bridge binds to localhost by default and authenticates with a random token; see `bridge/README.md` for Tailscale / tunnel setups.
 

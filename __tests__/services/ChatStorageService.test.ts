@@ -74,6 +74,11 @@ function createAxiosError(message: string, status: number) {
   return { name: 'AxiosError', message, response: { status }, isAxiosError: true };
 }
 
+/** Real AxiosErrors are `Error`s that also carry their own `code` ('ERR_BAD_REQUEST', 'ERR_NETWORK', ...). */
+function createRealAxiosError(message: string, status: number, code: string) {
+  return Object.assign(new Error(message), createAxiosError(message, status), { code });
+}
+
 function makeThread(overrides: Partial<ChatThread> = {}): ChatThread {
   return {
     id: THREAD_ID,
@@ -200,6 +205,27 @@ describe('ChatStorageService regression', () => {
       expect(cached).toBe('[]');
     });
 
+    // Real AxiosErrors carry their own `code` ('ERR_BAD_REQUEST', 'ERR_NETWORK', ...); they must still be classified.
+    it('classifies an expired token (401 AxiosError) as UNAUTHORIZED instead of leaking the raw error', async () => {
+      mockRequest.mockRejectedValueOnce(createRealAxiosError('Request failed with status code 401', 401, 'ERR_BAD_REQUEST'));
+
+      const failure = await ChatStorageService.loadThreadSummaries(OWNER, REPO, BRANCH).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(ChatStorageService.ChatStorageError);
+      expect(failure).toMatchObject({ code: 'UNAUTHORIZED', status: 401, message: 'Git host credentials are invalid or expired' });
+    });
+
+    it('falls back to the cached list on a 5xx AxiosError with a code', async () => {
+      const cached: ChatThreadSummary[] = [{ id: 'thread-1', title: 'Cached chat', updatedAt: 1, messageCount: 1 }];
+      await AsyncStorage.setItem(`chat-index-${OWNER}-${REPO}-${BRANCH}`, JSON.stringify({ threads: cached }));
+      mockRequest.mockRejectedValueOnce(createRealAxiosError('Bad gateway', 502, 'ERR_BAD_RESPONSE'));
+
+      const failure = await ChatStorageService.loadThreadSummaries(OWNER, REPO, BRANCH).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(ChatStorageService.ChatStorageError);
+      expect((failure as { cachedData?: ChatThreadSummary[] }).cachedData?.map((t) => t.id)).toEqual(['thread-1']);
+    });
+
     it('parses valid index with non-default titles without triggering repair', async () => {
       const summaries: ChatThreadSummary[] = [
         { id: 'thread-1', title: 'Discussion About Git', updatedAt: Date.now(), messageCount: 3, preview: 'Last message here' },
@@ -210,6 +236,17 @@ describe('ChatStorageService regression', () => {
       const titles = result.map((s) => s.title);
       expect(titles).toContain('Discussion About Git');
       expect(titles).toContain('Custom Title');
+    });
+  });
+
+  describe('initializeChatStorage', () => {
+    it('reports an expired token (401) as a typed UNAUTHORIZED error', async () => {
+      mockRequest.mockRejectedValueOnce(createRealAxiosError('Request failed with status code 401', 401, 'ERR_BAD_REQUEST'));
+
+      const failure = await ChatStorageService.initializeChatStorage(OWNER, REPO, BRANCH).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(ChatStorageService.ChatStorageError);
+      expect(failure).toMatchObject({ code: 'UNAUTHORIZED', status: 401 });
     });
   });
 
@@ -553,5 +590,224 @@ describe('ChatStorageService regression', () => {
       const cached = await AsyncStorage.getItem(`chat-thread-${OWNER}-${REPO}-${BRANCH}-${THREAD_ID}`);
       expect(cached).toBeNull();
     });
+  });
+});
+
+describe('ChatStorageService on a self-hosted Forgejo/Gitea repo', () => {
+  const API = 'http://127.0.0.1:3039/api/v1';
+  const accountStorage = MockAccountStorage.AccountStorage as {
+    getHostToken: jest.Mock;
+    getHostConnection: jest.Mock;
+  };
+  const createdBodies = () => mockRequest.mock.calls.map(([config]) => config as { url: string; method: string; headers: Record<string, string>; data?: Record<string, unknown>; params?: unknown });
+
+  beforeEach(() => {
+    mockRequest.mockReset();
+    accountStorage.getHostToken = jest.fn(() => Promise.resolve('forgejo-token'));
+    accountStorage.getHostConnection = jest.fn(() => Promise.resolve({ instanceBaseUrl: API }));
+    ChatStorageService.setChatRepoHost({ provider: 'forgejo', hostId: 'host-1' });
+  });
+
+  afterEach(() => {
+    ChatStorageService.setChatRepoHost(null);
+  });
+
+  it('reads through the host API with the host token, never api.github.com', async () => {
+    mockRequest.mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify(makeThread({ title: 'On Forgejo' }))));
+
+    const thread = await ChatStorageService.loadThread(OWNER, REPO, THREAD_ID, BRANCH);
+
+    expect(thread?.title).toBe('On Forgejo');
+    const [request] = createdBodies();
+    expect(request.url).toBe(`${API}/repos/${OWNER}/${REPO}/contents/chat/${THREAD_ID}.json`);
+    expect(request.headers.Authorization).toBe('token forgejo-token');
+    expect(request.params).toEqual({ ref: BRANCH });
+    expect(accountStorage.getHostToken).toHaveBeenCalledWith('host-1');
+  });
+
+  it('creates new files with POST and updates existing ones with PUT + sha (a PUT without sha is rejected by Forgejo)', async () => {
+    mockRequest.mockResolvedValue({ data: null });
+
+    await ChatStorageService.initializeChatStorage(OWNER, REPO, BRANCH);
+
+    const writes = createdBodies().filter((request) => request.method !== 'GET');
+    expect(writes.length).toBeGreaterThan(0);
+    expect(writes.every((request) => request.method === 'POST')).toBe(true);
+
+    mockRequest.mockReset();
+    mockRequest
+      .mockResolvedValueOnce(mockGitHubFileResponse(JSON.stringify(makeThread()))) // existing file: sha 'test-sha'
+      .mockResolvedValue({ data: null });
+    await ChatStorageService.saveThread(makeThread({ messages: [{ id: 'm1', role: 'user', content: 'hi', timestamp: 1 }] }));
+
+    const threadWrite = createdBodies().find((request) => request.method !== 'GET' && request.url.endsWith(`chat/${THREAD_ID}.json`));
+    expect(threadWrite?.method).toBe('PUT');
+    expect(threadWrite?.data?.sha).toBe('test-sha');
+  });
+
+  it("retries a delete that Forgejo rejects with 400 'sha does not match' like a GitHub 409", async () => {
+    const stale = Object.assign(new Error('bad request'), {
+      isAxiosError: true,
+      response: { status: 400, data: { message: 'sha does not match [given: old-sha, expected: fresh-sha]' } },
+    });
+    mockRequest
+      .mockResolvedValueOnce({ data: { content: btoaEncode('{}'), sha: 'old-sha' } }) // thread file
+      .mockRejectedValueOnce(stale) // DELETE with the stale sha
+      .mockResolvedValueOnce({ data: { content: btoaEncode('{}'), sha: 'fresh-sha' } }) // re-read
+      .mockResolvedValue({ data: null }); // DELETE ok, index read/write
+
+    await ChatStorageService.deleteThread(OWNER, REPO, THREAD_ID, BRANCH);
+
+    const deletes = createdBodies().filter((request) => request.method === 'DELETE' && request.url.endsWith(`chat/${THREAD_ID}.json`));
+    expect(deletes).toHaveLength(2);
+    expect(deletes[1].data?.sha).toBe('fresh-sha');
+  });
+
+  it('does not initialize storage when the host has no stored token', async () => {
+    accountStorage.getHostToken = jest.fn(() => Promise.resolve(null));
+
+    await expect(ChatStorageService.initializeChatStorage(OWNER, REPO, BRANCH)).resolves.toBe(false);
+    expect(mockRequest).not.toHaveBeenCalled();
+  });
+
+  it('classifies a rejected host token as UNAUTHORIZED', async () => {
+    mockRequest.mockRejectedValueOnce(createRealAxiosError('Request failed with status code 401', 401, 'ERR_BAD_REQUEST'));
+
+    const failure = await ChatStorageService.loadThreadSummaries(OWNER, REPO, BRANCH).catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({ code: 'UNAUTHORIZED', status: 401 });
+  });
+});
+
+describe('ChatStorageService on a GitLab project', () => {
+  const API = 'https://gitlab.example.com/api/v4';
+  const accountStorage = MockAccountStorage.AccountStorage as {
+    getHostToken: jest.Mock;
+    getHostConnection: jest.Mock;
+  };
+  type Sent = { url: string; method: string; headers: Record<string, string>; params?: unknown; data?: Record<string, unknown> };
+  const sent = () => mockRequest.mock.calls.map(([config]) => config as Sent);
+  const gitlabBadRequest = (message: string) =>
+    Object.assign(new Error('Request failed with status code 400'), {
+      isAxiosError: true,
+      response: { status: 400, data: { message } },
+    });
+  const fileResponse = (lastCommitId: string) => ({
+    data: { content: btoaEncode(JSON.stringify(makeThread())), last_commit_id: lastCommitId, blob_id: 'blob-not-used' },
+  });
+
+  beforeEach(() => {
+    mockRequest.mockReset();
+    accountStorage.getHostToken = jest.fn(() => Promise.resolve('gitlab-token'));
+    accountStorage.getHostConnection = jest.fn(() => Promise.resolve({ instanceBaseUrl: API }));
+    ChatStorageService.setChatRepoHost({ provider: 'gitlab', hostId: 'host-gl' });
+  });
+
+  afterEach(() => {
+    ChatStorageService.setChatRepoHost(null);
+  });
+
+  it('reads files by URL-encoded project path with PRIVATE-TOKEN and uses last_commit_id as the version', async () => {
+    mockRequest.mockResolvedValueOnce(fileResponse('commit-1'));
+
+    const thread = await ChatStorageService.loadThread('group', 'sub/project', THREAD_ID, BRANCH);
+
+    expect(thread?.id).toBe(THREAD_ID);
+    const [request] = sent();
+    expect(request.url).toBe(`${API}/projects/group%2Fsub%2Fproject/repository/files/chat%2F${THREAD_ID}.json`);
+    expect(request.headers['PRIVATE-TOKEN']).toBe('gitlab-token');
+    expect(request.headers.Authorization).toBeUndefined();
+    expect(request.params).toEqual({ ref: BRANCH });
+  });
+
+  const emptyIndex = { data: { content: btoaEncode(JSON.stringify({ threads: [] })), last_commit_id: 'index-commit' } };
+  const isThreadFile = (request: Sent) => request.url.includes(`chat%2F${THREAD_ID}.json`);
+  const isIndexFile = (request: Sent) => request.url.includes('chat%2Findex.json');
+
+  it('creates with POST (no last_commit_id) and updates with PUT + last_commit_id, using GitLab body fields', async () => {
+    mockRequest.mockResolvedValue({ data: null });
+    await ChatStorageService.initializeChatStorage(OWNER, REPO, BRANCH);
+    const creates = sent().filter((request) => request.method !== 'GET');
+    expect(creates.length).toBeGreaterThan(0);
+    creates.forEach((request) => {
+      expect(request.method).toBe('POST');
+      expect(request.data).toMatchObject({ branch: BRANCH, encoding: 'base64', commit_message: expect.any(String) });
+      expect(request.data?.last_commit_id).toBeUndefined();
+    });
+
+    mockRequest.mockReset();
+    mockRequest.mockImplementation(async (config: unknown) => {
+      const request = config as Sent;
+      if (request.method === 'GET') return isThreadFile(request) ? fileResponse('commit-7') : emptyIndex;
+      return { data: null };
+    });
+    await ChatStorageService.saveThread(makeThread({ messages: [{ id: 'm1', role: 'user', content: 'hi', timestamp: 1 }] }));
+    const update = sent().find((request) => request.method !== 'GET' && isThreadFile(request));
+    expect(update?.method).toBe('PUT');
+    expect(update?.data?.last_commit_id).toBe('commit-7');
+  });
+
+  it("treats 'file already exists' on create as a conflict and retries as an update", async () => {
+    let threadReads = 0;
+    let threadWrites = 0;
+    mockRequest.mockImplementation(async (config: unknown) => {
+      const request = config as Sent;
+      if (request.method === 'GET' && isThreadFile(request)) {
+        threadReads += 1;
+        if (threadReads === 1) throw createAxiosError('Not Found', 404); // does not exist yet
+        return fileResponse('commit-9'); // exists by the time of the retry
+      }
+      if (request.method === 'GET') return emptyIndex;
+      if (isThreadFile(request)) {
+        threadWrites += 1;
+        if (threadWrites === 1) throw gitlabBadRequest('A file with this name already exists'); // lost the race
+      }
+      return { data: null };
+    });
+
+    await ChatStorageService.saveThread(makeThread());
+
+    const writes = sent().filter((request) => request.method !== 'GET' && isThreadFile(request));
+    expect(writes.map((request) => request.method)).toEqual(['POST', 'PUT']);
+    expect(writes[1].data?.last_commit_id).toBe('commit-9');
+  });
+
+  it('retries an update rejected because the file changed since it was read', async () => {
+    let writes = 0;
+    let reads = 0;
+    mockRequest.mockImplementation(async (config: unknown) => {
+      const request = config as Sent;
+      if (request.method === 'GET' && isThreadFile(request)) return fileResponse(`commit-${(reads += 1)}`);
+      if (request.method === 'GET') return emptyIndex;
+      if (isThreadFile(request) && (writes += 1) === 1) {
+        throw gitlabBadRequest('You are attempting to update a file that has changed since you started editing it.');
+      }
+      return { data: null };
+    });
+
+    await ChatStorageService.saveThread(makeThread());
+
+    const threadWrites = sent().filter((request) => request.method === 'PUT' && isThreadFile(request));
+    expect(threadWrites.map((request) => request.data?.last_commit_id)).toEqual(['commit-1', 'commit-2']);
+  });
+
+  it('deleting a file that is already gone succeeds instead of failing', async () => {
+    mockRequest.mockImplementation(async (config: unknown) => {
+      const request = config as Sent;
+      if (request.method === 'GET') return isThreadFile(request) ? fileResponse('commit-1') : emptyIndex;
+      if (request.method === 'DELETE') throw gitlabBadRequest("A file with this name doesn't exist");
+      return { data: null };
+    });
+
+    await expect(ChatStorageService.deleteThread(OWNER, REPO, THREAD_ID, BRANCH)).resolves.toBe(true);
+    expect(sent().filter((request) => request.method === 'DELETE')).toHaveLength(1);
+  });
+
+  it('classifies a rejected token as UNAUTHORIZED', async () => {
+    mockRequest.mockRejectedValueOnce(createRealAxiosError('Request failed with status code 401', 401, 'ERR_BAD_REQUEST'));
+
+    const failure = await ChatStorageService.loadThreadSummaries(OWNER, REPO, BRANCH).catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({ code: 'UNAUTHORIZED', status: 401 });
   });
 });

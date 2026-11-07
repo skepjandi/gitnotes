@@ -173,22 +173,30 @@ export const ChatRepoPickerModal: React.FC<ChatRepoPickerModalProps> = ({
     if (!selectedRepoPath) return;
 
     const repo = repositories.find((r) => r.path === selectedRepoPath);
-    const owner = repo?.path.split('/')[0] || selectedRepoPath.split('/')[0] || '';
-    const name = repo?.path.split('/')[1] || selectedRepoPath.split('/')[1] || repo?.name || '';
+    const [owner = '', ...nameSegments] = (repo?.path || selectedRepoPath).split('/');
+    // GitLab projects can live in subgroups (group/sub/project); the project path is everything after the first segment.
+    const name = nameSegments.join('/') || repo?.name || '';
     const repoId = repo?.id;
     const activeBranchState = repoId ? await getActiveBranch(repoId) : null;
     const branch = activeBranchState?.activeBranch ?? 'main';
 
+    const provider = repo?.provider ?? 'github';
+
     setIsInitializing(true);
     setInitError(null);
     try {
-      await setChatRepo(owner, name, branch);
+      await setChatRepo(owner, name, branch, null, { provider, hostId: repo?.hostId ?? null });
       await ChatStorageService.initializeChatStorage(owner, name, branch);
       HapticService.success();
       onSelected();
     } catch (error) {
-      console.error('[ChatRepoPickerModal] Error initializing chat storage:', error);
       HapticService.error();
+      if (error instanceof ChatStorageService.ChatStorageError && error.code === ChatStorageService.ChatStorageErrorCode.UNAUTHORIZED) {
+        console.warn('[ChatRepoPickerModal] GitHub rejected the stored credentials');
+        setInitError('The git host rejected your credentials (expired or revoked). Reconnect it in Settings, then tap Retry.');
+        return;
+      }
+      console.error('[ChatRepoPickerModal] Error initializing chat storage:', error);
       const detail = error instanceof Error ? error.message : 'Unknown error';
       setInitError(
         `Couldn't write to ${selectedRepoPath}/chats/. ${detail}. Check network and repository write access, then tap Retry.`,

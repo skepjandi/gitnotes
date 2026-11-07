@@ -24,7 +24,8 @@ import { BridgeError, type AgentBridge, type BridgeProbeResult, type PairingLink
 import { useAgentBridgeStore } from '../stores/agentBridgeStore';
 import { HapticService } from '../utils/haptics';
 
-export const BRIDGE_RUN_COMMAND = 'npx gitnotes-bridge';
+export const BRIDGE_RUN_COMMAND =
+  'curl -fsSL https://raw.githubusercontent.com/skepjandi/gitnotes/main/bridge/install.sh | sh';
 export const BRIDGE_README_URL = 'https://github.com/skepjandi/gitnotes/tree/main/bridge#readme';
 
 type RouteProps = RouteProp<RootStackParamList, 'AgentBridges'>;

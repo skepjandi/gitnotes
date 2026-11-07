@@ -26,7 +26,7 @@ ChatScreen ─ useChatSession(threadId)
 
 ## Bridge
 
-`bridge/` is a standalone Node package (`gitnotes-bridge`). It spawns ACP agents over stdio and exposes them on an authenticated WebSocket (wire format: `bridge/src/protocol.ts`).
+`bridge/` is a standalone Node package (`gitnotes-bridge`), installed with `curl -fsSL https://raw.githubusercontent.com/skepjandi/gitnotes/main/bridge/install.sh | sh` (downloads the repo tarball, builds `bridge/` into `~/.gitnotes-bridge/app`, writes a launcher to `~/.local/bin`). It spawns ACP agents over stdio and exposes them on an authenticated WebSocket (wire format: `bridge/src/protocol.ts`).
 
 Key properties:
 

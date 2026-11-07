@@ -92,6 +92,7 @@
 **State:**
 - `provider: AIProvider | null`
 - `model: string`
+- `chatRepoProvider: 'github' | 'gitlab' | 'gitea' | 'forgejo'` / `chatRepoHostId: string | null` — which git host holds the chat repo (absent = `github`); `ChatStorageService.setChatRepoHost` mirrors them
 - `chatRepoOwner: string | null`
 - `chatRepoName: string | null`
 - `isConfigured: boolean`

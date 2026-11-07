@@ -134,7 +134,7 @@ async function commitPushAndPull(
   localPath: string,
   filePath: string,
 ): Promise<void> {
-  const author = await CommitService.resolveAuthor();
+  const author = await CommitService.resolveAuthor(repo.id);
   await GitEngine.commit(
     localPath,
     `Resolve conflict: ${filePath}`,

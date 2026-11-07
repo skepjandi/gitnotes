@@ -32,6 +32,10 @@ import {
   OAUTH_CALLBACK_URL,
   WORKER_BASE_URL,
 } from '../types/worker';
+import { OnboardingProgress } from '../components/onboarding/OnboardingProgress';
+import { OnboardingTour, TOUR_PAGE_IDS } from '../components/onboarding/OnboardingTour';
+import { ProPage } from '../components/onboarding/ProPage';
+import { useTourText } from '../components/onboarding/tourCopy';
 
 interface OnboardingScreenProps {
   onComplete: () => void;
@@ -51,12 +55,10 @@ function resolveBackendUrl(): string {
 /** Auth method options for GitHub. */
 export type GitHubAuthMethod = 'pat' | 'oauth' | 'app' | 'quick';
 
-const INFO_STEP_ICONS = [
-  'journal-outline',
-  'code-slash-outline',
-  'folder-outline',
-  'rocket-outline',
-  'bulb-outline',
+const WELCOME_CHIPS = [
+  { icon: 'document-text-outline', label: 'welcome.chipMarkdown' },
+  { icon: 'git-branch-outline', label: 'welcome.chipGit' },
+  { icon: 'sparkles-outline', label: 'welcome.chipAI' },
 ] as const;
 
 export default function OnboardingScreen({
@@ -64,37 +66,14 @@ export default function OnboardingScreen({
   onSkip,
 }: OnboardingScreenProps) {
   const { t } = useTranslation();
+  const tx = useTourText();
 
-  // Standard flow: step 0=Welcome, step 1=Connect Git Host, steps 2-5=Info pages, step 6=AI
-  // INFO_STEPS excludes Welcome since it's shown at step 0
-  const INFO_STEPS = [
-    {
-      title: t('onboarding.steps.linkTitle'),
-      description: t('onboarding.steps.linkDescription'),
-      icon: INFO_STEP_ICONS[1],
-    },
-    {
-      title: t('onboarding.steps.foldersTitle'),
-      description: t('onboarding.steps.foldersDescription'),
-      icon: INFO_STEP_ICONS[2],
-    },
-    {
-      title: t('onboarding.steps.productiveTitle'),
-      description: t('onboarding.steps.productiveDescription'),
-      icon: INFO_STEP_ICONS[3],
-    },
-    {
-      title: t('onboarding.steps.dumpTitle'),
-      description: t('onboarding.steps.dumpDescription'),
-      icon: INFO_STEP_ICONS[4],
-    },
-  ];
-
+  // Flow: 0 Welcome, 1 Connect Git Host, then one step per tour page, then the Pro summary.
   const HOST_STEP = 0;
-  const TOKEN_STEP = HOST_STEP + 1; // Connect a Git Host at index 1
-  const INFO_STEP_START = TOKEN_STEP + 1; // Info pages start at index 2
-  const AI_STEP = INFO_STEP_START + INFO_STEPS.length; // = 6
-  const TOTAL_STEPS = AI_STEP + 1; // = 7, matches 7 progress dots
+  const TOKEN_STEP = HOST_STEP + 1;
+  const INFO_STEP_START = TOKEN_STEP + 1;
+  const AI_STEP = INFO_STEP_START + TOUR_PAGE_IDS.length;
+  const TOTAL_STEPS = AI_STEP + 1;
   const { colors } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Onboarding'>>();
@@ -232,6 +211,10 @@ export default function OnboardingScreen({
     INFO_STEP_START,
     t,
   ]);
+
+  const handleBack = useCallback(() => {
+    setCurrentStep((step) => Math.max(HOST_STEP, step - 1));
+  }, [HOST_STEP]);
 
   const handleSkip = useCallback(async () => {
     await OnboardingService.completeOnboarding();
@@ -677,47 +660,71 @@ export default function OnboardingScreen({
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        <View className="flex-row items-center justify-between px-5 pt-2.5" style={{ minHeight: 48 }}>
+          {currentStep > HOST_STEP ? (
+            <Button
+              variant="ghost"
+              label={tx('back')}
+              testID="onboarding.button.back"
+              onPress={handleBack}
+              leadingIcon={<Ionicons name="chevron-back" size={18} color={colors.accent} />}
+            />
+          ) : (
+            <View />
+          )}
+          <Button
+            variant="ghost"
+            label={tx('skip')}
+            testID="onboarding.button.skip"
+            onPress={handleSkip}
+          />
+        </View>
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="flex-row justify-end px-5 pt-2.5">
-            <Button
-              variant="ghost"
-              label="Skip"
-              testID="onboarding.button.skip"
-              onPress={handleSkip}
-            />
-          </View>
 
           {currentStep === HOST_STEP ? (
-            <View className="flex-1 px-10 items-center">
-              <Surface
-                elevation="raised"
-                radius="pill"
-                className="w-[140px] h-[140px] items-center justify-center mb-6"
-              >
-                <Ionicons
-                  name={INFO_STEP_ICONS[0]}
-                  size={72}
-                  color={colors.accent}
-                />
-              </Surface>
-              <Text
-                className="text-[28px] font-bold text-center"
-                style={{ color: colors.text }}
-              >
-                {t('onboarding.steps.welcomeTitle')}
-              </Text>
-              <Text
-                className="text-base text-center leading-6"
-                style={{ color: colors.textSecondary }}
-              >
-                {t('onboarding.steps.welcomeDescription')}
-              </Text>
+            <View className="flex-1 px-8 justify-center" testID="onboarding.page.welcome">
+              <View className="items-center">
+                <Surface
+                  elevation="raised"
+                  radius="pill"
+                  className="w-[132px] h-[132px] items-center justify-center mb-7"
+                >
+                  <Ionicons name="journal-outline" size={64} color={colors.accent} />
+                </Surface>
+                <Text
+                  accessibilityRole="header"
+                  className="text-center"
+                  style={{ color: colors.text, fontSize: 32, fontWeight: '800', letterSpacing: -0.8, lineHeight: 37 }}
+                >
+                  {t('onboarding.steps.welcomeTitle')}
+                </Text>
+                <Text
+                  className="text-base text-center leading-6 mt-3"
+                  style={{ color: colors.textSecondary }}
+                >
+                  {t('onboarding.steps.welcomeDescription')}
+                </Text>
+                <View className="flex-row flex-wrap justify-center gap-2 mt-5">
+                  {WELCOME_CHIPS.map((chip) => (
+                    <View
+                      key={chip.label}
+                      className="flex-row items-center gap-1.5 px-3 py-1.5 rounded-full"
+                      style={{ backgroundColor: `${colors.accent}1A` }}
+                    >
+                      <Ionicons name={chip.icon} size={14} color={colors.accent} />
+                      <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '700' }}>
+                        {tx(chip.label)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
 
-              <View className="mt-8 gap-3" style={{ width: '100%', maxWidth: 300 }}>
+              <View className="mt-9 gap-3 self-center" style={{ width: '100%', maxWidth: 320 }}>
                 <Button
                   variant="primary"
                   fullWidth
@@ -750,6 +757,16 @@ export default function OnboardingScreen({
                   label={t('onboarding.steps.customSetup', { defaultValue: 'Custom Setup' })}
                 />
               </View>
+              <Text className="text-center text-xs mt-8" style={{ color: colors.textSecondary }}>
+                {tx('reportIssue')}{' '}
+                <Text
+                  testID="onboarding.button.report-issue"
+                  style={{ color: colors.accent, fontWeight: '600' }}
+                  onPress={() => Linking.openURL('https://github.com/skepjandi/gitnotes/issues')}
+                >
+                  {tx('reportIssueLink')}
+                </Text>
+              </Text>
             </View>
           ) : isTokenStep ? (
             <View
@@ -908,104 +925,19 @@ export default function OnboardingScreen({
 
             </View>
           ) : isAIStep ? (
-            <View className="flex-1 px-10 items-center">
-              <Surface
-                elevation="raised"
-                radius="pill"
-                className="w-[140px] h-[140px] items-center justify-center mb-6"
-              >
-                <Ionicons
-                  name="sparkles-outline"
-                  size={72}
-                  color={colors.accent}
-                />
-              </Surface>
-              <Text
-                className="text-[28px] font-bold text-center"
-                style={{ color: colors.text }}
-              >
-                {t('onboarding.pro.title', { defaultValue: 'GitNotēs Pro' })}
-              </Text>
-              <Text
-                className="text-base text-center leading-6"
-                style={{ color: colors.textSecondary }}
-              >
-                {t('onboarding.pro.body', {
-                  defaultValue:
-                    'The free plan includes 1 account and 1 repo. GitNotēs Pro unlocks AI chat, thought & voice dump, personalized quotes, canvases, templates, more repos and accounts.',
-                })}
-              </Text>
-              <Text
-                className="text-[13px] text-center leading-[18px] mt-2 opacity-80"
-                style={{ color: colors.textSecondary }}
-              >
-                {t('onboarding.pro.reminder', {
-                  defaultValue:
-                    'You can upgrade anytime in Settings → GitNotēs Pro.',
-                })}
-              </Text>
-              <TouchableOpacity
-                testID="onboarding.button.configure-api-key"
-                onPress={() =>
-                  navigation.navigate('MainTabs', { screen: 'SettingsTab' })
-                }
-                className="mt-4"
-              >
-                <Text
-                  className="text-[13px] font-medium"
-                  style={{ color: colors.accent }}
-                >
-                  Settings
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <ProPage
+              onOpenSettings={() =>
+                navigation.navigate('MainTabs', { screen: 'SettingsTab' })
+              }
+            />
           ) : (
-            <View className="flex-1 px-10 items-center">
-              <Surface
-                elevation="raised"
-                radius="pill"
-                className="w-[140px] h-[140px] items-center justify-center mb-6"
-              >
-                <Ionicons
-                  name={INFO_STEPS[currentStep - INFO_STEP_START].icon}
-                  size={72}
-                  color={colors.accent}
-                />
-              </Surface>
-              <Text
-                className="text-[28px] font-bold text-center"
-                style={{ color: colors.text }}
-              >
-                {INFO_STEPS[currentStep - INFO_STEP_START].title}
-              </Text>
-              <Text
-                className="text-base text-center leading-6"
-                style={{ color: colors.textSecondary }}
-              >
-                {INFO_STEPS[currentStep - INFO_STEP_START].description}
-              </Text>
-            </View>
+            <OnboardingTour page={TOUR_PAGE_IDS[currentStep - INFO_STEP_START]} />
           )}
+        </ScrollView>
 
-          <View className="px-5 pb-10">
-            <View className="flex-row justify-center mb-6">
-              {Array.from({ length: TOTAL_STEPS }).map((_, index) => (
-                <Surface
-                  key={index}
-                  elevation="subtle"
-                  radius="pill"
-                  inset={index === currentStep}
-                  style={{
-                    width: 14,
-                    height: 14,
-                    marginHorizontal: 4,
-                    backgroundColor:
-                      index === currentStep ? colors.accent : colors.surface,
-                  }}
-                >
-                  <View />
-                </Surface>
-              ))}
+          <View className="px-5 pb-8 pt-3">
+            <View className="mb-5">
+              <OnboardingProgress current={currentStep} total={TOTAL_STEPS} />
             </View>
 
             {isAIStep ? (
@@ -1020,7 +952,7 @@ export default function OnboardingScreen({
                 }
                 iconAlign="edge"
               />
-            ) : isGitHub && githubAuthMethod !== 'pat' ? (
+            ) : isTokenStep && isGitHub && githubAuthMethod !== 'pat' ? (
               // OAuth / App selected — Next skips token step; auth runs in background
               <Button
                 variant="primary"
@@ -1086,23 +1018,7 @@ export default function OnboardingScreen({
                   iconAlign="edge"
                 />
               )}
-
-              <Text className="text-center text-xs mt-6" style={{ color: colors.textSecondary }}>
-                Found a bug or have a feature request?{' '}
-                <Text
-                  testID="onboarding.button.report-issue"
-                  style={{ color: colors.accent, fontWeight: '600' }}
-                  onPress={() =>
-                    Linking.openURL(
-                      'https://github.com/skepjandi/gitnotes/issues',
-                    )
-                  }
-                >
-                  Report it on GitHub Issues
-                </Text>
-              </Text>
           </View>
-        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

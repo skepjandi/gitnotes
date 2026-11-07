@@ -829,14 +829,6 @@
       "connectGitHub": "Connect to GitHub",
       "customSetup": "Custom Setup",
       "nextCustomSetup": "Next: Custom Setup",
-      "linkTitle": "Link to Git Repositories",
-      "linkDescription": "Connect your notes to GitHub repositories and track changes.",
-      "foldersTitle": "Organize with Folders",
-      "foldersDescription": "Create folders to organize your notes by project or topic.",
-      "productiveTitle": "Stay Productive",
-      "productiveDescription": "Pin important notes, use checklists, and track your progress.",
-      "dumpTitle": "Dump Your Thoughts",
-      "dumpDescription": "Thought Dump lets you capture fleeting ideas, half-formed questions, and stream-of-consciousness reflections as Markdown files in your repo. They're indexed for smart search and feed context into your AI chats.",
       "scheduledTitle": "Scheduled Learning",
       "scheduledDescription": "Let AI generate daily or weekly learning notes on your topics. You can also get Questioner notes with questions you answer and get graded — perfect for active recall and spaced repetition."
     },
@@ -937,10 +929,172 @@
       "continueButton": "Continue",
       "backToSettingsButton": "Back to Settings"
     },
-    "pro": {
-      "title": "GitNotēs Pro",
-      "body": "The free plan includes 1 account and 1 repo. GitNotēs Pro unlocks AI chat, thought & voice dump, personalized quotes, canvases, templates, more repos and accounts.",
-      "reminder": "You can upgrade anytime in Settings → GitNotēs Pro."
+    "tour": {
+      "skip": "Skip",
+      "back": "Back",
+      "stepOf": "Step {{current}} of {{total}}",
+      "proBadge": "PRO",
+      "reportIssue": "Found a bug or have a feature request?",
+      "reportIssueLink": "Report it on GitHub Issues",
+      "welcome": {
+        "chipMarkdown": "Markdown notes",
+        "chipGit": "Your Git repos",
+        "chipAI": "AI built in"
+      },
+      "notes": {
+        "eyebrow": "Your notes, your repo",
+        "title": "Notes that live in Git",
+        "body": "Every note is a plain file in a repository you own. GitNotēs commits and syncs it for you, so your notes are versioned, portable and never locked in.",
+        "stageEdit": "Edit a note",
+        "stageCommit": "Committed on your device",
+        "stagePush": "Pushed to your repo",
+        "nodeNote": "Note",
+        "nodeCommit": "Commit",
+        "nodeRepo": "Repo",
+        "hosts": "GitHub · GitLab · Gitea · Forgejo",
+        "p1": {
+          "lead": "Write anywhere",
+          "text": "Markdown, Org or Neorg, saved as ordinary files in your repository."
+        },
+        "p2": {
+          "lead": "Works offline",
+          "text": "Edits are committed on your device and pushed as soon as you are back online."
+        },
+        "p3": {
+          "lead": "Nothing is lost",
+          "text": "Browse history, diffs and branches in the Git tab. Conflicts are resolved in the app."
+        }
+      },
+      "tabs": {
+        "eyebrow": "Find your way around",
+        "title": "Five tabs, one workspace",
+        "body": "Everything lives behind the tab bar. Here is what each tab is for.",
+        "home": {
+          "lead": "Home",
+          "text": "Start a note, journal or canvas in one tap. Your daily quote lives here."
+        },
+        "notes": {
+          "lead": "Notes",
+          "text": "Browse, search, pin and organize every note by folder and tag."
+        },
+        "git": {
+          "lead": "Git",
+          "text": "Your repositories: pending changes, history, branches and conflicts."
+        },
+        "todos": {
+          "lead": "Todos",
+          "text": "Tasks and checklists that sit alongside your notes."
+        },
+        "settings": {
+          "lead": "Settings",
+          "text": "Accounts, repositories, themes, AI and GitNotēs Pro."
+        }
+      },
+      "git": {
+        "eyebrow": "The Git button",
+        "title": "Sync with one thumb",
+        "body": "The round button floating over your notes is your shortcut for Git. It works across every connected repository.",
+        "captionIdle": "3 changes waiting",
+        "captionStage": "Release now to Stage",
+        "captionCommit": "Release now to Commit",
+        "captionPush": "Hold to the end to Push",
+        "captionDone": "All synced",
+        "stepStage": "Stage",
+        "stepCommit": "Commit",
+        "stepPush": "Push",
+        "legendChanges": "Changes",
+        "legendStaged": "Staged",
+        "legendUnpushed": "Unpushed",
+        "legendSynced": "Synced",
+        "p1": {
+          "lead": "Tap to review",
+          "text": "Jumps to your pending changes, staged files or unpushed commits."
+        },
+        "p2": {
+          "lead": "Hold to sync",
+          "text": "A ring fills over about 3 seconds. Release in the first third to Stage, the second to Commit, or hold to the end to Push."
+        },
+        "p3": {
+          "lead": "Colour tells the state",
+          "text": "Green for changes, amber for staged, accent for unpushed, grey when synced, red for a conflict."
+        },
+        "p4": {
+          "lead": "Not for you?",
+          "text": "Hide it any time in Settings → Show floating git button."
+        }
+      },
+      "ai": {
+        "eyebrow": "GitNotēs AI",
+        "title": "An assistant that knows your notes",
+        "body": "The sparkle button is your way into AI. Chat about your notes, todos and canvases, dump a thought, or dictate one by voice.",
+        "captionIdle": "Tap: start a new chat",
+        "captionHold": "Hold…",
+        "captionOpen": "The hub opens",
+        "itemNewChat": "New chat",
+        "itemVoice": "Voice dump",
+        "itemHistory": "Chat history",
+        "itemSettings": "AI settings",
+        "itemThought": "Thought dump",
+        "p1": {
+          "lead": "Tap to chat",
+          "text": "Starts a new chat with your notes, todos and canvases as context."
+        },
+        "p2": {
+          "lead": "Hold for the hub",
+          "text": "New chat, history, thought dump, voice dump and AI settings. Drag the button wherever suits you."
+        },
+        "p3": {
+          "lead": "You stay in control",
+          "text": "AI only edits when you allow it, and you can turn it off any time in Settings → AI."
+        },
+        "p4": {
+          "lead": "Part of Pro",
+          "text": "AI chat and thought and voice dump are included in GitNotēs Pro."
+        }
+      },
+      "capture": {
+        "eyebrow": "Capture & create",
+        "title": "More than a notes list",
+        "body": "A few more ways to get ideas out of your head and into your repo.",
+        "thought": {
+          "lead": "Thought Dump",
+          "text": "Fleeting ideas, saved as Markdown"
+        },
+        "journal": {
+          "lead": "Journal",
+          "text": "A note per day, plus a calendar"
+        },
+        "canvas": {
+          "lead": "Canvases",
+          "text": "Draw, chart and diagram"
+        },
+        "templates": {
+          "lead": "Templates",
+          "text": "Start notes from a template"
+        },
+        "reminders": {
+          "lead": "Reminders",
+          "text": "Get nudged to open a note"
+        },
+        "links": {
+          "lead": "Links & graph",
+          "text": "Connect notes with [[links]]"
+        },
+        "footnote": "PRO marks features included in GitNotēs Pro."
+      },
+      "pro": {
+        "title": "Free to start, Pro to go further",
+        "freeBody": "1 account and 1 repository, with notes and Git sync.",
+        "proTitle": "GitNotēs Pro",
+        "ai": "AI chat",
+        "dump": "Thought and voice dump",
+        "quotes": "Personalized quotes",
+        "canvases": "Canvases",
+        "templates": "Templates",
+        "more": "More repositories and accounts",
+        "reminder": "You can upgrade any time in Settings → GitNotēs Pro.",
+        "settings": "Open Settings"
+      }
     }
   },
   "renderStyle": {

@@ -10,6 +10,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-11-07
 
+### feat(onboarding): redesigned onboarding with an interactive feature tour
+
+**What:** Onboarding explained almost nothing (four generic icon-and-sentence screens) and never mentioned the floating Git button, the floating AI button or the rest of the UI.
+
+**Change:** After connecting a Git host there are now five tour pages, each with a live, auto-playing demo: how notes live in Git (edit → commit → push, offline queueing), the five tabs, the Git button (tap to review; hold to Stage, Commit or Push; what each colour means; how to hide it), the AI button (tap for a new chat, long-press for the hub of chat history, thought dump, voice dump and AI settings; edits need your approval), and the capture tools (thought dump, journal, canvases, templates, reminders, links). Pro features carry a PRO chip, and the last page lists what the free plan and Pro include. The layout has a fixed header (Back, Skip) and footer (animated progress pills, primary button), left-aligned editorial type that follows the active app theme, and respects Reduce Motion (demos rest on a complete state).
+
+**Also:** after choosing OAuth or GitHub App on the connect step, tour pages showed a "Skip for Now" button instead of "Next"; fixed. Removed the now-unused `onboarding.steps.{link,folders,productive,dump}*` and `onboarding.pro.*` strings from all locales; the tour copy is English-only for now.
+
 ### fix(settings): add a short description to the CRDT auto-merge row
 
 **What:** The "Auto-merge note edits (CRDT)" row in Settings → Repositories was a bare label. It now has a one-line caption ("Merge edits from several devices automatically"), styled like the other described rows; the longer explanation stays in the hint popup.

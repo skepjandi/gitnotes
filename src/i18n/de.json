@@ -860,14 +860,6 @@
       "connectGitHub": "Mit GitHub verbinden",
       "customSetup": "Benutzerdefinierte Einrichtung",
       "nextCustomSetup": "Weiter: Benutzerdefinierte Einrichtung",
-      "linkTitle": "Link to Git Repositories",
-      "linkDescription": "Connect your notes to GitHub repositories and track changes.",
-      "foldersTitle": "Organize with Folders",
-      "foldersDescription": "Create folders to organize your notes by project or topic.",
-      "productiveTitle": "Stay Productive",
-      "productiveDescription": "Pin important notes, use checklists, and track your progress.",
-      "dumpTitle": "Dump Your Thoughts",
-      "dumpDescription": "Thought Dump lets you capture fleeting ideas, half-formed questions, and stream-of-consciousness reflections as Markdown files in your repo. They're indexed for smart search and feed context into your AI chats.",
       "scheduledTitle": "Scheduled Learning",
       "scheduledDescription": "Let AI generate daily or weekly learning notes… You can also get Questioner notes with questions you answer and get graded — perfect for active recall and spaced repetition."
     },
@@ -967,11 +959,6 @@
       },
       "continueButton": "Fortfahren",
       "backToSettingsButton": "Zurück zu den Einstellungen"
-    },
-    "pro": {
-      "title": "GitNotēs Pro",
-      "body": "Der kostenlose Plan umfasst 1 Konto und 1 Repository. GitNotēs Pro schaltet KI-Chat, Gedanken- und Sprach-Dump, personalisierte Zitate, Canvas, Vorlagen, weitere Repos und Konten frei.",
-      "reminder": "Du kannst jederzeit in Einstellungen → GitNotēs Pro upgraden."
     }
   },
   "renderStyle": {

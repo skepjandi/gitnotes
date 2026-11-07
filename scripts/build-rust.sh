@@ -37,12 +37,36 @@ PROFILE="${RUST_PROFILE:-debug}"
 
 log() { echo "[build-rust] $*"; }
 
+# Cargo treats registry crates as immutable: after the patch script rewrites
+# libgit2-sys in place, a target dir that already compiled it keeps the old
+# TLS configuration and relinks it into the staticlib. Track a hash of the
+# patches next to the build output and clean libgit2-sys when it changes.
+rebuild_libgit2_if_patch_changed() {
+  local stamp="$RUST_DIR/target/.libgit2-patch-stamp"
+  local current
+  current="$(cat "$RUST_DIR"/patches/*.patch | shasum -a 256 | cut -d' ' -f1)"
+  if [ "$(cat "$stamp" 2>/dev/null || true)" = "$current" ]; then
+    return
+  fi
+  log "libgit2 patch changed since the last build; recompiling libgit2-sys"
+  (cd "$RUST_DIR" && cargo clean -p libgit2-sys --quiet 2>/dev/null || true)
+  local dir
+  for dir in "$RUST_DIR"/target/*/; do
+    if [ -d "$dir/debug" ] || [ -d "$dir/release" ]; then
+      (cd "$RUST_DIR" && cargo clean -p libgit2-sys --target "$(basename "$dir")" --quiet 2>/dev/null || true)
+    fi
+  done
+  mkdir -p "$RUST_DIR/target"
+  echo "$current" > "$stamp"
+}
+
 patch_libgit2() {
   log "patching vendored libgit2 sources"
   if ! bash "$SCRIPT_DIR/patch-libgit2-sys.sh"; then
     (cd "$RUST_DIR" && cargo fetch --quiet)
     bash "$SCRIPT_DIR/patch-libgit2-sys.sh"
   fi
+  rebuild_libgit2_if_patch_changed
 }
 
 cargo_build() {

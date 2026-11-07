@@ -507,7 +507,6 @@
     "repositories": "Repositories",
     "noRepositories": "No repositories added yet",
     "crdtMerge": "Auto-merge note edits (CRDT)",
-    "crdtMergeHint": "Merge edits made on several devices automatically instead of asking you to resolve conflicts. Adds a .gitnotes/crdt file next to each note you save.",
     "addRepository": "Add Repository",
     "syncEngine": "Sync engine",
     "templates": "Templates",
@@ -1163,6 +1162,7 @@
       "pauseForegroundSync": "Stops automatic pulls when the app is in the foreground, allowing local commits to diverge from remote. Useful for multi-device conflict testing.",
       "backgroundSync": "Background sync runs even when the app is not active, ensuring your notes stay up to date.",
       "floatingGitButton": "Tap to stage, commit, or push. Hold for quick sync across all repos.",
+      "crdtMerge": "Merges edits made on several devices automatically instead of asking you to resolve conflicts. Adds a .gitnotes/crdt file next to each note you save.",
       "cloneMode": "Clone mode syncs through a local git working tree. Requires more storage but works fully offline with LFS support.",
 
       "lfsFiles": "Large files tracked by Git LFS are downloaded on demand. Download pending files to view them offline.",

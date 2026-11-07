@@ -4,6 +4,11 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import ConflictResolveScreen from '@/screens/ConflictResolveScreen';
 import * as GitEngine from '@/services/git/engine/GitEngine';
 import type { GitRepository } from '@/services/GitService';
+import {
+  computeCrdtMerge,
+  computeSidecarOnlyMerge,
+  resolveSidecarConflictAndSync,
+} from '@/services/git/conflictResolution';
 
 let mockRepositories: GitRepository[] = [];
 
@@ -72,6 +77,9 @@ jest.mock('@/services/git/conflictResolution', () => ({
     return `<<<<<<< ours\n${blobs.ours}\n=======\n${blobs.theirs}\n>>>>>>> theirs\n`;
   }),
   resolveConflictAndSync: jest.fn(),
+  computeCrdtMerge: jest.fn(),
+  computeSidecarOnlyMerge: jest.fn(),
+  resolveSidecarConflictAndSync: jest.fn(),
 }));
 
 describe('ConflictResolveScreen', () => {
@@ -110,5 +118,80 @@ describe('ConflictResolveScreen', () => {
     expect(screen.getByTestId('conflict-resolve.accept-theirs')).toBeTruthy();
     expect(screen.getByTestId('conflict-resolve.full-edit')).toBeTruthy();
     expect(screen.getByTestId('conflict-resolve.editor').props.value).toBe('local\nremote');
+  });
+
+  it('does not offer CRDT merge unless the repository opted in', async () => {
+    mockRepositories = [{ id: 'repo-1', path: 'owner/repo', name: 'repo', branch: 'main' }];
+    (GitEngine.getConflictBlobs as jest.Mock).mockResolvedValue({ ours: 'a', theirs: 'b', base: '' });
+    (useNavigation as jest.Mock).mockReturnValue({ goBack: jest.fn(), navigate: jest.fn() });
+    (useRoute as jest.Mock).mockReturnValue({ params: { repoId: 'repo-1', path: 'notes/hi2.md' } });
+
+    const screen = render(<ConflictResolveScreen />);
+
+    await waitFor(() => expect(screen.getByTestId('conflict-resolve.accept-ours')).toBeTruthy());
+    expect(screen.queryByTestId('conflict-resolve.use-crdt')).toBeNull();
+    expect(computeCrdtMerge).not.toHaveBeenCalled();
+  });
+
+  it('preselects the CRDT merge and keeps the manual choices for an opted-in repository', async () => {
+    mockRepositories = [
+      { id: 'repo-1', path: 'owner/repo', name: 'repo', branch: 'main', crdtMergeEnabled: true },
+    ];
+    (GitEngine.getConflictBlobs as jest.Mock).mockResolvedValue({ ours: 'a', theirs: 'b', base: '' });
+    (computeCrdtMerge as jest.Mock).mockResolvedValue('merged by crdt');
+    (useNavigation as jest.Mock).mockReturnValue({ goBack: jest.fn(), navigate: jest.fn() });
+    (useRoute as jest.Mock).mockReturnValue({ params: { repoId: 'repo-1', path: 'notes/hi2.md' } });
+
+    const screen = render(<ConflictResolveScreen />);
+
+    await waitFor(() => expect(screen.getByTestId('conflict-resolve.use-crdt')).toBeTruthy());
+    expect(screen.getByTestId('conflict-resolve.editor').props.value).toBe('merged by crdt');
+    fireEvent.press(screen.getByTestId('conflict-resolve.accept-theirs'));
+    expect(screen.getByTestId('conflict-resolve.editor').props.value).toBe('b');
+    fireEvent.press(screen.getByTestId('conflict-resolve.use-crdt'));
+    expect(screen.getByTestId('conflict-resolve.editor').props.value).toBe('merged by crdt');
+  });
+
+  it('falls back to the manual choices when the CRDT merge fails', async () => {
+    mockRepositories = [
+      { id: 'repo-1', path: 'owner/repo', name: 'repo', branch: 'main', crdtMergeEnabled: true },
+    ];
+    (GitEngine.getConflictBlobs as jest.Mock).mockResolvedValue({ ours: 'a', theirs: 'b', base: '' });
+    (computeCrdtMerge as jest.Mock).mockRejectedValue(new Error('bad sidecar'));
+    (useNavigation as jest.Mock).mockReturnValue({ goBack: jest.fn(), navigate: jest.fn() });
+    (useRoute as jest.Mock).mockReturnValue({ params: { repoId: 'repo-1', path: 'notes/hi2.md' } });
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const screen = render(<ConflictResolveScreen />);
+
+    await waitFor(() => expect(screen.getByTestId('conflict-resolve.accept-ours')).toBeTruthy());
+    await waitFor(() => expect(computeCrdtMerge).toHaveBeenCalled());
+    expect(screen.queryByTestId('conflict-resolve.use-crdt')).toBeNull();
+  });
+
+  it('resolves a sidecar-only conflict through the CRDT merge of its note', async () => {
+    mockRepositories = [
+      { id: 'repo-1', path: 'owner/repo', name: 'repo', branch: 'main', crdtMergeEnabled: true },
+    ];
+    (computeSidecarOnlyMerge as jest.Mock).mockResolvedValue('merged note');
+    (useNavigation as jest.Mock).mockReturnValue({ goBack: jest.fn(), navigate: jest.fn() });
+    (useRoute as jest.Mock).mockReturnValue({
+      params: { repoId: 'repo-1', path: '.gitnotes/crdt/notes/hi2.md.crdt' },
+    });
+
+    const screen = render(<ConflictResolveScreen />);
+
+    await waitFor(() => expect(screen.getByTestId('conflict-resolve.use-crdt')).toBeTruthy());
+    expect(computeSidecarOnlyMerge).toHaveBeenCalledWith(mockRepositories[0], 'notes/hi2.md');
+    expect(screen.queryByTestId('conflict-resolve.accept-ours')).toBeNull();
+    fireEvent.press(screen.getByTestId('conflict-resolve.save'));
+    await waitFor(() =>
+      expect(resolveSidecarConflictAndSync).toHaveBeenCalledWith(
+        mockRepositories[0],
+        'notes/hi2.md',
+        'merged note',
+      ),
+    );
+    expect(GitEngine.getConflictBlobs).not.toHaveBeenCalled();
   });
 });

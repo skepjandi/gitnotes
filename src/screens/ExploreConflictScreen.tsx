@@ -11,6 +11,7 @@ import { Button, ButtonText } from '@/components/ui/Button';
 import * as GitEngine from '@/services/git/engine/GitEngine';
 import type { ConflictEntry } from '@/services/git/engine/GitEngine';
 import { GitFsService } from '@/services/git/GitFsService';
+import { notePathForSidecar } from '@/services/crdt/crdtSidecar';
 import { useRepoStore } from '@/stores/repoStore';
 import { useTokens } from '@/contexts/ThemeContext';
 import type { RootStackParamList } from '@/navigation/types';
@@ -38,6 +39,7 @@ export default function ExploreConflictScreen() {
       localPath = null;
     }
   }
+  const crdtMergeEnabled = storedRepo?.crdtMergeEnabled === true;
 
   const [conflicts, setConflicts] = useState<ConflictEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,14 +48,23 @@ export default function ExploreConflictScreen() {
   const load = useCallback(async () => {
     if (!localPath) return;
     try {
-      setConflicts(await GitEngine.conflicts(localPath));
+      const entries = await GitEngine.conflicts(localPath);
+      const conflictedPaths = new Set(entries.map((entry) => entry.path));
+      setConflicts(
+        crdtMergeEnabled
+          ? entries.filter((entry) => {
+              const notePath = notePathForSidecar(entry.path);
+              return notePath === null || !conflictedPaths.has(notePath);
+            })
+          : entries,
+      );
       setError(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
       setLoading(false);
     }
-  }, [localPath]);
+  }, [localPath, crdtMergeEnabled]);
 
   useEffect(() => {
     if (!localPath) {

@@ -194,6 +194,18 @@ branch-dependent UI and preserve queue branch isolation.
 
 ---
 
+## Optional CRDT Merge (per repository)
+
+Off by default. **Settings → Repositories → Auto-merge note edits (CRDT)** sets `GitRepository.crdtMergeEnabled` for that repo only (`useRepoStore.setCrdtMergeEnabled`); other repos keep pure Git merge.
+
+When on, `NoteGitHubSyncService` passes `crdtEnabled` to `CloneSyncService.save`. For Markdown notes it then also writes `.gitnotes/crdt/<note path>.crdt` — the base64 Yjs state of the note **body** (`src/services/crdt/`). Frontmatter is not merged by the CRDT; on conflict the side with the later `updatedAt` wins. Git stays the transport: the sidecar is a normal working-tree file that is staged, committed and pushed with the note.
+
+On conflict (`ConflictResolveScreen`) the first option is **Use CRDT merge**: both sidecars (the index `ours`/`theirs` stages) are unioned (`mergeNoteSides`) and the merged body is offered as the resolution. Whatever final text the user picks, `resolveConflictAndSync` writes a sidecar holding the union of both histories plus that text, and resolves the conflicted sidecar with the note. If only the sidecar conflicts (Git merged the note cleanly) the screen resolves it via `resolveSidecarConflictAndSync`.
+
+Notes without a sidecar are seeded from their text with a client id derived from that text, so devices that start from the same text share one history instead of duplicating it. Sidecars are reconciled to the note text by character diff, so edits made outside the app are not lost. Deleting a note deletes its sidecar; delete-vs-edit stays a Git structural conflict. Sidecar size is unbounded (no compaction yet).
+
+---
+
 ## Key Services
 
 | Service | Role |

@@ -136,12 +136,12 @@ interface ContentsRequest {
   data?: Record<string, unknown>;
 }
 
-interface GiteaCredentials {
+interface HostCredentials {
   token: string;
   apiBase: string;
 }
 
-async function getGiteaCredentials(): Promise<GiteaCredentials | null> {
+async function getHostCredentials(): Promise<HostCredentials | null> {
   const { provider, hostId } = chatRepoHost;
   if (!hostId) return null;
   const [token, connection] = await Promise.all([
@@ -159,7 +159,7 @@ async function getGiteaCredentials(): Promise<GiteaCredentials | null> {
  * delete answers 400 where GitHub answers 409, so it is mapped to 409 for the shared retry logic.
  */
 async function giteaRequest<T>(params: ContentsRequest): Promise<T> {
-  const credentials = await getGiteaCredentials();
+  const credentials = await getHostCredentials();
   if (!credentials) throw new Error(`${chatRepoHost.provider} not authenticated`);
   const { owner, repo, path, method = 'GET', branch, data } = params;
   const url = `${credentials.apiBase}/repos/${owner}/${repo}/contents/${encodePath(path)}`;
@@ -186,8 +186,66 @@ async function giteaRequest<T>(params: ContentsRequest): Promise<T> {
   }
 }
 
+/**
+ * GitLab repository files API. Creates with POST, updates with PUT, both without any `sha`;
+ * optimistic locking uses `last_commit_id`, which stands in for GitHub's `sha`. Every conflict
+ * is a 400 with a message, so they are mapped to the 409/404 statuses the shared retry logic expects.
+ */
+async function gitlabRequest<T>(params: ContentsRequest): Promise<T> {
+  const credentials = await getHostCredentials();
+  if (!credentials) throw new Error('gitlab not authenticated');
+  const { owner, repo, path, method = 'GET', branch, data } = params;
+  const url = `${credentials.apiBase}/projects/${encodeURIComponent(`${owner}/${repo}`)}/repository/files/${encodeURIComponent(path)}`;
+  const headers = { Accept: 'application/json', 'PRIVATE-TOKEN': credentials.token };
+  const lastCommitId = typeof data?.sha === 'string' ? data.sha : undefined;
+
+  try {
+    if (method === 'GET') {
+      const response = await axios.request<{ content?: string; last_commit_id?: string }>({
+        url,
+        method: 'GET',
+        headers,
+        params: { ref: branch },
+      });
+      return { content: response.data?.content, sha: response.data?.last_commit_id } as T;
+    }
+    const body =
+      method === 'DELETE'
+        ? { branch: data?.branch, commit_message: data?.message, last_commit_id: lastCommitId }
+        : {
+            branch: data?.branch,
+            content: data?.content,
+            encoding: 'base64',
+            commit_message: data?.message,
+            last_commit_id: lastCommitId,
+          };
+    const response = await axios.request<T>({
+      url,
+      method: method === 'PUT' && !lastCommitId ? 'POST' : method,
+      headers,
+      data: body,
+    });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 400) {
+      const message = JSON.stringify(error.response.data ?? '');
+      if (/already exists|changed since|does not match/i.test(message)) error.response.status = 409;
+      else if (/doesn't exist|does not exist/i.test(message)) error.response.status = method === 'DELETE' ? 404 : 409;
+    }
+    throw error;
+  }
+}
+
 async function contentsRequest<T>(params: ContentsRequest): Promise<T> {
-  return chatRepoHost.provider === 'github' ? githubRequest<T>(params) : giteaRequest<T>(params);
+  switch (chatRepoHost.provider) {
+    case 'gitlab':
+      return gitlabRequest<T>(params);
+    case 'gitea':
+    case 'forgejo':
+      return giteaRequest<T>(params);
+    default:
+      return githubRequest<T>(params);
+  }
 }
 
 async function githubRequest<T>(params: {
@@ -466,7 +524,7 @@ export async function initializeChatStorage(owner: string, repo: string, branch:
   const authenticated =
     chatRepoHost.provider === 'github'
       ? await GitHubService.isAuthenticatedAsync()
-      : (await getGiteaCredentials()) !== null;
+      : (await getHostCredentials()) !== null;
   if (!authenticated) {
     return false;
   }

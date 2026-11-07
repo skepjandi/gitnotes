@@ -173,17 +173,14 @@ export const ChatRepoPickerModal: React.FC<ChatRepoPickerModalProps> = ({
     if (!selectedRepoPath) return;
 
     const repo = repositories.find((r) => r.path === selectedRepoPath);
-    const owner = repo?.path.split('/')[0] || selectedRepoPath.split('/')[0] || '';
-    const name = repo?.path.split('/')[1] || selectedRepoPath.split('/')[1] || repo?.name || '';
+    const [owner = '', ...nameSegments] = (repo?.path || selectedRepoPath).split('/');
+    // GitLab projects can live in subgroups (group/sub/project); the project path is everything after the first segment.
+    const name = nameSegments.join('/') || repo?.name || '';
     const repoId = repo?.id;
     const activeBranchState = repoId ? await getActiveBranch(repoId) : null;
     const branch = activeBranchState?.activeBranch ?? 'main';
 
     const provider = repo?.provider ?? 'github';
-    if (provider !== 'github' && provider !== 'gitea' && provider !== 'forgejo') {
-      setInitError('Chat storage supports GitHub, Gitea and Forgejo repositories. Pick a repository on one of those hosts.');
-      return;
-    }
 
     setIsInitializing(true);
     setInitError(null);

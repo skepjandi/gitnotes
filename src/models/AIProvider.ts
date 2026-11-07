@@ -32,7 +32,7 @@ export interface AIProviderConfig {
 export type AIActionMode = 'auto' | 'confirm';
 
 /** Hosts whose contents API chat storage can read and write. */
-export type ChatRepoProvider = 'github' | 'gitea' | 'forgejo';
+export type ChatRepoProvider = 'github' | 'gitlab' | 'gitea' | 'forgejo';
 
 export interface AISettings {
   isEnabled: boolean;

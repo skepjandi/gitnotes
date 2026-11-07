@@ -8,6 +8,11 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { parseRepoPath } from '../utils/gitPathParser';
 import { GitFsService } from './git/GitFsService';
+import {
+  deleteSidecar,
+  isCrdtNotePath,
+  writeNoteWithSidecar,
+} from './crdt/crdtSidecar';
 
 const CLONES_SUBDIR = 'GitNotes/';
 
@@ -142,11 +147,13 @@ export interface CloneSyncServiceSaveParams {
   content?: string | undefined;
   message: string;
   intent: 'upsert' | 'delete';
+  /** Keep a CRDT sidecar beside Markdown notes so concurrent edits can auto-merge. */
+  crdtEnabled?: boolean;
 }
 
 export const CloneSyncService = {
   async save(params: CloneSyncServiceSaveParams): Promise<SaveResult> {
-    const { repoPath, filePath, content, intent } = params;
+    const { repoPath, filePath, content, intent, crdtEnabled } = params;
 
     const info = parseRepoPath(repoPath);
     if (!info) {
@@ -162,15 +169,22 @@ export const CloneSyncService = {
     const fullPath = `${repoDir}/${relPath}`;
 
     try {
+      const useCrdt = crdtEnabled === true && isCrdtNotePath(relPath);
+
       if (intent === 'delete') {
         await FileSystem.deleteAsync(fullPath, { idempotent: true });
+        if (useCrdt) await deleteSidecar(repoDir, relPath);
         return { success: true };
       }
 
       const lastSlash = relPath.lastIndexOf('/');
       const dirPath = lastSlash === -1 ? repoDir : `${repoDir}/${relPath.slice(0, lastSlash)}`;
       await FileSystem.makeDirectoryAsync(dirPath, { intermediates: true });
-      await FileSystem.writeAsStringAsync(fullPath, content ?? '');
+      if (useCrdt) {
+        await writeNoteWithSidecar(repoDir, relPath, content ?? '');
+      } else {
+        await FileSystem.writeAsStringAsync(fullPath, content ?? '');
+      }
       return { success: true };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : String(error) };

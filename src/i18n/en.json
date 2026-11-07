@@ -506,6 +506,8 @@
     "removeGithubAccount": "Remove GitHub Account",
     "repositories": "Repositories",
     "noRepositories": "No repositories added yet",
+    "crdtMerge": "Auto-merge note edits (CRDT)",
+    "crdtMergeHint": "Merge edits made on several devices automatically instead of asking you to resolve conflicts. Adds a .gitnotes/crdt file next to each note you save.",
     "addRepository": "Add Repository",
     "syncEngine": "Sync engine",
     "templates": "Templates",

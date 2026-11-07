@@ -18,6 +18,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **Also:** `bridge/install.sh` — one-line installer for `gitnotes-bridge`: `curl -fsSL https://raw.githubusercontent.com/skepjandi/gitnotes/main/bridge/install.sh | sh`.
 
+### feat(sync): optional per-repository CRDT merge for notes (#1690)
+
+**What:** Concurrent edits to the same note from several devices can now auto-merge instead of landing on the manual conflict screen. Turn it on per repository in **Settings → Repositories** (off by default; existing repos are unchanged).
+
+**How:** Git remains the storage and transport. With the toggle on, each saved Markdown note gets a `.gitnotes/crdt/<path>.crdt` Yjs sidecar. When Git reports a conflict, `ConflictResolveScreen` offers **Use CRDT merge** first, built from both devices' sidecars; frontmatter is last-writer-wins by `updatedAt`. Fall back to ours / theirs / both / full edit at any time. Adds `yjs` and `diff`.
+
 ### feat(chat): chat with Claude Code, opencode, pi and other ACP agents from your phone
 
 **What:** Chat can now drive coding agents running on your own computer. A small host daemon, `gitnotes-bridge` (`bridge/`), spawns [ACP](https://agentclientprotocol.com) agents (Claude Code, opencode, pi, Codex, Gemini CLI, or any custom ACP agent) and exposes them over an authenticated WebSocket. Install it with the one-line `curl … | sh` installer in `bridge/install.sh`, then pair it from **Settings → Coding agents** (pairing link or URL + token), start a new chat, pick an agent and a workspace, and work on the go.

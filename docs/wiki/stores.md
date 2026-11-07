@@ -75,16 +75,13 @@
 
 ## Repo Store (`src/stores/repoStore.ts`)
 
-**Purpose:** Manages the repository collection, selected repo, and sync state.
+**Purpose:** Holds the saved repositories (persisted by `StorageService`) and the actions that add, remove and configure them.
 
 **State:**
-- `repos: Repo[]`
-- `selectedRepoId: string | null`
-- `syncState: SyncState` — 'idle' | 'syncing' | 'error'
-- `lastSyncAt: number | null`
-- `pendingChanges: number`
+- `repositories: GitRepository[]` — includes per-repo opt-ins such as `crdtMergeEnabled`
+- `isLoading: boolean`
 
-**Key Actions:** `loadRepos`, `addRepo`, `removeRepo`, `selectRepo`, `triggerSync`
+**Key Actions:** `loadRepos`, `addRepository`, `removeRepository`, `removeRepositoriesForHosts`, `setCrdtMergeEnabled` (per-repo CRDT merge toggle, see [Sync Architecture](./sync-architecture.md)), `refreshRepos`
 
 ---
 

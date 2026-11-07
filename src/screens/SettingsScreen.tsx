@@ -936,6 +936,16 @@ export default function SettingsScreen() {
     ]);
   }, [removeRepo, t]);
 
+  const handleToggleCrdtMerge = useCallback((repo: GitRepository, enabled: boolean) => {
+    useRepoStore.getState().setCrdtMergeEnabled(repo.id, enabled).catch((err: unknown) => {
+      HapticService.error();
+      Alert.alert(
+        t('errors.somethingWrong'),
+        err instanceof Error ? err.message : t('errors.somethingWrong'),
+      );
+    });
+  }, [t]);
+
   const handleSaveToken = useCallback(async () => {
     if (!tokenInput.trim()) {
       setTokenError(t('settings.tokenRequired'));
@@ -1595,6 +1605,7 @@ export default function SettingsScreen() {
         onOpenRepoPicker={() => void openRepoPicker()}
         onSyncRepo={(repo) => void handleSyncRepo(repo)}
         onRemoveRepo={handleRemoveRepo}
+        onToggleCrdtMerge={handleToggleCrdtMerge}
         lfsPending={lfsPending}
         lfsDownloadingRepo={lfsDownloadingRepo}
         onDownloadLfsObjects={(repo) => void handleDownloadLfsObjects(repo)}

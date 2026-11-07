@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -121,6 +121,7 @@ onRemoveAccount: (id: string, login: string) => void;
   onOpenRepoPicker: () => void;
   onSyncRepo: (repo: GitRepository) => void;
   onRemoveRepo: (repo: GitRepository) => void;
+  onToggleCrdtMerge: (repo: GitRepository, enabled: boolean) => void;
   lfsPending: Record<string, { count: number; bytes: number }>;
   lfsDownloadingRepo: string | null;
   onDownloadLfsObjects: (repo: GitRepository) => void;
@@ -248,6 +249,7 @@ export function SettingsContent(props: SettingsContentProps) {
     onOpenRepoPicker,
     onSyncRepo,
     onRemoveRepo,
+    onToggleCrdtMerge,
     lfsPending,
     lfsDownloadingRepo,
     onDownloadLfsObjects,
@@ -1105,6 +1107,18 @@ export function SettingsContent(props: SettingsContentProps) {
             >
               <Text style={[styles.repoName, { color: colors.text }]} numberOfLines={1}>{repo.name}</Text>
               <Text style={[styles.repoPath, { color: colors.textSecondary }]} numberOfLines={1}>{repo.path}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={{ color: colors.text, fontSize: type.sm }}>{t('settings.crdtMerge')}</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: type.xs }}>{t('settings.crdtMergeHint')}</Text>
+                </View>
+                <Switch
+                  value={repo.crdtMergeEnabled === true}
+                  onValueChange={(enabled) => onToggleCrdtMerge(repo, enabled)}
+                  testID={`settings.toggle.crdt-merge.${repo.id}`}
+                  accessibilityLabel={t('settings.crdtMerge')}
+                />
+              </View>
             </GroupRow>
           ))
         )}

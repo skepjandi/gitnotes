@@ -44,8 +44,6 @@ target 'GitNots' do
   end
 
   config = use_native_modules!(config_command)
-  pod 'GitEngine', :path => '../modules/GitEngine/ios-local'
-
 
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
@@ -59,77 +57,11 @@ target 'GitNots' do
   )
 
   post_install do |installer|
-    # [gitnotes] Expose GitNotesGit2FFI (UniFFI) module to the aggregate Swift target.
-    gitnotes_root = File.expand_path('../..', installer.sandbox.root)
-    gitnotes_ffi = File.join(gitnotes_root, 'modules', 'GitEngine', 'ios-local', 'generated')
-    gitnotes_rust_lib = File.join(gitnotes_root, 'modules', 'GitEngine', 'ios-local', 'rust', 'libgitnotes_git2.a')
-    installer.aggregate_targets.each do |aggregate|
-      aggregate.xcconfigs.each do |config_name, xcconfig|
-        existing = xcconfig.attributes['SWIFT_INCLUDE_PATHS'] || ''
-        unless existing.include?(gitnotes_ffi)
-          xcconfig.attributes['SWIFT_INCLUDE_PATHS'] = "$(inherited) #{gitnotes_ffi} #{existing}".strip
-        end
-        existing_ldflags = xcconfig.attributes['OTHER_LDFLAGS'] || '$(inherited)'
-        unless existing_ldflags.include?('libgitnotes_git2.a')
-          xcconfig.attributes['OTHER_LDFLAGS'] = "#{existing_ldflags} -force_load #{gitnotes_rust_lib}".strip
-        end
-        xcconfig.save_as(aggregate.xcconfig_path(config_name))
-      end
-    end
-
-    installer.pods_project.targets.each do |target|
-      next unless target.name == 'ExpoSQLite'
-
-      target.build_configurations.each do |build_configuration|
-        build_configuration.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
-        build_configuration.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
-      end
-    end
-
-
-    installer.aggregate_targets.each do |aggregate_target|
-      next unless aggregate_target.user_project
-
-      aggregate_target.user_project.native_targets.each do |target|
-        target.build_configurations.each do |build_configuration|
-          swift_flags = build_configuration.build_settings['OTHER_SWIFT_FLAGS'] || '$(inherited)'
-          swift_flags = swift_flags.join(' ') if swift_flags.is_a?(Array)
-          unless swift_flags.include?('-Xfrontend -disable-autolink-framework -Xfrontend SwiftUICore -Xfrontend -disable-autolink-framework -Xfrontend UIUtilities')
-            build_configuration.build_settings['OTHER_SWIFT_FLAGS'] = "#{swift_flags} -Xfrontend -disable-autolink-framework -Xfrontend SwiftUICore -Xfrontend -disable-autolink-framework -Xfrontend UIUtilities"
-          end
-        end
-      end
-
-      aggregate_target.user_project.save
-    end
-
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |build_configuration|
-        swift_flags = build_configuration.build_settings['OTHER_SWIFT_FLAGS'] || '$(inherited)'
-        swift_flags = swift_flags.join(' ') if swift_flags.is_a?(Array)
-        unless swift_flags.include?('-Xfrontend -disable-autolink-framework -Xfrontend SwiftUICore -Xfrontend -disable-autolink-framework -Xfrontend UIUtilities')
-          build_configuration.build_settings['OTHER_SWIFT_FLAGS'] = "#{swift_flags} -Xfrontend -disable-autolink-framework -Xfrontend SwiftUICore -Xfrontend -disable-autolink-framework -Xfrontend UIUtilities"
-        end
-      end
-    end
-
     react_native_post_install(
       installer,
       config[:reactNativePath],
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
-
-    installer.pods_project.targets.each do |target|
-      next unless target.name == 'ExpoSQLite'
-
-      target.build_configurations.each do |build_configuration|
-        existing_swift_include_paths = build_configuration.build_settings['SWIFT_INCLUDE_PATHS'] || '$(inherited)'
-        unless existing_swift_include_paths.include?('$(PODS_TARGET_SRCROOT)')
-          build_configuration.build_settings['SWIFT_INCLUDE_PATHS'] =
-            "#{existing_swift_include_paths} $(PODS_TARGET_SRCROOT)".strip
-        end
-      end
-    end
   end
 end

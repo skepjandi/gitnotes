@@ -10,6 +10,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-11-07
 
+### fix(git): clone over HTTPS on iOS failed with "the SSL certificate is invalid"
+
+**What:** After the OpenSSL TLS backend switch (#1835), every HTTPS clone on a real iOS device (TestFlight) failed with `GitEngineException: the SSL certificate is invalid`. The TLS 1.3 fixture tests missed it because they install a `certificate_check` callback that overrides libgit2's verdict.
+
+**Cause:** Apple targets have no OpenSSL CA bundle, so OpenSSL's verify result for the chain is always a failure; the verify callback lets the handshake continue but `verify_server_cert` still returned `GIT_ECERTIFICATE` from `SSL_get_verify_result`, after Security.framework had already accepted the chain. `GIT_SKIP_SSL_VERIFY` (which skips that check) was only defined for Android.
+
+**Fix:** `rust/patches/libgit2-tls-backend.patch` defines `GIT_SKIP_SSL_VERIFY` for Apple targets too. Trust still comes from `SecTrustEvaluateWithError` and the host name is still checked. Adds `rust/tests/system_trust_clone.rs` (network, `--ignored`): clones a public CA-signed repo with no callback; failed with the exact device error before, passes after.
+
 ### fix(build): patch libgit2-sys before the first cargo build on EAS
 
 **What:** EAS builds failed in `eas-build-post-install` with `libgit2-sys 0.18.8+1.9.7 is not patched` / `libgit2-sys was compiled unpatched`. Since the OpenSSL TLS backend change, `rust/build.rs` only *verifies* the patch, and `scripts/patch-libgit2-sys.sh` has to run before cargo compiles `libgit2-sys`. `scripts/build-rust.sh` did that, but `scripts/eas/post-install.sh` never called it, and a fresh EAS worker has an empty cargo registry.

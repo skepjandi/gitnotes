@@ -561,7 +561,7 @@ The vendored `libgit2-sys` sources in the cargo registry are patched by `scripts
 
 - **TLS backend** — Apple targets compile libgit2 with OpenSSL instead of SecureTransport, so TLS 1.3 is negotiated.
 - **Trust validation** — Apple platforms ship no OpenSSL CA bundle, so the server chain is validated against the **system trust store** with `SecTrustEvaluateWithError` (`Security.framework`) right after the handshake. The host name is still checked by libgit2's own `verify_server_cert`.
-- **Android** — unchanged: libgit2's OpenSSL chain check stays skipped there (`GIT_SKIP_SSL_VERIFY`).
+- **`GIT_SKIP_SSL_VERIFY`** — defined for Apple and Android targets. It makes `verify_server_cert` skip its `SSL_get_verify_result` check. With no CA bundle loaded OpenSSL's own verify result is always a failure even though the verify callback lets the handshake continue, so without this define every clone on a device fails with `the SSL certificate is invalid` after Security.framework already accepted the chain.
 
 ### Why the patch runs before the build
 
@@ -574,7 +574,9 @@ scripts/patch-libgit2-sys.sh --check  # exit 0 when the vendored sources are pat
 
 ### Regression test
 
-`rust/tests/tls13_clone.rs` serves a git repository from a TLS 1.3-only HTTPS server and clones it with `git2`. With the SecureTransport backend the clone fails with the `-9836` handshake error; with the OpenSSL backend the handshake completes and the clone succeeds.
+`rust/tests/tls13_clone.rs` serves a git repository from a TLS 1.3-only HTTPS server and clones it with `git2`. With the SecureTransport backend the clone fails with the `-9836` handshake error; with the OpenSSL backend the handshake completes and the clone succeeds. It installs a `certificate_check` callback, which overrides libgit2's own chain verdict, so it cannot see trust-validation regressions.
+
+`rust/tests/system_trust_clone.rs` clones `github.com/octocat/Hello-World` with no callback, so libgit2's own validation decides (`the SSL certificate is invalid` without `GIT_SKIP_SSL_VERIFY`). It needs network access and runs with `cargo test --test system_trust_clone -- --ignored`.
 
 ## Integration with JavaScript Services
 

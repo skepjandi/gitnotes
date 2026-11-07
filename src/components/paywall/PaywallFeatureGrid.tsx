@@ -70,6 +70,12 @@ const FEATURE_META: FeatureMeta[] = [
     icon: 'color-palette',
   },
   {
+    id: 'publishSite',
+    titleKey: 'paywall.features.publishSite.title',
+    descKey: 'paywall.features.publishSite.description',
+    icon: 'globe',
+  },
+  {
     id: 'multiAccount',
     titleKey: 'paywall.features.multiAccount.title',
     descKey: 'paywall.features.multiAccount.description',

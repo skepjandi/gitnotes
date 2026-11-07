@@ -274,6 +274,8 @@
     "build": "Build",
     "reportIssue": "Signaler des bugs et demander des fonctionnalités",
     "manageTemplates": "Gérer les modèles",
+    "publishSite": "Publier en site web",
+    "publishSiteHint": "Pro · Exporter les notes en site statique avec thème",
     "artificialIntelligence": "Intelligence artificielle",
     "enableAI": "Activer l'intelligence artificielle",
     "model": "Modèle",
@@ -1139,6 +1141,10 @@
         "title": "Styles de rendu",
         "description": "Choisissez le rendu de Markdown, NORG et Org"
       },
+      "publishSite": {
+        "title": "Publier en site web",
+        "description": "Exportez vos notes en site statique avec thème"
+      },
       "multiAccount": {
         "title": "Plusieurs comptes GitHub",
         "description": "Synchronisez plusieurs comptes GitHub côte à côte"
@@ -1228,5 +1234,139 @@
     "body": "Dans les versions incluant la télémétrie, un seul réglage contrôle les diagnostics Expo et les compteurs d’utilisation du Worker. Les diagnostics utilisent un identifiant d’installation pseudonyme ; l’opérateur doit vérifier sa classification juridique. Le code de l’application n’associe pas intentionnellement de notes, données de dépôt ou données d’authentification, mais les erreurs non interceptées peuvent contenir des valeurs sensibles intégrées par le code. Désactivé avant l’importation du SDK, celui-ci n’est pas importé. Après son importation, il ne peut pas être déchargé ; l’envoi est désactivé et les requêtes Worker cessent, mais la capture locale des erreurs peut continuer jusqu’à la fin du processus. Les compteurs déjà collectés ne sont pas effacés. Expo et Cloudflare traitent les données en tant que prestataires.",
     "readPolicy": "Lire la politique",
     "dismiss": "J’ai compris"
+  },
+  "publishSite": {
+    "title": "Publier le site",
+    "intro": "Transformez vos notes en site web hébergeable partout. Choisissez des notes, stylez le site, exportez un ZIP.",
+    "design": "Design",
+    "customizeDesign": "Personnaliser le design",
+    "siteDetails": "Détails du site",
+    "siteTitle": "Titre du site",
+    "tagline": "Slogan",
+    "author": "Auteur",
+    "footer": "Texte de pied de page",
+    "favicon": "Icône (emoji)",
+    "baseUrl": "URL publique (facultatif)",
+    "baseUrlHint": "Ajoute des liens canoniques et un sitemap. Utilisez l'adresse https où vous hébergerez le site.",
+    "invalidBaseUrl": "Saisissez une adresse complète en https://.",
+    "navLinks": "Liens de l'en-tête",
+    "navLabel": "Libellé",
+    "navUrl": "URL du lien",
+    "addLink": "Ajouter un lien",
+    "removeLink": "Supprimer le lien",
+    "invalidUrl": "Utilisez une adresse http(s):// ou mailto:.",
+    "notes": "Notes à publier",
+    "selectAll": "Tout sélectionner",
+    "clearSelection": "Effacer",
+    "filterNotes": "Filtrer par titre ou tag",
+    "notesSelected": "{{count}} sur {{total}} sélectionnées",
+    "noNotes": "Aucune note à publier pour le moment.",
+    "preview": "Aperçu",
+    "previewTitle": "Aperçu du site",
+    "sampleContent": "Contenu d’exemple affiché. Sélectionnez des notes pour voir les vôtres.",
+    "export": "Exporter le ZIP",
+    "building": "Génération…",
+    "exportFailedTitle": "Échec de l'export",
+    "exportFailedBody": "Impossible d'exporter le site. {{message}}",
+    "shareUnavailable": "Le partage n'est pas disponible sur cet appareil.",
+    "warnings": "À noter ({{count}})",
+    "warning": {
+      "image-unresolved": "{{note}} : une image n'a pas pu être incluse ({{detail}})",
+      "unsupported-format": "{{note}} : les notes {{detail}} ne peuvent pas être publiées et ont été ignorées",
+      "empty-note": "{{note}} est vide",
+      "link-unselected": "{{note}} : le lien vers « {{detail}} » pointe vers une note non publiée"
+    },
+    "hostTitle": "Hébergez-le gratuitement",
+    "publicWarning": "Tout ce que vous publiez, images comprises, est visible par quiconque ouvre le site hébergé.",
+    "hosts": {
+      "netlify": {
+        "name": "Netlify Drop",
+        "steps": "Déposez le ZIP sur la page et soyez en ligne en quelques secondes"
+      },
+      "cloudflare": {
+        "name": "Cloudflare Pages",
+        "steps": "Créez un projet Pages, puis importez le ZIP"
+      },
+      "github": {
+        "name": "GitHub Pages",
+        "steps": "Décompressez dans un dépôt et activez Pages"
+      }
+    },
+    "theme": {
+      "title": "Design du site",
+      "presetsTitle": "Thèmes",
+      "presets": {
+        "paper": "Papier",
+        "docs": "Docs",
+        "journal": "Journal",
+        "midnight": "Minuit",
+        "terminal": "Terminal",
+        "brutalist": "Brutaliste"
+      },
+      "colorsTitle": "Couleurs",
+      "colorMode": "Mode de couleur",
+      "colorModes": {
+        "auto": "Selon le visiteur",
+        "light": "Clair",
+        "dark": "Sombre"
+      },
+      "accent": "Couleur d'accent",
+      "editPalette": "Modifier la palette pour",
+      "palette": {
+        "background": "Arrière-plan",
+        "surface": "Surface",
+        "text": "Texte",
+        "muted": "Texte atténué",
+        "border": "Bordures",
+        "link": "Liens",
+        "codeBackground": "Fond du code"
+      },
+      "typographyTitle": "Typographie",
+      "bodyFont": "Police du texte",
+      "headingFont": "Police des titres",
+      "fonts": {
+        "system": "Système",
+        "serif": "Serif",
+        "mono": "Monospace",
+        "rounded": "Arrondie",
+        "humanist": "Humaniste",
+        "editorial": "Éditoriale"
+      },
+      "textSize": "Taille du texte",
+      "lineHeight": "Interligne",
+      "contentWidth": "Largeur de page",
+      "layoutTitle": "Mise en page",
+      "cornerRadius": "Rayon des coins",
+      "headerStyle": "En-tête",
+      "headerStyles": {
+        "left": "À gauche",
+        "centered": "Centré",
+        "banner": "Bannière",
+        "minimal": "Minimal"
+      },
+      "indexLayout": "Page d'accueil",
+      "indexLayouts": {
+        "list": "Liste",
+        "cards": "Cartes",
+        "grid": "Grille",
+        "compact": "Compacte"
+      },
+      "linkStyle": "Style des liens",
+      "linkStyles": {
+        "underline": "Souligné",
+        "hover": "Au survol",
+        "highlight": "Surligné"
+      },
+      "detailsTitle": "Détails de page",
+      "showDates": "Afficher les dates",
+      "showTags": "Afficher les tags",
+      "showReadingTime": "Afficher le temps de lecture",
+      "showToc": "Table des matières",
+      "showPrevNext": "Liens notes plus récentes / anciennes",
+      "advancedTitle": "Avancé",
+      "customCss": "CSS personnalisé",
+      "customCssHint": "Ajouté après les styles du thème et appliqué à toutes les pages.",
+      "previewHint": "Les polices viennent de l'appareil de chaque visiteur : le site charge vite et fonctionne hors ligne."
+    }
   }
 }

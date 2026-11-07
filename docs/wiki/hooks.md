@@ -158,6 +158,16 @@
 
 ---
 
+### `useSiteArtifact(notes: Note[], config: SiteConfig, debounceMs = 250)`
+
+**Purpose:** Builds the Pro "Publish as website" `SiteArtifact` whenever the notes or site config change, debounced so slider and color edits don't rebuild on every frame. Stale builds are cancelled. `notes` must be referentially stable (memoize it). See [Site Publishing](./site-publishing.md).
+
+**Returns:** `{ artifact: SiteArtifact | null, building: boolean, error: string | null }`
+
+**Source:** `src/hooks/useSiteArtifact.ts`
+
+---
+
 ### `useNetworkStatus()`
 
 **Purpose:** Detects current network connectivity status.

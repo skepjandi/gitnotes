@@ -1,19 +1,20 @@
 --- a/build.rs
 +++ b/build.rs
-@@ -223,6 +223,12 @@
+@@ -223,6 +223,13 @@
  
      if !target.contains("android") {
          features.push_str("#define GIT_USE_NSEC 1\n");
 +    }
 +
-+    if target.contains("android") {
-+        /* Android validates the server chain in the platform's own TLS stack,
-+         * so libgit2's OpenSSL chain check is skipped there. */
++    if target.contains("android") || target.contains("apple") {
++        /* Android and Apple validate the chain outside OpenSSL's store (Apple:
++         * Security.framework in openssl.c), so OpenSSL's own verify result,
++         * which stays failed with no CA bundle loaded, is not consulted. */
 +        features.push_str("#define GIT_SKIP_SSL_VERIFY 1\n");
      }
  
      if windows {
-@@ -258,9 +264,9 @@
+@@ -258,9 +265,9 @@
  
          if windows {
              features.push_str("#define GIT_WINHTTP 1\n");

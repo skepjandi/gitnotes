@@ -858,14 +858,6 @@
       "connectGitHub": "GitHubに接続",
       "customSetup": "カスタムセットアップ",
       "nextCustomSetup": "次へ: カスタムセットアップ",
-      "linkTitle": "Link to Git Repositories",
-      "linkDescription": "Connect your notes to GitHub repositories and track changes.",
-      "foldersTitle": "Organize with Folders",
-      "foldersDescription": "Create folders to organize your notes by project or topic.",
-      "productiveTitle": "Stay Productive",
-      "productiveDescription": "Pin important notes, use checklists, and track your progress.",
-      "dumpTitle": "Dump Your Thoughts",
-      "dumpDescription": "Thought Dump lets you capture fleeting ideas, half-formed questions, and stream-of-consciousness reflections as Markdown files in your repo. They're indexed for smart search and feed context into your AI chats.",
       "scheduledTitle": "Scheduled Learning",
       "scheduledDescription": "Let AI generate daily or weekly learning notes… You can also get Questioner notes with questions you answer and get graded — perfect for active recall and spaced repetition."
     },
@@ -965,11 +957,6 @@
       },
       "continueButton": "続ける",
       "backToSettingsButton": "設定に戻る"
-    },
-    "pro": {
-      "title": "GitNotēs Pro",
-      "body": "無料プランにはアカウント1つとリポジトリ1つが含まれます。GitNotēs Proでは、AIチャット、思考・音声ダンプ、パーソナライズされた名言、キャンバス、テンプレート、追加のリポジトリとアカウントを利用できます。",
-      "reminder": "設定 → GitNotēs Proからいつでもアップグレードできます。"
     }
   },
   "renderStyle": {

@@ -370,6 +370,14 @@ Behavior:
 
 **Welcome actions:** `Connect to GitHub` starts the OAuth flow immediately. `Custom Setup` advances to the provider and token configuration path. Quick Setup is not embedded in first-run onboarding.
 
+**Flow:** Welcome → Connect a Git Host → five tour pages → Pro summary. A fixed header holds Back (after the Welcome step) and Skip; a fixed footer holds the progress pills (`OnboardingProgress`) and the primary button, so they stay reachable on long pages. Step indices are derived from `TOUR_PAGE_IDS`, so adding a page needs no index changes.
+
+**Tour pages** (`src/components/onboarding/`): each page is a `TourPage` — a live demo card, then an eyebrow, title, body and icon-led points. Pages: `notes` (a note's edit → commit → push journey), `tabs` (the five tabs; the active tab's row is highlighted), `git` (the floating Git button: tap to review, hold to Stage / Commit / Push, colour legend), `ai` (the floating AI button: tap for a new chat, long-press for the hub), `capture` (thought dump, journal, canvases, templates, reminders, links). Pro-only features carry a PRO chip. The Git demo redraws the real button's three-arc ring with the same colours and states; the AI demo places its bubbles from `FLOATING_AI_HUB_ITEMS`, so the hub layout tracks the real one.
+
+**Demos and motion:** demos are scripted loops driven by `useDemoStage`. With the OS Reduce Motion setting on, loops stop and each demo rests on a complete state (for example the Git ring fully armed).
+
+**Copy:** English strings live in `tourCopy.ts` (`TOUR_COPY`) and are mirrored under `onboarding.tour.*` in `en.json`; a unit test keeps them identical. Other locales fall back to English for the tour.
+
 ### QuickSetupScreen
 
 **Purpose:** Dedicated GitHub repository setup launched from Settings. It is also the return target for OAuth callbacks started by this flow.

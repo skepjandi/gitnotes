@@ -860,14 +860,6 @@
       "connectGitHub": "Se connecter à GitHub",
       "customSetup": "Configuration personnalisée",
       "nextCustomSetup": "Suivant : configuration personnalisée",
-      "linkTitle": "Link to Git Repositories",
-      "linkDescription": "Connect your notes to GitHub repositories and track changes.",
-      "foldersTitle": "Organize with Folders",
-      "foldersDescription": "Create folders to organize your notes by project or topic.",
-      "productiveTitle": "Stay Productive",
-      "productiveDescription": "Pin important notes, use checklists, and track your progress.",
-      "dumpTitle": "Dump Your Thoughts",
-      "dumpDescription": "Thought Dump lets you capture fleeting ideas, half-formed questions, and stream-of-consciousness reflections as Markdown files in your repo. They're indexed for smart search and feed context into your AI chats.",
       "scheduledTitle": "Scheduled Learning",
       "scheduledDescription": "Let AI generate daily or weekly learning notes… You can also get Questioner notes with questions you answer and get graded — perfect for active recall and spaced repetition."
     },
@@ -967,11 +959,6 @@
       },
       "continueButton": "Continuer",
       "backToSettingsButton": "Retour aux Réglages"
-    },
-    "pro": {
-      "title": "GitNotēs Pro",
-      "body": "Le plan gratuit inclut 1 compte et 1 dépôt. GitNotēs Pro débloque le chat IA, la décharge de pensées et vocale, les citations personnalisées, les toiles, les modèles, plus de dépôts et de comptes.",
-      "reminder": "Vous pouvez passer à Pro à tout moment dans Réglages → GitNotēs Pro."
     }
   },
   "renderStyle": {

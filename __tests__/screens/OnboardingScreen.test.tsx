@@ -2,7 +2,7 @@
  * OnboardingScreen multi-provider token flow tests.
  *
  * Verifies:
- * - Five info steps render and advance correctly
+ * - Tour pages render and advance correctly, with a Back button
  * - Token step shows provider selection with all four providers
  * - Instance URL field appears for non-GitHub providers
  * - Token-settings link hidden for Gitea/Forgejo (no known hosted URL)
@@ -125,6 +125,18 @@ jest.mock('react-i18next', () => ({
   initReactI18next: { type: '3rdParty', init: jest.fn() },
 }));
 
+jest.mock('react-native-svg', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const passthrough = (name: string) => {
+    const Component = ({ children, ...rest }: { children?: React.ReactNode }) =>
+      React.createElement(View, rest, children);
+    Component.displayName = name;
+    return Component;
+  };
+  return { __esModule: true, Svg: passthrough('Svg'), Path: passthrough('Path'), default: passthrough('Svg') };
+});
+
 jest.mock('expo-clipboard', () => ({
   getStringAsync: jest.fn(),
 }));
@@ -160,6 +172,7 @@ jest.mock('../../src/services/GitHubAppService', () => ({
 }));
 
 import OnboardingScreen from '@/screens/OnboardingScreen';
+import { TOUR_PAGE_IDS } from '@/components/onboarding/OnboardingTour';
 
 describe('OnboardingScreen', () => {
   afterEach(() => {
@@ -583,7 +596,7 @@ describe('OnboardingScreen', () => {
       });
 
       await waitFor(() => {
-        expect(getByText('onboarding.steps.linkTitle')).toBeTruthy();
+        expect(getByText('Notes that live in Git')).toBeTruthy();
       });
 
       expect(mockConnectHost).not.toHaveBeenCalled();
@@ -712,7 +725,7 @@ describe('OnboardingScreen', () => {
   });
 
   describe('full flow', () => {
-    it('advances through Welcome, Connect, then four info steps to AI', async () => {
+    it('advances through Welcome, Connect, then every tour page to the Pro summary', async () => {
       const { getByTestId, queryByTestId } = render(
         <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
       );
@@ -742,7 +755,7 @@ describe('OnboardingScreen', () => {
 
       expect(queryByTestId('onboarding.button.pro-continue')).toBeNull();
 
-      for (let step = 0; step < 4; step += 1) {
+      for (let step = 0; step < TOUR_PAGE_IDS.length; step += 1) {
         await act(async () => {
           fireEvent.press(getByTestId('onboarding.button.next'));
         });
@@ -1150,4 +1163,69 @@ describe('OnboardingScreen', () => {
     });
   });
 
+  describe('back navigation and tour footer', () => {
+    it('shows Back only after the Welcome step and returns to it', async () => {
+      const { getByTestId, queryByTestId } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+      expect(queryByTestId('onboarding.button.back')).toBeNull();
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
+      await waitFor(() => {
+        expect(getByTestId('onboarding.provider.dropdown')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.back'));
+      });
+      expect(getByTestId('onboarding.button.connect-github')).toBeTruthy();
+      expect(queryByTestId('onboarding.button.back')).toBeNull();
+    });
+
+    it('steps back through tour pages', async () => {
+      const { getByTestId, getByText } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
+      await waitFor(() => {
+        expect(getByText('Notes that live in Git')).toBeTruthy();
+      });
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
+      expect(getByText('Five tabs, one workspace')).toBeTruthy();
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.back'));
+      });
+      expect(getByText('Notes that live in Git')).toBeTruthy();
+    });
+
+    it('keeps a plain Next button on tour pages after choosing OAuth on the connect step', async () => {
+      const { getByTestId, getByText, queryByText } = render(
+        <OnboardingScreen onComplete={mockOnComplete} onSkip={mockOnSkip} />
+      );
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.github-auth.oauth'));
+      });
+      await act(async () => {
+        fireEvent.press(getByTestId('onboarding.button.next'));
+      });
+
+      await waitFor(() => {
+        expect(getByText('Notes that live in Git')).toBeTruthy();
+      });
+      expect(getByText('Next')).toBeTruthy();
+      expect(queryByText('Skip for Now')).toBeNull();
+    });
+  });
 });

@@ -1108,9 +1108,9 @@ export function SettingsContent(props: SettingsContentProps) {
               <Text style={[styles.repoName, { color: colors.text }]} numberOfLines={1}>{repo.name}</Text>
               <Text style={[styles.repoPath, { color: colors.textSecondary }]} numberOfLines={1}>{repo.path}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={{ color: colors.text, fontSize: type.sm }}>{t('settings.crdtMerge')}</Text>
-                  <Text style={{ color: colors.textSecondary, fontSize: type.xs }}>{t('settings.crdtMergeHint')}</Text>
+                <View style={{ flex: 1, marginRight: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ color: colors.text, fontSize: type.sm, flexShrink: 1 }}>{t('settings.crdtMerge')}</Text>
+                  <HintIcon hintKey="hints.settings.crdtMerge" testID={`hint.crdt-merge.${repo.id}`} />
                 </View>
                 <Switch
                   value={repo.crdtMergeEnabled === true}

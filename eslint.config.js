@@ -7,7 +7,7 @@ const prettierConfig = require('eslint-config-prettier');
 const globals = require('globals');
 
 const files = ['**/*.{ts,tsx,js,jsx}'];
-const ignores = ['node_modules/', '.expo/', 'ios/', 'android/', 'dist/', 'coverage/'];
+const ignores = ['node_modules/', '.expo/', 'ios/', 'android/', 'dist/', 'coverage/', 'bridge/'];
 
 module.exports = [
   {

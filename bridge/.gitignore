@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.log
+
+# The lockfile is committed so `npm ci` is reproducible; the repository root
+# ignores every package-lock.json, so it has to be re-included here.
+!package-lock.json

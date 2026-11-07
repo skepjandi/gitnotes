@@ -1,0 +1,44 @@
+name: Bridge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'bridge/**'
+      - '.github/workflows/bridge.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'bridge/**'
+      - '.github/workflows/bridge.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: bridge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Build and test gitnotes-bridge
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: bridge
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: node --test dist/

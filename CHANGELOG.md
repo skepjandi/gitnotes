@@ -30,7 +30,7 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ### fix(build): patch libgit2-sys before the first cargo build on EAS
 
-**What:** EAS builds failed in `eas-build-post-install` with `libgit2-sys 0.18.8+1.9.7 is not patched` / `libgit2-sys was compiled unpatched`. Since the OpenSSL TLS backend change, `rust/build.rs` only *verifies* the patch, and `scripts/patch-libgit2-sys.sh` has to run before cargo compiles `libgit2-sys`. `scripts/build-rust.sh` did that, but `scripts/eas/post-install.sh` never called it, and a fresh EAS worker has an empty cargo registry.
+**What:** EAS builds failed in `eas-build-post-install` with `libgit2-sys 0.18.8+1.9.7 is not patched` / `libgit2-sys was compiled unpatched`. Since the OpenSSL TLS backend change, `rust/build.rs` only _verifies_ the patch, and `scripts/patch-libgit2-sys.sh` has to run before cargo compiles `libgit2-sys`. `scripts/build-rust.sh` did that, but `scripts/eas/post-install.sh` never called it, and a fresh EAS worker has an empty cargo registry.
 
 **Fix:** `post-install.sh` now runs the patch script before any cargo build (falling back to `cargo fetch` when the registry is empty) and asserts `--check` passes. Verified against an empty `CARGO_HOME`: unpatched → fetch → patched → `--check` exits 0.
 

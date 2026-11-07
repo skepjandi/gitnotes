@@ -142,20 +142,6 @@ const railStyles = StyleSheet.create({
   },
 });
 
-const styles = StyleSheet.create({
-  iconPill: {
-    width: 56,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-});
-
 export default function TabNavigator({
   observeInteractiveMarker,
   navigationReady,
@@ -199,13 +185,8 @@ return (
           const config = TAB_ICONS[route.name];
           if (!config) return null;
           const iconName = focused ? config.focused : config.outline;
-          return (
-            <View style={[styles.iconPill, focused && { backgroundColor: `${colors.primary}22` }]}>
-              <Ionicons name={iconName} size={size} color={color} />
-            </View>
-          );
+          return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarLabelStyle: styles.tabLabel,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         headerShown: false,

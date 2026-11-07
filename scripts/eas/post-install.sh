@@ -36,6 +36,17 @@ if [ -f "$HOME/.cargo/env" ]; then
   . "$HOME/.cargo/env"
 fi
 
+# libgit2-sys must be patched (OpenSSL TLS backend on Apple targets) BEFORE
+# cargo compiles it; rust/build.rs only verifies and fails an unpatched build.
+# A fresh EAS worker has an empty cargo registry, so fetch first when needed.
+# The registry is shared by every target, so patching once covers all builds.
+log "Patching vendored libgit2-sys sources..."
+if ! bash "$SCRIPT_DIR/../patch-libgit2-sys.sh"; then
+  (cd "$RUST_DIR" && cargo fetch --quiet)
+  bash "$SCRIPT_DIR/../patch-libgit2-sys.sh"
+fi
+bash "$SCRIPT_DIR/../patch-libgit2-sys.sh" --check
+
 log "Building Rust git2 engine for iOS..."
 
 if ! command -v xcrun &> /dev/null; then

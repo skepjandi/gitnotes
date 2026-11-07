@@ -14,11 +14,15 @@
       "bundleIdentifier": "com.xaventra.gitnotes",
       "buildNumber": "10",
       "scheme": "gitnotes",
-      "associatedDomains": ["applinks:gitnotes.org"],
+      "associatedDomains": [
+        "applinks:gitnotes.org"
+      ],
       "icon": "./assets/generated/icon.png",
       "appStoreUrl": "itms-apps://itunes.apple.com/app/id6764829004?action=write-review",
       "infoPlist": {
-        "LSApplicationQueriesSchemes": ["itms-apps"],
+        "LSApplicationQueriesSchemes": [
+          "itms-apps"
+        ],
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
@@ -50,8 +54,10 @@
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         },
-        "EXDevMenuShowFloatingActionButton": false
-      }
+        "EXDevMenuShowFloatingActionButton": false,
+        "NSSpeechRecognitionUsageDescription": "GitNotēs uses on-device speech recognition to convert your voice into note text. Audio stays on your device."
+      },
+      "appleTeamId": "B3SVNHQR74"
     },
     "android": {
       "adaptiveIcon": {
@@ -127,7 +133,12 @@
           "color": "#007AFF"
         }
       ],
-      ["expo-image-picker", { "cameraPermission": false }],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": false
+        }
+      ],
       "@react-native/datetimepicker",
       "expo-secure-store",
       "./plugins/withKeychainAccessGroup",

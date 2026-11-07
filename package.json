@@ -60,6 +60,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "diff": "^8",
     "expo": "^57.0.9",
     "expo-alternate-app-icons": "^8.0.0",
     "expo-background-task": "~57.0.17",
@@ -119,6 +120,7 @@
     "reanimated-color-picker": "^4.2.0",
     "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "yjs": "^13",
     "zod": "^4.6.6",
     "zustand": "^5.0.12"
   },

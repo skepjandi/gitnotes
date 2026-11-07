@@ -45,6 +45,7 @@ interface RepoActions {
     hostId?: string,
   ) => Promise<GitRepository>;
   removeRepository: (path: string, provider?: GitHostProvider) => Promise<void>;
+  setCrdtMergeEnabled: (repoId: string, enabled: boolean) => Promise<void>;
   removeRepositoriesForHosts: (
     removedHosts: RemovedHostRef[],
     providerAccountCount: ReadonlyMap<GitHostProvider, number>,
@@ -252,6 +253,15 @@ export const useRepoStore = create<RepoState & RepoActions>()((set, get) => ({
       await get().removeRepository(repo.path, repo.provider);
     }
     return targets.length;
+  },
+
+  setCrdtMergeEnabled: async (repoId, enabled) => {
+    const saved = await StorageService.getSavedRepositories();
+    const updated = saved.map((repo) =>
+      repo.id === repoId ? { ...repo, crdtMergeEnabled: enabled } : repo,
+    );
+    await StorageService.saveRepositories(updated);
+    set({ repositories: updated });
   },
 
   refreshRepos: async () => {

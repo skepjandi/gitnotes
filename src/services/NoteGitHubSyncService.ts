@@ -4,6 +4,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { parseRepoPath } from '../utils/gitPathParser';
 import { AuthService } from './AuthService';
 import { CloneSyncService } from './cloneSyncServiceImpl';
+import { isCrdtMergeEnabled } from './crdt/crdtRepoSettings';
 import { GitFsService } from './git/GitFsService';
 import { resolveBranch } from './git/resolveBranch';
 
@@ -338,6 +339,7 @@ export async function deleteNoteFromGitHub(params: {
     filePath,
     message: `Delete note: ${title || filePath}`,
     intent: 'delete',
+    crdtEnabled: await isCrdtMergeEnabled(repoPath),
   });
   return saveResult.success
     ? { success: true, filePath }
@@ -444,6 +446,7 @@ export async function syncNoteToGitHub(params: {
     content: finalContent,
     message,
     intent: 'upsert',
+    crdtEnabled: await isCrdtMergeEnabled(repoPath),
   });
   if (saveResult.success) {
     return { success: true, filePath: targetPath, finalContent };

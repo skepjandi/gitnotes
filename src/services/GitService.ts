@@ -22,6 +22,8 @@ export interface GitRepository {
   branch?: string;
   provider?: GitHostProvider;
   hostId?: string;
+  /** Opt-in CRDT auto-merge for concurrent note edits. Absent means off. */
+  crdtMergeEnabled?: boolean;
 }
 
 export interface GitBranch {

@@ -21,10 +21,14 @@ import * as GitEngine from '@/services/git/engine/GitEngine';
 import type { ConflictBlobs } from '@/services/git/engine/GitEngine';
 import { GitFsService } from '@/services/git/GitFsService';
 import {
+  computeCrdtMerge,
+  computeSidecarOnlyMerge,
   getConflictChoiceContent,
   resolveConflictAndSync,
+  resolveSidecarConflictAndSync,
   type ConflictChoice,
 } from '@/services/git/conflictResolution';
+import { isCrdtNotePath, notePathForSidecar } from '@/services/crdt/crdtSidecar';
 import { useRepoStore } from '@/stores/repoStore';
 import { useGitButtonActionStore } from '@/stores/gitButtonActionStore';
 import { useTokens } from '@/contexts/ThemeContext';
@@ -57,7 +61,9 @@ export default function ConflictResolveScreen() {
 
   const [rawContent, setRawContent] = useState('');
   const [blobs, setBlobs] = useState<ConflictBlobs | null>(null);
-  const [selectedChoice, setSelectedChoice] = useState<ConflictChoice>('edit');
+  const [selectedChoice, setSelectedChoice] = useState<ConflictChoice | 'crdt'>('edit');
+  const [crdtMerged, setCrdtMerged] = useState<string | null>(null);
+  const sidecarNotePath = storedRepo?.crdtMergeEnabled ? notePathForSidecar(path) : null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
@@ -71,6 +77,15 @@ export default function ConflictResolveScreen() {
     let cancelled = false;
     (async () => {
       try {
+        if (storedRepo && sidecarNotePath) {
+          const merged = await computeSidecarOnlyMerge(storedRepo, sidecarNotePath);
+          if (!cancelled) {
+            setCrdtMerged(merged);
+            setSelectedChoice('crdt');
+            setRawContent(merged);
+          }
+          return;
+        }
         const blobs = await GitEngine.getConflictBlobs(localPath, path);
         if (!cancelled) {
           if (blobs.ours === '' && blobs.theirs === '') {
@@ -78,6 +93,17 @@ export default function ConflictResolveScreen() {
           } else {
             setBlobs(blobs);
             setRawContent(getConflictChoiceContent(blobs, 'edit'));
+          }
+        }
+        if (storedRepo?.crdtMergeEnabled && isCrdtNotePath(path)) {
+          const merged = await computeCrdtMerge(storedRepo, path).catch((caught: unknown) => {
+            console.warn('[ConflictResolve] CRDT merge unavailable:', caught);
+            return null;
+          });
+          if (!cancelled && merged !== null) {
+            setCrdtMerged(merged);
+            setSelectedChoice('crdt');
+            setRawContent(merged);
           }
         }
       } catch (caught) {
@@ -92,13 +118,17 @@ export default function ConflictResolveScreen() {
     return () => {
       cancelled = true;
     };
-  }, [fileUri, localPath, path]);
+  }, [fileUri, localPath, path, storedRepo, sidecarNotePath]);
 
   const handleResolve = async () => {
     if (!storedRepo || !fileUri || !localPath) return;
     setResolving(true);
     try {
-      await resolveConflictAndSync(storedRepo, path, rawContent);
+      if (sidecarNotePath) {
+        await resolveSidecarConflictAndSync(storedRepo, sidecarNotePath, rawContent);
+      } else {
+        await resolveConflictAndSync(storedRepo, path, rawContent);
+      }
       setPending({ repoId, section: 'staging' });
       navigation.navigate('MainTabs', { screen: 'ExploreTab' });
     } catch (caught) {
@@ -119,6 +149,12 @@ export default function ConflictResolveScreen() {
     if (!blobs || resolving) return;
     setSelectedChoice(choice);
     setRawContent(getConflictChoiceContent(blobs, choice));
+  };
+
+  const handleCrdtChoice = () => {
+    if (crdtMerged === null || resolving) return;
+    setSelectedChoice('crdt');
+    setRawContent(crdtMerged);
   };
 
   if (!storedRepo || !localPath || !fileUri) {
@@ -202,42 +238,57 @@ export default function ConflictResolveScreen() {
               Choose a version or edit the combined file below, then tap Mark resolved.
             </Text>
             <View className="gap-2 mb-4">
-              <Button
-                size="sm"
-                variant={selectedChoice === 'ours' ? 'primary' : 'outline'}
-                disabled={resolving}
-                onPress={() => handleChoice('ours')}
-                testID="conflict-resolve.accept-ours"
-              >
-                Accept ours
-              </Button>
-              <Button
-                size="sm"
-                variant={selectedChoice === 'theirs' ? 'primary' : 'outline'}
-                disabled={resolving}
-                onPress={() => handleChoice('theirs')}
-                testID="conflict-resolve.accept-theirs"
-              >
-                Accept theirs
-              </Button>
-              <Button
-                size="sm"
-                variant={selectedChoice === 'both' ? 'primary' : 'outline'}
-                disabled={resolving}
-                onPress={() => handleChoice('both')}
-                testID="conflict-resolve.accept-both"
-              >
-                Accept both
-              </Button>
-              <Button
-                size="sm"
-                variant={selectedChoice === 'edit' ? 'primary' : 'outline'}
-                disabled={resolving}
-                onPress={() => handleChoice('edit')}
-                testID="conflict-resolve.full-edit"
-              >
-                Full edit
-              </Button>
+              {crdtMerged !== null ? (
+                <Button
+                  size="sm"
+                  variant={selectedChoice === 'crdt' ? 'primary' : 'outline'}
+                  disabled={resolving}
+                  onPress={handleCrdtChoice}
+                  testID="conflict-resolve.use-crdt"
+                >
+                  Use CRDT merge
+                </Button>
+              ) : null}
+              {blobs ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant={selectedChoice === 'ours' ? 'primary' : 'outline'}
+                    disabled={resolving}
+                    onPress={() => handleChoice('ours')}
+                    testID="conflict-resolve.accept-ours"
+                  >
+                    Accept ours
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={selectedChoice === 'theirs' ? 'primary' : 'outline'}
+                    disabled={resolving}
+                    onPress={() => handleChoice('theirs')}
+                    testID="conflict-resolve.accept-theirs"
+                  >
+                    Accept theirs
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={selectedChoice === 'both' ? 'primary' : 'outline'}
+                    disabled={resolving}
+                    onPress={() => handleChoice('both')}
+                    testID="conflict-resolve.accept-both"
+                  >
+                    Accept both
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={selectedChoice === 'edit' ? 'primary' : 'outline'}
+                    disabled={resolving}
+                    onPress={() => handleChoice('edit')}
+                    testID="conflict-resolve.full-edit"
+                  >
+                    Full edit
+                  </Button>
+                </>
+              ) : null}
             </View>
             <View
               className="rounded-lg mb-4 p-3"

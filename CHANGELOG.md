@@ -10,6 +10,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-11-07
 
+### fix(sync): retrying a CRDT conflict resolution failed with "no unresolved conflict for path"
+
+**What:** With CRDT merge on, **Resolve** failed with `BridgeError.Invalid("no unresolved conflict for path: notes/…md")` whenever it was pressed a second time. The first press stages the note, which removes its conflict stages from the index; if the commit, push or pull that follows fails, the screen stays open and the retry tried to read those stages again. Non-CRDT repos never read them, so they were unaffected.
+
+**Fix:** `resolveConflictAndSync` only loads both sides while the note is still conflicted. Otherwise it reuses the sidecar the earlier attempt wrote (it already holds both histories) and records the final text on top, so edits made between attempts are kept. The note and sidecar are also written to disk before either is staged, so a failed write leaves the conflict intact.
+
 ### feat(onboarding): redesigned onboarding with an interactive feature tour
 
 **What:** Onboarding explained almost nothing (four generic icon-and-sentence screens) and never mentioned the floating Git button, the floating AI button or the rest of the UI.

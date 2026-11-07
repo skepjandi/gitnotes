@@ -1122,7 +1122,12 @@ export function SettingsContent(props: SettingsContentProps) {
                 </View>
               }
             >
-              <Text style={{ color: colors.text, fontSize: type.sm }}>{t('settings.crdtMerge')}</Text>
+              <View>
+                <Text style={{ color: colors.text, fontSize: type.sm }}>{t('settings.crdtMerge')}</Text>
+                <Text style={[styles.settingValue, { color: colors.textSecondary, fontSize: 12, marginTop: 2 }]}>
+                  {t('settings.crdtMergeDescription')}
+                </Text>
+              </View>
             </GroupRow>,
           ])
         )}

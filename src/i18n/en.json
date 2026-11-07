@@ -507,6 +507,7 @@
     "repositories": "Repositories",
     "noRepositories": "No repositories added yet",
     "crdtMerge": "Auto-merge note edits (CRDT)",
+    "crdtMergeDescription": "Merge edits from several devices automatically",
     "addRepository": "Add Repository",
     "syncEngine": "Sync engine",
     "templates": "Templates",

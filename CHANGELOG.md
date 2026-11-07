@@ -10,6 +10,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-11-07
 
+### fix(build): recompile libgit2-sys when the TLS patch changes
+
+**What:** After #1858 the iOS simulator still failed with `the SSL certificate is invalid`. Cargo treats registry crates as immutable, so a `rust/target` that had already compiled `libgit2-sys` kept the pre-fix TLS config (no `GIT_SKIP_SSL_VERIFY` in its generated `features.h`) and `scripts/build-rust.sh` relinked it into the staticlib it copies to `ios-local/rust/`.
+
+**Fix:** `build-rust.sh` stores a hash of `rust/patches/*.patch` in `rust/target/.libgit2-patch-stamp` and runs `cargo clean -p libgit2-sys` (host and every built target) whenever it differs. The first build after pulling a patch change recompiles libgit2-sys once.
+
 ### fix(git): clone over HTTPS on iOS failed with "the SSL certificate is invalid"
 
 **What:** After the OpenSSL TLS backend switch (#1835), every HTTPS clone on a real iOS device (TestFlight) failed with `GitEngineException: the SSL certificate is invalid`. The TLS 1.3 fixture tests missed it because they install a `certificate_check` callback that overrides libgit2's verdict.

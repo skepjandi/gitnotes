@@ -8,6 +8,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-11-08
+
+### fix(sync): CRDT merge now auto-resolves conflicts instead of opening the conflict screen
+
+**What:** With **Auto-merge note edits (CRDT)** on, a pull or push that diverged still left the repo in a merge-conflict state and the Git button turned red; the CRDT merge was only offered as a preselected option on the conflict screen. Separately, the commit-author fix from the previous entry (`resolveAuthor(repo.id)` plus the `GitNotes <gitnotes@local>` fallback) was not part of the merged #1864, so builds from `main` still failed with `Signature cannot have an empty name or email`; it is included here.
+
+**Fix:** `autoMergeCrdtConflicts` (`conflictResolution.ts`) runs from the two places every pull and push funnel through: `GitFsService.pullWithFastForward` (note sync, chat sync, push recovery) and the `GitEngine.pushWithIntegrate` facade (note sync, Git button, Explore). When a CRDT repo's pull or push-integrate reports conflicts and every conflicted path is a Markdown note with content on both sides, or the CRDT sidecar of one, it merges each note from both sidecars, stages the note and its sidecar, and records a single merge commit (the push is then retried). Edit-vs-delete, non-note conflicts and any merge error leave the index untouched for the conflict screen. `conflictResolution.ts` now loads `manualSync` lazily to avoid an import cycle with `GitFsService`.
+
 ## 2026-11-07
 
 ### fix(sync): retrying a CRDT conflict resolution failed with "no unresolved conflict for path"

@@ -43,11 +43,16 @@ jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(),
 }));
 
+jest.mock('@/services/git/conflictResolution', () => ({
+  autoMergeCrdtConflicts: jest.fn(),
+}));
+
 import * as GitEngine from '@/services/git/engine/GitEngine';
 import { ANDROID_NATIVE_BUILD_COMMAND } from '@/services/git/engine/GitEngine';
 import { AuthService } from '@/services/AuthService';
 import { AccountStorage } from '@/services/AccountStorage';
 import { StorageService } from '@/services/StorageService';
+import { autoMergeCrdtConflicts } from '@/services/git/conflictResolution';
 
 const nativeModule = (requireNativeModule as jest.Mock).mock.results[0].value as {
   pull: jest.Mock;
@@ -627,6 +632,50 @@ describe('GitEngine.pushWithIntegrate auth fallback chain', () => {
 
     expect(result.ok).toBe(false);
     expect(nativeModule.pushWithIntegrate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('GitEngine.pushWithIntegrate CRDT auto-merge', () => {
+  const conflicted = { ok: false, kind: 'Conflicts', message: 'conflicts', conflicts: [{ path: 'notes/a.md' }], pushed: 0 };
+  const pushed = { ok: true, kind: 'Direct', message: 'pushed', conflicts: [], pushed: 1 };
+  const crdtRepo = { id: 'repo-1', path: 'owner/repo', name: 'repo', crdtMergeEnabled: true };
+
+  beforeEach(() => {
+    nativeModule.pushWithIntegrate.mockReset();
+    nativeModule.getCredential.mockReset();
+    nativeModule.getCredential.mockResolvedValue({ kind: 'userpass' });
+    jest.mocked(autoMergeCrdtConflicts).mockReset();
+    jest.mocked(StorageService.getSavedRepositories).mockReset();
+    jest.mocked(StorageService.getSavedRepositories).mockResolvedValue([crdtRepo]);
+  });
+
+  it('auto-merges the conflicts and pushes again for a CRDT repository', async () => {
+    nativeModule.pushWithIntegrate.mockResolvedValueOnce(conflicted).mockResolvedValueOnce(pushed);
+    jest.mocked(autoMergeCrdtConflicts).mockResolvedValue(true);
+
+    const result = await GitEngine.pushWithIntegrate('/repo', 'origin', 'repo-1');
+
+    expect(result.pushed).toBe(1);
+    expect(autoMergeCrdtConflicts).toHaveBeenCalledWith(crdtRepo);
+    expect(nativeModule.pushWithIntegrate).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns the conflicts untouched when the auto-merge declines', async () => {
+    nativeModule.pushWithIntegrate.mockResolvedValue(conflicted);
+    jest.mocked(autoMergeCrdtConflicts).mockResolvedValue(false);
+
+    const result = await GitEngine.pushWithIntegrate('/repo', 'origin', 'repo-1');
+
+    expect(result.kind).toBe('Conflicts');
+    expect(nativeModule.pushWithIntegrate).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not auto-merge a push that did not conflict', async () => {
+    nativeModule.pushWithIntegrate.mockResolvedValue(pushed);
+
+    await GitEngine.pushWithIntegrate('/repo', 'origin', 'repo-1');
+
+    expect(autoMergeCrdtConflicts).not.toHaveBeenCalled();
   });
 });
 

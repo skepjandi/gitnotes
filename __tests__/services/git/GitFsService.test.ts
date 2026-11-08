@@ -1,4 +1,6 @@
 import { GitFsService, remoteUrlForHost } from '@/services/git/GitFsService';
+import { autoMergeCrdtConflicts } from '@/services/git/conflictResolution';
+import { StorageService } from '@/services/StorageService';
 import * as GitEngine from '@/services/git/engine/GitEngine';
 import * as KeepAwake from 'expo-keep-awake';
 
@@ -24,6 +26,14 @@ jest.mock('@/services/git/gitFs', () => ({
 
 jest.mock('@/services/git/lfs', () => ({
   LfsService: { scanRepo: jest.fn().mockResolvedValue(undefined) },
+}));
+
+jest.mock('@/services/StorageService', () => ({
+  StorageService: { getSavedRepositories: jest.fn() },
+}));
+
+jest.mock('@/services/git/conflictResolution', () => ({
+  autoMergeCrdtConflicts: jest.fn(),
 }));
 
 describe('GitFsService.clone screen-awake lifecycle', () => {
@@ -61,6 +71,7 @@ describe('GitFsService.clone screen-awake lifecycle', () => {
 describe('GitFsService.pullWithFastForward', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(StorageService.getSavedRepositories).mockResolvedValue([]);
   });
 
   it('pulls remote changes through the native GitEngine bridge', async () => {
@@ -92,6 +103,37 @@ describe('GitFsService.pullWithFastForward', () => {
       ok: false,
       reason: 'diverged',
       error: 'merge conflict in notes/example.md',
+    });
+  });
+
+  describe('with CRDT merge enabled', () => {
+    const savedRepo = { id: 'repo-id', path: 'owner/repo', name: 'repo', branch: 'main', crdtMergeEnabled: true };
+    const pullOpts = { repoPath: 'owner/repo', branch: 'main', repoId: 'repo-id' };
+
+    beforeEach(() => {
+      jest.mocked(StorageService.getSavedRepositories).mockResolvedValue([savedRepo]);
+      (GitEngine.pull as jest.Mock).mockResolvedValue({ ok: false, error: 'merge of refs/remotes/origin/main produced 1 conflicts' });
+    });
+
+    it('reports success when the conflicts auto-merge', async () => {
+      jest.mocked(autoMergeCrdtConflicts).mockResolvedValue(true);
+
+      await expect(GitFsService.pullWithFastForward(pullOpts)).resolves.toEqual({ ok: true });
+      expect(autoMergeCrdtConflicts).toHaveBeenCalledWith(savedRepo);
+    });
+
+    it('keeps reporting diverged when the auto-merge declines', async () => {
+      jest.mocked(autoMergeCrdtConflicts).mockResolvedValue(false);
+
+      await expect(GitFsService.pullWithFastForward(pullOpts)).resolves.toMatchObject({ ok: false, reason: 'diverged' });
+    });
+
+    it('does not auto-merge failures that are not conflicts', async () => {
+      (GitEngine.pull as jest.Mock).mockResolvedValue({ ok: false, error: 'working tree has uncommitted changes' });
+
+      await GitFsService.pullWithFastForward(pullOpts);
+
+      expect(autoMergeCrdtConflicts).not.toHaveBeenCalled();
     });
   });
 });

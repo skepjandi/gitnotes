@@ -8,6 +8,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-11-08
+
+### fix(sync): CRDT merge now auto-resolves conflicts instead of opening the conflict screen
+
+**What:** With **Auto-merge note edits (CRDT)** on, a pull or push that diverged still left the repo in a merge-conflict state and the Git button turned red; the CRDT merge was only offered as a preselected option on the conflict screen. Separately, the commit-author fix from the previous entry (`resolveAuthor(repo.id)` plus the `GitNotes <gitnotes@local>` fallback) was not part of the merged #1864, so builds from `main` still failed with `Signature cannot have an empty name or email`; it is included here.
+
+**Fix:** `autoMergeCrdtConflicts` (`conflictResolution.ts`) runs from the two places every pull and push funnel through: `GitFsService.pullWithFastForward` (note sync, chat sync, push recovery) and the `GitEngine.pushWithIntegrate` facade (note sync, Git button, Explore). When a CRDT repo's pull or push-integrate reports conflicts and every conflicted path is a Markdown note with content on both sides, or the CRDT sidecar of one, it merges each note from both sidecars, stages the note and its sidecar, and records a single merge commit (the push is then retried). Edit-vs-delete, non-note conflicts and any merge error leave the index untouched for the conflict screen. `conflictResolution.ts` now loads `manualSync` lazily to avoid an import cycle with `GitFsService`.
+
 ## 2026-11-07
 
 ### fix(sync): retrying a CRDT conflict resolution failed with "no unresolved conflict for path"
@@ -15,6 +23,8 @@ All notable fixes and feature changes to GitNotēs are documented here.
 **What:** With CRDT merge on, **Resolve** failed with `BridgeError.Invalid("no unresolved conflict for path: notes/…md")` whenever it was pressed a second time. The first press stages the note, which removes its conflict stages from the index; if the commit, push or pull that follows fails, the screen stays open and the retry tried to read those stages again. Non-CRDT repos never read them, so they were unaffected.
 
 **Fix:** `resolveConflictAndSync` only loads both sides while the note is still conflicted. Otherwise it reuses the sidecar the earlier attempt wrote (it already holds both histories) and records the final text on top, so edits made between attempts are kept. The note and sidecar are also written to disk before either is staged, so a failed write leaves the conflict intact.
+
+**Root cause of the first failure:** the resolve commit called `CommitService.resolveAuthor()` without the repo id, skipping the per-repo/host author lookup, and even with the id it can return an empty email when no author is saved and the host profile has none. Git rejects that (`failed to parse signature - Signature cannot have an empty name or email`) after the note is already staged, which is why the Git button showed "staged" while the conflict page kept erroring. The commit now passes `repo.id` and falls back to `GitNotes <gitnotes@local>` (same as the revert path) for any empty field. `rust/tests/conflict_resolve_flow.rs` drives the real engine ops (pull, conflict blobs, stage, commit, push) against a bare remote with CRDT on (note + sidecar conflict) and off (note only).
 
 ### feat(onboarding): redesigned onboarding with an interactive feature tour
 

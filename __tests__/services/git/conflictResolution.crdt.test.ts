@@ -2,6 +2,7 @@ import * as GitEngine from '@/services/git/engine/GitEngine';
 import { CommitService } from '@/services/git/CommitService';
 import { syncNow } from '@/services/git/manualSync';
 import {
+  autoMergeCrdtConflicts,
   computeCrdtMerge,
   computeSidecarOnlyMerge,
   resolveConflictAndSync,
@@ -103,6 +104,27 @@ describe('CRDT conflict resolution', () => {
     expect(GitEngine.push).toHaveBeenCalledWith('file:///repo', 'origin', 'repo-1');
   });
 
+  it('commits with the author resolved for the repository', async () => {
+    stubConflicts([NOTE, SIDECAR]);
+
+    await resolveConflictAndSync(repo(true), NOTE, 'ONE\ntwo\nTHREE\n');
+
+    expect(CommitService.resolveAuthor).toHaveBeenCalledWith('repo-1');
+  });
+
+  it('never commits with an empty author name or email', async () => {
+    (CommitService.resolveAuthor as jest.Mock).mockResolvedValue({ name: 'gitnotes', email: '' });
+    stubConflicts([NOTE, SIDECAR]);
+
+    await resolveConflictAndSync(repo(true), NOTE, 'ONE\ntwo\nTHREE\n');
+
+    expect(GitEngine.commit).toHaveBeenCalledWith(
+      'file:///repo',
+      expect.any(String),
+      { name: 'gitnotes', email: 'gitnotes@local' },
+    );
+  });
+
   describe('retrying after a failed commit/push', () => {
     // Staging a resolved path drops its conflict stages, like the real index.
     function stubStatefulConflicts() {
@@ -168,5 +190,82 @@ describe('CRDT conflict resolution', () => {
     await resolveSidecarConflictAndSync(repo(true), NOTE, merged);
     expect(mockFiles.get(`file:///repo/${NOTE}`)).toBe(merged);
     expect(GitEngine.markConflictResolved).toHaveBeenCalledWith('file:///repo', SIDECAR);
+  });
+
+  describe('autoMergeCrdtConflicts', () => {
+    const entry = (path: string): GitEngine.ConflictEntry => ({ path, kind: 'both modified' });
+    const stubEntries = (entries: GitEngine.ConflictEntry[], noteBlobs = { base: BASE, ours: OURS, theirs: THEIRS }) => {
+      (GitEngine.conflicts as jest.Mock).mockReset();
+      (GitEngine.conflicts as jest.Mock).mockResolvedValueOnce(entries).mockResolvedValue([]);
+      (GitEngine.getConflictBlobs as jest.Mock).mockImplementation(async (_repo: string, path: string) =>
+        path === NOTE ? noteBlobs : { base: '', ours: oursSidecar, theirs: theirsSidecar },
+      );
+    };
+
+    it('merges a conflicted note and its sidecar, commits once, and does not push', async () => {
+      stubEntries([entry(NOTE), entry(SIDECAR)]);
+
+      await expect(autoMergeCrdtConflicts(repo(true))).resolves.toBe(true);
+
+      expect(mockFiles.get(`file:///repo/${NOTE}`)).toBe('ONE\ntwo\nTHREE\n');
+      expect(GitEngine.markConflictResolved).toHaveBeenCalledWith('file:///repo', NOTE);
+      expect(GitEngine.markConflictResolved).toHaveBeenCalledWith('file:///repo', SIDECAR);
+      expect(GitEngine.commit).toHaveBeenCalledTimes(1);
+      expect(GitEngine.commit).toHaveBeenCalledWith('file:///repo', `Auto-merge conflicts (CRDT): ${NOTE}`, expect.any(Object));
+      expect(GitEngine.push).not.toHaveBeenCalled();
+    });
+
+    it('merges a sidecar-only conflict', async () => {
+      mockFiles.set(`file:///repo/${NOTE}`, BASE);
+      stubEntries([entry(SIDECAR)]);
+
+      await expect(autoMergeCrdtConflicts(repo(true))).resolves.toBe(true);
+
+      expect(GitEngine.markConflictResolved).toHaveBeenCalledWith('file:///repo', SIDECAR);
+      expect(GitEngine.commit).toHaveBeenCalledTimes(1);
+    });
+
+    it('does nothing when CRDT merge is off for the repo', async () => {
+      stubEntries([entry(NOTE), entry(SIDECAR)]);
+
+      await expect(autoMergeCrdtConflicts(repo())).resolves.toBe(false);
+
+      expect(GitEngine.conflicts).not.toHaveBeenCalled();
+      expect(GitEngine.markConflictResolved).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['an edit-vs-delete note', [entry(NOTE)], { base: BASE, ours: OURS, theirs: '' }],
+      ['a non-note file', [entry(NOTE), entry('canvases/board.json')], { base: BASE, ours: OURS, theirs: THEIRS }],
+    ])('leaves %s to the conflict screen without staging anything', async (_label, entries, noteBlobs) => {
+      stubEntries(entries, noteBlobs);
+
+      await expect(autoMergeCrdtConflicts(repo(true))).resolves.toBe(false);
+
+      expect(GitEngine.markConflictResolved).not.toHaveBeenCalled();
+      expect(GitEngine.commit).not.toHaveBeenCalled();
+    });
+
+    it('leaves the conflict to the screen when reading a side fails', async () => {
+      stubEntries([entry(NOTE)]);
+      (GitEngine.getConflictBlobs as jest.Mock).mockRejectedValue(new Error('binary conflict content'));
+      jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      await expect(autoMergeCrdtConflicts(repo(true))).resolves.toBe(false);
+
+      expect(GitEngine.commit).not.toHaveBeenCalled();
+    });
+
+    it('does not commit when a conflict is still unresolved after merging', async () => {
+      stubEntries([entry(NOTE), entry(SIDECAR)]);
+      (GitEngine.conflicts as jest.Mock).mockReset();
+      (GitEngine.conflicts as jest.Mock)
+        .mockResolvedValueOnce([entry(NOTE), entry(SIDECAR)])
+        .mockResolvedValue([entry(NOTE)]);
+
+      await expect(autoMergeCrdtConflicts(repo(true))).resolves.toBe(false);
+
+      expect(GitEngine.commit).not.toHaveBeenCalled();
+    });
   });
 });

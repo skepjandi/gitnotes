@@ -16,6 +16,7 @@ import { Platform } from 'react-native';
 import { AuthService } from '../../AuthService';
 import { AccountStorage } from '../../AccountStorage';
 import { StorageService } from '../../StorageService';
+import { autoMergeCrdtConflicts } from '../conflictResolution';
 import {
   resolveGitHubRepoToken,
   registerGitHubAppCredential,
@@ -944,10 +945,26 @@ export async function pushForce(
  * retried. Real conflicts come back as `kind === 'Conflicts'` with the
  * conflicted paths; the repo is left in a resolvable merge-conflict state
  * (`conflicts()` / `resolveConflict()`). Force-push is never used.
+ *
+ * A repository with CRDT merge enabled first gets those conflicts auto-merged
+ * (`autoMergeCrdtConflicts`) and the push retried, so every push caller (note
+ * sync, Git button, Explore) shares one behaviour.
  */
 export async function pushWithIntegrate(
   repoPath: string,
   remoteName = 'origin',
+  repoId?: string | null,
+): Promise<PushIntegrateResult> {
+  const result = await pushWithIntegrateOnce(repoPath, remoteName, repoId);
+  if (result.kind !== 'Conflicts' || !repoId) return result;
+  const repo = (await StorageService.getSavedRepositories()).find((entry) => entry.id === repoId);
+  if (!repo || !(await autoMergeCrdtConflicts(repo))) return result;
+  return pushWithIntegrateOnce(repoPath, remoteName, repoId);
+}
+
+async function pushWithIntegrateOnce(
+  repoPath: string,
+  remoteName: string,
   repoId?: string | null,
 ): Promise<PushIntegrateResult> {
   if (!GitEngineModule) {

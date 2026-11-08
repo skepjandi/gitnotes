@@ -2,6 +2,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { parseRepoPath } from '../../utils/gitPathParser';
 import { clone as nativeClone } from './engine/GitEngine';
 import * as GitEngine from './engine/GitEngine';
+import { StorageService } from '../StorageService';
+import { autoMergeCrdtConflicts } from './conflictResolution';
 import { makeGitFs, type PromiseFsClient } from './gitFs';
 import { gitHttp } from './gitHttp';
 import { LfsService } from './lfs';
@@ -483,11 +485,17 @@ export class GitFsService {
 
     try {
       const startedAt = Date.now();
-      const result = await GitEngine.pull(
+      let result = await GitEngine.pull(
         GitFsService.workingTreeUri({ repoPath: opts.repoPath }),
         'origin',
         opts.repoId,
       );
+      if (!result.ok && /conflict/i.test(result.error ?? '')) {
+        // CRDT repos merge their conflicted notes here so every pull caller (not just the
+        // note sync) leaves a clean tree instead of a half-finished merge.
+        const savedRepo = (await StorageService.getSavedRepositories()).find((repo) => repo.path === opts.repoPath);
+        if (savedRepo && (await autoMergeCrdtConflicts(savedRepo))) result = { ok: true };
+      }
       if (!result.ok) {
         const message = result.error ?? 'Native pull failed';
         if (/not.*fast.?forward|diverged|merge.?conflict|conflict/i.test(message)) {

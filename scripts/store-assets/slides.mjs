@@ -55,7 +55,7 @@ export const SLIDES = [
 
 const THEMES = {
   paper: { bg: '#F1EFE9', text: '#1C1C1E', muted: '#5F5F66', accent: '#3A55C8', bezel: '#0B0B0C', rule: 'rgba(28,28,30,.18)' },
-  ink: { bg: '#0F1012', text: '#F2F2F7', muted: '#9A9AA0', accent: '#8B9BE8', bezel: '#2A2B30', rule: 'rgba(242,242,247,.18)' },
+  ink: { bg: '#0F1012', text: '#F2F2F7', muted: '#9A9AA0', accent: '#8B9BE8', bezel: '#3A3B41', rule: 'rgba(242,242,247,.18)' },
   blue: { bg: '#3A55C8', text: '#FFFFFF', muted: 'rgba(255,255,255,.78)', accent: '#DCE3FA', bezel: '#0B0B0C', rule: 'rgba(255,255,255,.28)' },
 };
 
@@ -128,7 +128,7 @@ h1{position:absolute;left:${margin}px;right:${margin}px;top:${Math.round(headTop
 h1 em{font-style:italic;color:${t.accent}}
 .device{position:absolute;left:${deviceX}px;top:${deviceTop}px;width:${deviceW}px;height:${deviceH}px;
   background:${o.frame ? t.bezel : 'transparent'};border-radius:${outerRadius}px ${outerRadius}px ${o.float ? outerRadius : 0}px ${o.float ? outerRadius : 0}px;box-shadow:${shadow};
-  ${o.frame ? `outline:2px solid ${o.slide.theme === 'ink' ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.4)'};` : ''}padding:${bezel}px}
+  outline:${Math.max(3, Math.round(deviceW * 0.004))}px solid ${o.slide.theme === 'paper' ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.55)'};padding:${bezel}px}
 .screen{position:relative;width:${screenW}px;height:${screenH}px;overflow:hidden;border-radius:${screenRadius}px ${screenRadius}px ${o.float ? screenRadius : 0}px ${o.float ? screenRadius : 0}px;background:#000}
 .screen img{position:absolute;left:0;top:${-imgShift}px;width:${screenW}px;height:${imgH}px;display:block}
 ${o.frame && phone ? `.island{position:absolute;left:50%;top:${Math.round(bezel + screenW * 0.027)}px;width:${Math.round(screenW * 0.27)}px;height:${Math.round(screenW * 0.08)}px;margin-left:${-Math.round(screenW * 0.135)}px;background:#000;border-radius:999px}` : ''}

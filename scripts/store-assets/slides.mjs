@@ -72,6 +72,7 @@ const THEMES = {
  * @param {number} o.imageHeight      raw capture height px
  * @param {number} [o.cropTop]        raw px to hide from the top (status bar on Play listings)
  * @param {string} o.fontsUrl         file:// URL of the fonts directory
+ * @param {{rawHeight:number,bg:string,fg:string}} [o.androidBar] paint an Android status bar over the capture's iOS one
  * @param {boolean} [o.float]       device floats fully inside the canvas instead of bleeding off the bottom (Android tablets)
  * @param {number} [o.captionShare]   max share of the height the caption may use (Play: <= .20)
  */
@@ -105,6 +106,8 @@ export function buildSlideHtml(o) {
   const scale = screenW / o.imageWidth;
   const imgH = Math.round(o.imageHeight * scale);
   const imgShift = Math.round(cropTop * scale);
+  const bar = o.androidBar;
+  const barH = bar ? Math.round(bar.rawHeight * scale) : 0;
   const deviceH = o.float ? Math.round(imgH - imgShift + bezel * 2) : H - deviceTop + Math.round(deviceW * 0.12); // bleeds off the bottom edge unless floating
   const screenH = deviceH - bezel * 2;
 
@@ -135,7 +138,7 @@ ${o.frame && phone ? `.island{position:absolute;left:50%;top:${Math.round(bezel 
 </style></head><body><div class="slide"><div class="grain"></div>
 <div class="eyebrow"><b>${num}</b><span>${o.slide.eyebrow}</span></div>
 <h1>${o.slide.headline}</h1>
-<div class="device"><div class="screen"><img src="${o.imageUrl}" alt=""></div>${o.frame && phone && cropTop === 0 ? '' : ''}</div>
+<div class="device"><div class="screen"><img src="${o.imageUrl}" alt="">${bar ? androidBarHtml(bar, barH, screenW) : ''}</div>${o.frame && phone && cropTop === 0 ? '' : ''}</div>
 </div></body></html>`;
 }
 
@@ -177,4 +180,17 @@ p{position:absolute;left:72px;top:352px;width:440px;font:500 17px/1.45 "PX",sans
 <div class="l a">+ Draft the v2 announcement</div>
 <div class="l">&nbsp; Finish sync design</div></div>
 </div></body></html>`;
+}
+
+function androidBarHtml(bar, h, w) {
+  const f = bar.fg;
+  const u = h / 100;
+  return `<div style="position:absolute;left:0;top:0;width:${w}px;height:${h}px;background:${bar.bg};color:${f};font:500 ${Math.round(h * 0.34)}px/1 PX,sans-serif;display:flex;align-items:center;justify-content:space-between;padding:0 ${Math.round(w * 0.06)}px">
+<span>9:41</span>
+<span style="position:absolute;left:50%;top:${Math.round(h * 0.32)}px;width:${Math.round(h * 0.2)}px;height:${Math.round(h * 0.2)}px;margin-left:${-Math.round(h * 0.1)}px;border-radius:50%;background:#000"></span>
+<span style="display:flex;gap:${Math.round(h * 0.12)}px;align-items:center">
+<svg width="${Math.round(h * 0.3)}" height="${Math.round(h * 0.26)}" viewBox="0 0 24 20" fill="${f}"><path d="M12 19 .5 6.5a16 16 0 0 1 23 0Z"/></svg>
+<svg width="${Math.round(h * 0.26)}" height="${Math.round(h * 0.26)}" viewBox="0 0 20 20" fill="${f}"><path d="M20 20H0L20 0Z"/></svg>
+<svg width="${Math.round(h * 0.17)}" height="${Math.round(h * 0.3)}" viewBox="0 0 10 18" fill="${f}"><rect x="3" width="4" height="2" rx="1"/><rect y="2" width="10" height="16" rx="2.5"/></svg>
+</span></div>`;
 }

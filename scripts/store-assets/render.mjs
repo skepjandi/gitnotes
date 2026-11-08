@@ -23,8 +23,8 @@ const SETS = {
   'ios/iphone-6.9': { width: 1320, height: 2868, kind: 'phone', raw: 'iphone', frame: true },
   'ios/iphone-6.3': { width: 1206, height: 2622, kind: 'phone', raw: 'iphone', frame: true },
   'ios/ipad-13': { width: 2064, height: 2752, kind: 'tablet', raw: 'ipad', frame: true },
-  'android/phone': { width: 1080, height: 1920, kind: 'phone', raw: 'iphone', frame: true, cropTop: 180, captionShare: 0.2, float: true },
-  'android/tablet-10': { width: 1440, height: 2560, kind: 'tablet', raw: 'ipad', frame: true, cropTop: 56, float: true },
+  'android/phone': { width: 1080, height: 1920, kind: 'phone', raw: 'iphone', frame: true, statusBar: 180, captionShare: 0.2, float: true },
+  'android/tablet-10': { width: 1440, height: 2560, kind: 'tablet', raw: 'ipad', frame: true, statusBar: 56, float: true },
 };
 
 const chrome =
@@ -66,7 +66,15 @@ try {
     for (const [i, slide] of SLIDES.entries()) {
       const rawPath = path.join(storeDir, 'raw', cfg.raw, slide.shot);
       const meta = await sharp(rawPath).metadata();
+      let androidBar;
+      if (cfg.statusBar) {
+        const { data } = await sharp(rawPath).extract({ left: 8, top: cfg.statusBar + 2, width: 1, height: 1 }).raw().toBuffer({ resolveWithObject: true });
+        const [rr, gg, bb] = data;
+        const light = 0.299 * rr + 0.587 * gg + 0.114 * bb > 140;
+        androidBar = { rawHeight: cfg.statusBar, bg: `rgb(${rr},${gg},${bb})`, fg: light ? '#111' : '#fff' };
+      }
       const html = buildSlideHtml({
+        androidBar,
         slide,
         index: i,
         width: cfg.width,
@@ -74,7 +82,6 @@ try {
         kind: cfg.kind,
         frame: cfg.frame,
         float: cfg.float,
-        cropTop: cfg.cropTop,
         captionShare: cfg.captionShare,
         imageUrl: pathToFileURL(rawPath).href,
         imageWidth: meta.width,

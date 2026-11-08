@@ -14,7 +14,7 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **What:** Added `assets/store/` with 8 iPhone 6.9" (1320×2868), 8 iPhone 6.3" (1206×2622), 8 iPad 13" (2064×2752), 8 Android phone (1080×1920) and 8 Android 10" tablet (1440×2560) screenshots, the 1024×500 Google Play feature graphic, and the raw iOS Simulator captures they come from. All files are opaque RGB PNGs sized to the current App Store Connect and Play Console rules; see `assets/store/README.md` for the rules and sources.
 
-**Why separate Android renders:** the iPhone 17 Pro Max capture is 2.17:1, which violates Play's 2:1 limit, and Play listings should not show iOS status bars or device hardware. The Android sets are 9:16, crop the status bar and keep captions under 20% of the height.
+**Why separate Android renders:** the iPhone 17 Pro Max capture is 2.17:1, which violates Play's 2:1 limit, and Play listings should not show iOS status bars or device hardware. The Android sets are 9:16, replace the iOS status bar with an Android one and keep captions under 20% of the height.
 
 **Regenerate:** `node scripts/store-assets/render.mjs` (Chrome + the `sharp` already in `node_modules`). Copy and layout are in `scripts/store-assets/slides.mjs`.
 

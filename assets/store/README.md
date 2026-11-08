@@ -32,7 +32,7 @@ All files are opaque 3-channel PNGs (no alpha), written by `render.mjs`.
 | Google | feature graphic | exactly 1024×500, JPEG or 24-bit PNG, no alpha, device imagery discouraged | same |
 | Google | text | tagline ≤ 20% of the image, no "Best"/"#1"/price/call-to-action text | same |
 
-Why the Android sets are separate renders and not the Apple files resized: the iPhone 17 Pro Max capture is 1320×2868 (2.17:1), which breaks Google's 2:1 limit. The Android renders are 9:16, hide the iOS status bar, and keep captions under 20% of the height.
+Why the Android sets are separate renders and not the Apple files resized: the iPhone 17 Pro Max capture is 1320×2868 (2.17:1), which breaks Google's 2:1 limit. The Android renders are 9:16, replace the iOS status bar with an Android one (9:41, Wi-Fi, signal, battery), and keep captions under 20% of the height.
 
 Apple lists 6.9" as optional-with-fallback and 6.3" as the mandatory iPhone slot. `iphone-6.9` can be the only upload (App Store Connect scales it down); `iphone-6.3` is there if you want pixel-exact control.
 

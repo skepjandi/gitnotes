@@ -23,8 +23,8 @@ const SETS = {
   'ios/iphone-6.9': { width: 1320, height: 2868, kind: 'phone', raw: 'iphone', frame: true },
   'ios/iphone-6.3': { width: 1206, height: 2622, kind: 'phone', raw: 'iphone', frame: true },
   'ios/ipad-13': { width: 2064, height: 2752, kind: 'tablet', raw: 'ipad', frame: true },
-  'android/phone': { width: 1080, height: 1920, kind: 'phone', raw: 'iphone', frame: false, cropTop: 180, captionShare: 0.2, float: true },
-  'android/tablet-10': { width: 1440, height: 2560, kind: 'tablet', raw: 'ipad', frame: false, cropTop: 56, float: true },
+  'android/phone': { width: 1080, height: 1920, kind: 'phone', raw: 'iphone', frame: true, cropTop: 180, captionShare: 0.2, float: true },
+  'android/tablet-10': { width: 1440, height: 2560, kind: 'tablet', raw: 'ipad', frame: true, cropTop: 56, float: true },
 };
 
 const chrome =

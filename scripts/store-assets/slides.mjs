@@ -54,9 +54,9 @@ export const SLIDES = [
 ];
 
 const THEMES = {
-  paper: { bg: '#F1EFE9', text: '#1C1C1E', muted: '#5F5F66', accent: '#3A55C8', bezel: '#0B0B0C', rule: 'rgba(28,28,30,.18)' },
-  ink: { bg: '#0F1012', text: '#F2F2F7', muted: '#9A9AA0', accent: '#8B9BE8', bezel: '#3A3B41', rule: 'rgba(242,242,247,.18)' },
-  blue: { bg: '#3A55C8', text: '#FFFFFF', muted: 'rgba(255,255,255,.78)', accent: '#DCE3FA', bezel: '#0B0B0C', rule: 'rgba(255,255,255,.28)' },
+  paper: { bg: "linear-gradient(180deg,#F8F9FD 0%,#E1E7F6 100%)", glow: "rgba(58,85,200,.22)", text: "#0B1030", muted: "#3A55C8", accent: "#3A55C8", bezel: "#0B0C10", rule: "rgba(11,16,48,.2)" },
+  ink: { bg: "radial-gradient(120% 70% at 85% 6%,#25399B 0%,#101847 34%,#07080F 80%)", glow: "rgba(139,155,232,.32)", text: "#F4F6FF", muted: "#8B9BE8", accent: "#9DB0FF", bezel: "#0B0C10", rule: "rgba(244,246,255,.2)" },
+  blue: { bg: "linear-gradient(170deg,#2B44B8 0%,#3A55C8 50%,#6F8DF0 100%)", glow: "rgba(255,255,255,.34)", text: "#FFFFFF", muted: "rgba(255,255,255,.8)", accent: "#CFDAFF", bezel: "#0B0C10", rule: "rgba(255,255,255,.3)" },
 };
 
 /**
@@ -117,18 +117,18 @@ export function buildSlideHtml(o) {
 @font-face{font-family:"PX";src:url("${o.fontsUrl}/ibm-plex-sans-latin-500-normal.woff2") format("woff2");font-weight:500}
 @font-face{font-family:"PX";src:url("${o.fontsUrl}/ibm-plex-sans-latin-400-normal.woff2") format("woff2");font-weight:400}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{width:${W}px;height:${H}px;overflow:hidden;background:${t.bg}}
-.slide{position:relative;width:${W}px;height:${H}px;overflow:hidden;background:${t.bg};color:${t.text}}
+html,body{width:${W}px;height:${H}px;overflow:hidden}
+.slide{position:relative;width:${W}px;height:${H}px;overflow:hidden;background:radial-gradient(70% 38% at 50% 72%,${t.glow},transparent),${t.bg};color:${t.text}}
 .grain{position:absolute;inset:0;opacity:${o.slide.theme === 'ink' ? 0.1 : 0.14};background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E")}
 .eyebrow{position:absolute;left:${margin}px;right:${margin}px;top:${capTop}px;display:flex;gap:${Math.round(W * 0.02)}px;align-items:baseline;
   font:500 ${eyebrowSize}px/1 "PX",sans-serif;letter-spacing:.2em;text-transform:uppercase;color:${t.muted};padding-top:${Math.round(eyebrowSize * 0.9)}px;border-top:2px solid ${t.rule}}
 .eyebrow b{font-family:"NR",serif;font-weight:500;letter-spacing:.04em;color:${t.accent};font-size:${Math.round(eyebrowSize * 1.25)}px}
 h1{position:absolute;left:${margin}px;right:${margin}px;top:${Math.round(headTop)}px;
-  font:500 ${headSize}px/1.05 "NR",Georgia,serif;font-optical-sizing:auto;letter-spacing:-.035em;color:${t.text};text-wrap:balance}
+  font:600 ${headSize}px/1.05 "NR",Georgia,serif;font-optical-sizing:auto;letter-spacing:-.035em;color:${t.text};text-wrap:balance}
 h1 em{font-style:italic;color:${t.accent}}
 .device{position:absolute;left:${deviceX}px;top:${deviceTop}px;width:${deviceW}px;height:${deviceH}px;
-  background:${o.frame ? t.bezel : 'transparent'};border-radius:${outerRadius}px ${outerRadius}px ${o.float ? outerRadius : 0}px ${o.float ? outerRadius : 0}px;box-shadow:${shadow};
-  outline:${Math.max(3, Math.round(deviceW * 0.004))}px solid ${o.slide.theme === 'paper' ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.55)'};padding:${bezel}px}
+  background:${o.frame ? t.bezel : 'transparent'};border-radius:${outerRadius}px ${outerRadius}px ${o.float ? outerRadius : 0}px ${o.float ? outerRadius : 0}px;box-shadow:inset 0 0 0 ${Math.max(3, Math.round(deviceW * 0.004))}px rgba(255,255,255,.3),0 0 0 ${Math.max(2, Math.round(deviceW * 0.0025))}px rgba(0,0,0,.75),${shadow};
+  padding:${bezel}px}
 .screen{position:relative;width:${screenW}px;height:${screenH}px;overflow:hidden;border-radius:${screenRadius}px ${screenRadius}px ${o.float ? screenRadius : 0}px ${o.float ? screenRadius : 0}px;background:#000}
 .screen img{position:absolute;left:0;top:${-imgShift}px;width:${screenW}px;height:${imgH}px;display:block}
 ${o.frame && phone ? `.island{position:absolute;left:50%;top:${Math.round(bezel + screenW * 0.027)}px;width:${Math.round(screenW * 0.27)}px;height:${Math.round(screenW * 0.08)}px;margin-left:${-Math.round(screenW * 0.135)}px;background:#000;border-radius:999px}` : ''}

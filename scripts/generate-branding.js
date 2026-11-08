@@ -8,7 +8,7 @@
  *   icon.png            1024×1024  iOS / Expo generic app icon (no rounded corners)
  *   adaptive-icon.png   1024×1024  Android adaptive icon FOREGROUND (transparent bg)
  *   splash-icon.png     1024×1024  square splash source, logo ≈ image width
- *                                  (on-screen size = app.json imageWidth: 300dp ≈ 75% device width)
+ *                                  (on-screen size = app.json imageWidth: 360dp)
  *   favicon.png          512×512   web favicon source
  *   monochrome-icon.png 1024×1024  Android themed icon — grayscale depth mask
  *

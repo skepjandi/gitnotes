@@ -10,6 +10,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-11-08
 
+### feat(store): App Store and Google Play listing assets with a reproducible generator
+
+**What:** Added `assets/store/` with 8 iPhone 6.9" (1320×2868), 8 iPhone 6.3" (1206×2622), 8 iPad 13" (2064×2752), 8 Android phone (1080×1920) and 8 Android 10" tablet (1440×2560) screenshots, the 1024×500 Google Play feature graphic, and the raw iOS Simulator captures they come from. All files are opaque RGB PNGs sized to the current App Store Connect and Play Console rules; see `assets/store/README.md` for the rules and sources.
+
+**Why separate Android renders:** the iPhone 17 Pro Max capture is 2.17:1, which violates Play's 2:1 limit, and Play listings should not show iOS status bars or device hardware. The Android sets are 9:16, replace the iOS status bar with an Android one and keep captions under 20% of the height.
+
+**Regenerate:** `node scripts/store-assets/render.mjs` (Chrome + the `sharp` already in `node_modules`). Copy and layout are in `scripts/store-assets/slides.mjs`.
+
 ### fix(sync): CRDT merge now auto-resolves conflicts instead of opening the conflict screen
 
 **What:** With **Auto-merge note edits (CRDT)** on, a pull or push that diverged still left the repo in a merge-conflict state and the Git button turned red; the CRDT merge was only offered as a preselected option on the conflict screen. Separately, the commit-author fix from the previous entry (`resolveAuthor(repo.id)` plus the `GitNotes <gitnotes@local>` fallback) was not part of the merged #1864, so builds from `main` still failed with `Signature cannot have an empty name or email`; it is included here.

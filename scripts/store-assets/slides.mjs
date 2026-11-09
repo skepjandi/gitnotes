@@ -54,9 +54,33 @@ export const SLIDES = [
 ];
 
 const THEMES = {
-  paper: { bg: "linear-gradient(180deg,#F8F9FD 0%,#E1E7F6 100%)", glow: "rgba(58,85,200,.22)", text: "#0B1030", muted: "#3A55C8", accent: "#3A55C8", bezel: "#0B0C10", rule: "rgba(11,16,48,.2)" },
-  ink: { bg: "radial-gradient(120% 70% at 85% 6%,#25399B 0%,#101847 34%,#07080F 80%)", glow: "rgba(139,155,232,.32)", text: "#F4F6FF", muted: "#8B9BE8", accent: "#9DB0FF", bezel: "#0B0C10", rule: "rgba(244,246,255,.2)" },
-  blue: { bg: "linear-gradient(170deg,#2B44B8 0%,#3A55C8 50%,#6F8DF0 100%)", glow: "rgba(255,255,255,.34)", text: "#FFFFFF", muted: "rgba(255,255,255,.8)", accent: "#CFDAFF", bezel: "#0B0C10", rule: "rgba(255,255,255,.3)" },
+  paper: {
+    bg: 'linear-gradient(180deg,#F8F9FD 0%,#E1E7F6 100%)',
+    glow: 'rgba(58,85,200,.22)',
+    text: '#0B1030',
+    muted: '#3A55C8',
+    accent: '#3A55C8',
+    bezel: '#0B0C10',
+    rule: 'rgba(11,16,48,.2)',
+  },
+  ink: {
+    bg: 'radial-gradient(120% 70% at 85% 6%,#25399B 0%,#101847 34%,#07080F 80%)',
+    glow: 'rgba(139,155,232,.32)',
+    text: '#F4F6FF',
+    muted: '#8B9BE8',
+    accent: '#9DB0FF',
+    bezel: '#0B0C10',
+    rule: 'rgba(244,246,255,.2)',
+  },
+  blue: {
+    bg: 'linear-gradient(170deg,#2B44B8 0%,#3A55C8 50%,#6F8DF0 100%)',
+    glow: 'rgba(255,255,255,.34)',
+    text: '#FFFFFF',
+    muted: 'rgba(255,255,255,.8)',
+    accent: '#CFDAFF',
+    bezel: '#0B0C10',
+    rule: 'rgba(255,255,255,.3)',
+  },
 };
 
 /**
@@ -108,10 +132,14 @@ export function buildSlideHtml(o) {
   const imgShift = Math.round(cropTop * scale);
   const bar = o.androidBar;
   const barH = bar ? Math.round(bar.rawHeight * scale) : 0;
-  const deviceH = o.float ? Math.round(imgH - imgShift + bezel * 2) : H - deviceTop + Math.round(deviceW * 0.12); // bleeds off the bottom edge unless floating
+  const deviceH = o.float
+    ? Math.round(imgH - imgShift + bezel * 2)
+    : H - deviceTop + Math.round(deviceW * 0.12); // bleeds off the bottom edge unless floating
   const screenH = deviceH - bezel * 2;
 
-  const shadow = o.frame ? '0 50px 120px rgba(0,0,0,.38), 0 12px 30px rgba(0,0,0,.25)' : '0 40px 100px rgba(0,0,0,.32)';
+  const shadow = o.frame
+    ? '0 50px 120px rgba(0,0,0,.38), 0 12px 30px rgba(0,0,0,.25)'
+    : '0 40px 100px rgba(0,0,0,.32)';
   const num = String(o.index + 1).padStart(2, '0');
 
   return `<!doctype html><html><head><meta charset="utf-8"><style>

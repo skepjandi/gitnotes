@@ -10,6 +10,10 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-11-09
 
+### fix(ci): restore formatting checks and bump app version to 1.8.3
+
+**What:** Fixed Prettier formatting in the store-asset scripts flagged by CI and updated the package and Expo app versions to 1.8.3.
+
 ### fix(git): normalize invalid commit author signature delimiters
 
 **What:** Android note saves and Git commits failed when the author name or email contained angle brackets or newlines. The native Git engine now strips signature delimiters and flattens line breaks before creating commits, with a regression test covering author metadata.

@@ -23,17 +23,40 @@ const SETS = {
   'ios/iphone-6.9': { width: 1320, height: 2868, kind: 'phone', raw: 'iphone', frame: true },
   'ios/iphone-6.3': { width: 1206, height: 2622, kind: 'phone', raw: 'iphone', frame: true },
   'ios/ipad-13': { width: 2064, height: 2752, kind: 'tablet', raw: 'ipad', frame: true },
-  'android/phone': { width: 1080, height: 1920, kind: 'phone', raw: 'iphone', frame: true, statusBar: 180, captionShare: 0.2, float: true },
-  'android/tablet-10': { width: 1440, height: 2560, kind: 'tablet', raw: 'ipad', frame: true, statusBar: 56, float: true },
+  'android/phone': {
+    width: 1080,
+    height: 1920,
+    kind: 'phone',
+    raw: 'iphone',
+    frame: true,
+    statusBar: 180,
+    captionShare: 0.2,
+    float: true,
+  },
+  'android/tablet-10': {
+    width: 1440,
+    height: 2560,
+    kind: 'tablet',
+    raw: 'ipad',
+    frame: true,
+    statusBar: 56,
+    float: true,
+  },
 };
 
 const chrome =
   process.env.CHROME_BIN ||
-  ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium'].find(existsSync);
+  [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+  ].find(existsSync);
 if (!chrome) throw new Error('Chrome/Chromium not found; set CHROME_BIN');
 
 const wanted = process.argv.slice(2);
-const sets = Object.entries(SETS).filter(([name]) => wanted.length === 0 || wanted.some((w) => name.includes(w)));
+const sets = Object.entries(SETS).filter(
+  ([name]) => wanted.length === 0 || wanted.some((w) => name.includes(w)),
+);
 const work = mkdtempSync(path.join(tmpdir(), 'gn-store-'));
 const logoPath = path.resolve(here, '../../assets/generated/icon.png');
 
@@ -44,9 +67,14 @@ function screenshot(html, name, width, height) {
   execFileSync(
     chrome,
     [
-      '--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1',
-      `--window-size=${width},${height}`, '--virtual-time-budget=4000',
-      `--screenshot=${tmpPng}`, pathToFileURL(htmlPath).href,
+      '--headless=new',
+      '--disable-gpu',
+      '--hide-scrollbars',
+      '--force-device-scale-factor=1',
+      `--window-size=${width},${height}`,
+      '--virtual-time-budget=4000',
+      `--screenshot=${tmpPng}`,
+      pathToFileURL(htmlPath).href,
     ],
     { stdio: 'ignore' },
   );
@@ -55,7 +83,11 @@ function screenshot(html, name, width, height) {
 
 // Both stores reject alpha: write an opaque 3-channel PNG.
 async function writeOpaquePng(tmpPng, out) {
-  await sharp(readFileSync(tmpPng)).flatten({ background: '#ffffff' }).removeAlpha().png({ compressionLevel: 9 }).toFile(out);
+  await sharp(readFileSync(tmpPng))
+    .flatten({ background: '#ffffff' })
+    .removeAlpha()
+    .png({ compressionLevel: 9 })
+    .toFile(out);
   console.log(path.relative(storeDir, out));
 }
 
@@ -68,10 +100,17 @@ try {
       const meta = await sharp(rawPath).metadata();
       let androidBar;
       if (cfg.statusBar) {
-        const { data } = await sharp(rawPath).extract({ left: 8, top: cfg.statusBar + 2, width: 1, height: 1 }).raw().toBuffer({ resolveWithObject: true });
+        const { data } = await sharp(rawPath)
+          .extract({ left: 8, top: cfg.statusBar + 2, width: 1, height: 1 })
+          .raw()
+          .toBuffer({ resolveWithObject: true });
         const [rr, gg, bb] = data;
         const light = 0.299 * rr + 0.587 * gg + 0.114 * bb > 140;
-        androidBar = { rawHeight: cfg.statusBar, bg: `rgb(${rr},${gg},${bb})`, fg: light ? '#111' : '#fff' };
+        androidBar = {
+          rawHeight: cfg.statusBar,
+          bg: `rgb(${rr},${gg},${bb})`,
+          fg: light ? '#111' : '#fff',
+        };
       }
       const html = buildSlideHtml({
         androidBar,
@@ -89,14 +128,20 @@ try {
         fontsUrl,
       });
       const tmpPng = screenshot(html, String(i), cfg.width, cfg.height);
-      const out = path.join(outDir, `${String(i + 1).padStart(2, '0')}-${path.basename(slide.shot, '.png').slice(3)}.png`);
+      const out = path.join(
+        outDir,
+        `${String(i + 1).padStart(2, '0')}-${path.basename(slide.shot, '.png').slice(3)}.png`,
+      );
       await writeOpaquePng(tmpPng, out);
     }
   }
   if (wanted.length === 0 || wanted.some((w) => 'feature-graphic'.includes(w))) {
     mkdirSync(path.join(storeDir, 'android'), { recursive: true });
     const html = buildFeatureGraphicHtml({ logoUrl: pathToFileURL(logoPath).href, fontsUrl });
-    await writeOpaquePng(screenshot(html, 'fg', 1024, 500), path.join(storeDir, 'android/feature-graphic.png'));
+    await writeOpaquePng(
+      screenshot(html, 'fg', 1024, 500),
+      path.join(storeDir, 'android/feature-graphic.png'),
+    );
   }
 } finally {
   rmSync(work, { recursive: true, force: true });

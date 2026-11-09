@@ -391,6 +391,22 @@ pub fn stage_file_lines(path: &Path, file_path: &str, hunks: &[HunkSelection]) -
     })
 }
 
+fn commit_signature(author: &Author) -> Result<Signature<'_>> {
+    let name = author
+        .name
+        .replace(['<', '>'], "")
+        .replace(['\r', '\n'], " ")
+        .trim()
+        .to_owned();
+    let email = author
+        .email
+        .replace(['<', '>'], "")
+        .replace(['\r', '\n'], " ")
+        .trim()
+        .to_owned();
+    Signature::now(&name, &email).map_err(EngineError::Git)
+}
+
 /// Create a commit from the staged index, using `author` as identity.
 /// Returns the created commit.
 pub fn commit_changes(path: &Path, message: &str, author: &Author) -> Result<CommitInfo> {
@@ -406,7 +422,7 @@ pub fn commit_changes(path: &Path, message: &str, author: &Author) -> Result<Com
         }
         let tree_oid = index.write_tree()?;
         let tree = repo.find_tree(tree_oid)?;
-        let sig = Signature::now(&author.name, &author.email)?;
+        let sig = commit_signature(author)?;
         let mut parents: Vec<git2::Commit> = match repo.head() {
             Ok(head) => vec![head.peel_to_commit()?],
             Err(e) if e.code() == git2::ErrorCode::UnbornBranch => Vec::new(),
@@ -994,7 +1010,7 @@ pub fn revert_commit(path: &Path, oid_str: &str, author: &Author) -> Result<Comm
         }
         let tree_oid = index.write_tree()?;
         let tree = repo.find_tree(tree_oid)?;
-        let sig = Signature::now(&author.name, &author.email)?;
+        let sig = commit_signature(author)?;
         let parents: Vec<git2::Commit> = match repo.head() {
             Ok(head) => vec![head.peel_to_commit()?],
             Err(e) if e.code() == git2::ErrorCode::UnbornBranch => Vec::new(),
@@ -1581,6 +1597,34 @@ mod tests {
         assert_eq!(result.entries.len(), 1);
         assert_eq!(result.entries[0].message, "second");
         assert!(!result.shallow);
+    }
+
+    #[test]
+    fn commit_changes_normalizes_signature_delimiters() {
+        let dir = scratch_repo("signature-delimiters");
+        commit_file(&dir, "README", "before\n", "baseline");
+        fs::write(dir.join("README"), "after\n").unwrap();
+        let repo = open_repo(&dir).unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new("README")).unwrap();
+        index.write().unwrap();
+
+        commit_changes(
+            &dir,
+            "update",
+            &Author {
+                name: "Name <Suffix>\nX".to_string(),
+                email: "<author@example.test>".to_string(),
+            },
+        )
+        .unwrap();
+
+        let repo = open_repo(&dir).unwrap();
+        let commit = repo.head().unwrap().peel_to_commit().unwrap();
+        let author = commit.author();
+        assert_eq!(author.name().unwrap(), "Name Suffix X");
+        assert_eq!(author.email().unwrap(), "author@example.test");
+        fs::remove_dir_all(&dir).ok();
     }
 
     #[test]

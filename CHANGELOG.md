@@ -8,6 +8,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-11-09
+
+### fix(git): normalize invalid commit author signature delimiters
+
+**What:** Android note saves and Git commits failed when the author name or email contained angle brackets or newlines. The native Git engine now strips signature delimiters and flattens line breaks before creating commits, with a regression test covering author metadata.
+
 ## 2026-11-08
 
 ### feat(store): App Store and Google Play listing assets with a reproducible generator

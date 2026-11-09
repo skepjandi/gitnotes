@@ -9,7 +9,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
-import { SLIDES, buildFeatureGraphicHtml, buildSlideHtml } from './slides.mjs';
+import {
+  CREATIVES,
+  SLIDES,
+  buildCreativeHtml,
+  buildFeatureGraphicHtml,
+  buildSlideHtml,
+} from './slides.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const storeDir = path.resolve(here, '../../assets/store');
@@ -134,6 +140,25 @@ try {
       );
       await writeOpaquePng(tmpPng, out);
     }
+  }
+  const creatives = Object.entries(CREATIVES).filter(
+    ([key]) => wanted.length === 0 || wanted.some((w) => `ios/creative/${key}`.includes(w)),
+  );
+  for (const [key, spec] of creatives) {
+    const outDir = path.join(storeDir, 'ios/creative');
+    mkdirSync(outDir, { recursive: true });
+    const html = buildCreativeHtml({
+      spec,
+      imageUrls: spec.phones.map(
+        (shot) => pathToFileURL(path.join(storeDir, 'raw/iphone', shot)).href,
+      ),
+      logoUrl: pathToFileURL(logoPath).href,
+      fontsUrl,
+    });
+    await writeOpaquePng(
+      screenshot(html, `creative-${key}`, spec.width, spec.height),
+      path.join(outDir, `${key}-${spec.width}x${spec.height}.png`),
+    );
   }
   if (wanted.length === 0 || wanted.some((w) => 'feature-graphic'.includes(w))) {
     mkdirSync(path.join(storeDir, 'android'), { recursive: true });

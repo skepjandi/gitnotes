@@ -222,3 +222,105 @@ function androidBarHtml(bar, h, w) {
 <svg width="${Math.round(h * 0.17)}" height="${Math.round(h * 0.3)}" viewBox="0 0 10 18" fill="${f}"><rect x="3" width="4" height="2" rx="1"/><rect y="2" width="10" height="16" rx="2.5"/></svg>
 </span></div>`;
 }
+
+/**
+ * App Store creative assets (product page header + search results). `safe` is the
+ * "Art Safe Area" of Apple's own templates in canvas px: copy and focal art stay
+ * inside it, the backdrop fills the rest. Header and search are cropped from the
+ * universal asset by the store, so all three share one composition per canvas.
+ * Text sizes are large on purpose: the whole canvas is shown ~350pt wide.
+ */
+export const CREATIVES = {
+  universal: {
+    width: 5244,
+    height: 2950,
+    safe: { x: 1921, y: 660, w: 1402, h: 962 },
+    phones: ['03-editor.png'],
+    headPx: 150,
+  },
+  header: {
+    width: 3840,
+    height: 1646,
+    safe: { x: 1097, y: 493, w: 1646, h: 661 },
+    phones: ['03-editor.png', '06-git.png'],
+    headPx: 112,
+  },
+  search: {
+    width: 3840,
+    height: 2560,
+    safe: { x: 836, y: 765, w: 2168, h: 1030 },
+    phones: ['03-editor.png', '06-git.png'],
+    headPx: 200,
+  },
+};
+
+const PHONE_BEZEL = 0.022;
+const PHONE_RATIO = 2868 / 1320; // raw iPhone capture height / width
+
+/** Outer phone width for a given outer height (bezel included). */
+function phoneWidth(outerH) {
+  return outerH / ((1 - 2 * PHONE_BEZEL) * PHONE_RATIO + 2 * PHONE_BEZEL);
+}
+
+/**
+ * @param {object} o
+ * @param {typeof CREATIVES[keyof typeof CREATIVES]} o.spec
+ * @param {string[]} o.imageUrls  file:// URLs, same order as spec.phones (front phone first)
+ * @param {string} o.logoUrl
+ * @param {string} o.fontsUrl
+ */
+export function buildCreativeHtml({ spec, imageUrls, logoUrl, fontsUrl }) {
+  const t = THEMES.ink;
+  const { width: W, height: H, safe, headPx } = spec;
+  const inset = Math.round(safe.w * 0.03);
+  const S = { x: safe.x + inset, y: safe.y + inset, w: safe.w - inset * 2, h: safe.h - inset * 2 };
+  const gap = Math.round(S.w * 0.05);
+  const frontH = S.h;
+  const frontW = phoneWidth(frontH);
+  const backScale = 0.9;
+  const two = imageUrls.length > 1;
+  const groupW = two ? Math.round(frontW * 0.6 + frontW * backScale) : Math.round(frontW);
+  const groupX = S.x + S.w - groupW;
+  const textW = S.w - groupW - gap;
+  const wordPx = Math.round(headPx * 0.3);
+
+  const phone = (url, outerH, left, top, z) => {
+    const outerW = Math.round(phoneWidth(outerH));
+    const b = Math.round(outerW * PHONE_BEZEL);
+    const screenW = outerW - b * 2;
+    const screenR = Math.round(screenW * 0.125);
+    return `<div class="phone" style="left:${Math.round(left)}px;top:${Math.round(top)}px;width:${outerW}px;height:${Math.round(outerH)}px;padding:${b}px;border-radius:${screenR + b}px;z-index:${z}">
+<div class="screen" style="border-radius:${screenR}px"><img src="${url}" alt="" style="width:${screenW}px"></div>
+<div class="island" style="left:50%;top:${Math.round(b + screenW * 0.027)}px;width:${Math.round(screenW * 0.27)}px;height:${Math.round(screenW * 0.08)}px;margin-left:${-Math.round(screenW * 0.135)}px"></div></div>`;
+  };
+
+  const backH = frontH * backScale;
+  const phones = two
+    ? phone(imageUrls[1], backH, groupX + frontW * 0.6, S.y + frontH - backH, 1) +
+      phone(imageUrls[0], frontH, groupX, S.y, 2)
+    : phone(imageUrls[0], frontH, groupX, S.y, 2);
+
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face{font-family:"NR";src:url("${fontsUrl}/newsreader-latin-opsz-normal.woff2") format("woff2");font-weight:200 800;font-style:normal}
+@font-face{font-family:"NR";src:url("${fontsUrl}/newsreader-latin-opsz-italic.woff2") format("woff2");font-weight:200 800;font-style:italic}
+@font-face{font-family:"PX";src:url("${fontsUrl}/ibm-plex-sans-latin-500-normal.woff2") format("woff2");font-weight:500}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:${W}px;height:${H}px;overflow:hidden}
+.c{position:relative;width:${W}px;height:${H}px;overflow:hidden;color:${t.text};
+  background:radial-gradient(${Math.round(S.w * 0.9)}px ${Math.round(S.h * 0.9)}px at ${groupX + groupW * 0.5}px ${S.y + S.h * 0.55}px,${t.glow},transparent),${t.bg}}
+.grain{position:absolute;inset:0;opacity:.14;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E")}
+.text{position:absolute;left:${S.x}px;top:${S.y}px;width:${textW}px;height:${S.h}px;display:flex;flex-direction:column;justify-content:center;gap:${Math.round(headPx * 0.34)}px}
+.brand{display:flex;align-items:center;gap:${Math.round(wordPx * 0.6)}px;font:500 ${wordPx}px/1 "PX",sans-serif;letter-spacing:.2em;text-transform:uppercase;color:${t.muted}}
+.brand img{width:${Math.round(wordPx * 2.4)}px;height:${Math.round(wordPx * 2.4)}px;border-radius:22.37%;box-shadow:0 ${Math.round(wordPx * 0.5)}px ${Math.round(wordPx * 1.4)}px rgba(0,0,0,.3)}
+h1{font:600 ${headPx}px/1.04 "NR",Georgia,serif;font-optical-sizing:auto;letter-spacing:-.035em;color:${t.text};text-wrap:balance}
+h1 em{font-style:italic;color:${t.accent}}
+.phone{position:absolute;background:${t.bezel};box-shadow:inset 0 0 0 ${Math.max(3, Math.round(frontW * 0.004))}px rgba(255,255,255,.3),0 0 0 ${Math.max(2, Math.round(frontW * 0.0025))}px rgba(0,0,0,.75),0 ${Math.round(S.h * 0.05)}px ${Math.round(S.h * 0.12)}px rgba(0,0,0,.38),0 ${Math.round(S.h * 0.012)}px ${Math.round(S.h * 0.03)}px rgba(0,0,0,.25)}
+.screen{position:relative;width:100%;height:100%;overflow:hidden;background:#000}
+.screen img{position:absolute;left:0;top:0;display:block}
+.island{position:absolute;background:#000;border-radius:999px}
+</style></head><body><div class="c"><div class="grain"></div>
+<div class="text"><div class="brand"><img src="${logoUrl}" alt="">GitNotēs</div>
+<h1>Your notes, versioned with <em>Git</em>.</h1></div>
+${phones}
+</div></body></html>`;
+}

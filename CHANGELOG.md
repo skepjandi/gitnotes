@@ -10,6 +10,10 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-11-09
 
+### feat(store): App Store product page header and search results creative assets
+
+**What:** Added `assets/store/ios/creative/` with the universal (5244×2950), product page header (3840×1646) and search results (3840×2560) creative assets, rendered from the existing simulator captures by `node scripts/store-assets/render.mjs creative`. Layout stays inside the art safe areas from Apple's templates; the brand line matches the first screenshot.
+
 ### fix(ci): restore formatting checks and bump app version to 1.8.3
 
 **What:** Fixed Prettier formatting in the store-asset scripts flagged by CI and updated the package and Expo app versions to 1.8.3.

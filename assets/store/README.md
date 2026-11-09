@@ -9,6 +9,7 @@ assets/store/
 ├── ios/iphone-6.9/  8 × 1320×2868   App Store, iPhone 6.9" display (upload this set)
 ├── ios/iphone-6.3/  8 × 1206×2622   App Store, iPhone 6.3" display (the slot Apple marks required)
 ├── ios/ipad-13/     8 × 2064×2752   App Store, iPad 13" display (required for iPad apps)
+├── ios/creative/    3 × App Store creative assets: universal 5244×2950, header 3840×1646, search 3840×2560
 ├── android/phone/   8 × 1080×1920   Google Play, phone screenshots (9:16)
 ├── android/tablet-10/ 8 × 1440×2560 Google Play, 7"/10" tablet screenshots (9:16)
 └── android/feature-graphic.png      1024×500 Google Play feature graphic
@@ -32,6 +33,18 @@ All files are opaque 3-channel PNGs (no alpha), written by `render.mjs`.
 | Google | feature graphic | exactly 1024×500, JPEG or 24-bit PNG, no alpha, device imagery discouraged | same |
 | Google | text | tagline ≤ 20% of the image, no "Best"/"#1"/price/call-to-action text | same |
 
+### App Store creative assets (product page header and search results)
+
+Optional images shown at the top of the product page and in Search on iOS 27 / iPadOS 27 and later. They are submitted through App Store Connect (Asset Library or alongside a version) and reviewed separately from screenshots. Spec: [Creative assets specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/creative-assets-specifications), guidance: [Asset best practices](https://developer.apple.com/app-store/asset-best-practices/).
+
+| File | Size | Placement |
+|---|---|---|
+| `ios/creative/universal-5244x2950.png` | 5244×2950 (16:9) | Product page header **and** search results; Apple crops it per placement (upload this one first) |
+| `ios/creative/header-3840x1646.png` | 3840×1646 (21:9) | Product page header only |
+| `ios/creative/search-3840x2560.png` | 3840×2560 (3:2) | Search results only (accepted range 1920×1280 to 3840×2560) |
+
+Copy and focal art sit inside the "Art Safe Area" of Apple's templates (`CREATIVES[*].safe` in `slides.mjs`; universal x 1921–3323, y 660–1622; header x 1097–2743, y 493–1154; search x 836–3004, y 765–1795) with a 3% inset. Apple does not publish how the universal asset is cropped, so check all placements in App Store Connect's Preview tool before submitting. Opaque PNGs, no alpha, no pricing, URLs, awards or other platforms' marks.
+
 Why the Android sets are separate renders and not the Apple files resized: the iPhone 17 Pro Max capture is 1320×2868 (2.17:1), which breaks Google's 2:1 limit. The Android renders are 9:16, replace the iOS status bar with an Android one (9:41, Wi-Fi, signal, battery), and keep captions under 20% of the height.
 
 Apple lists 6.9" as optional-with-fallback and 6.3" as the mandatory iPhone slot. `iphone-6.9` can be the only upload (App Store Connect scales it down); `iphone-6.3` is there if you want pixel-exact control.
@@ -40,7 +53,7 @@ Apple lists 6.9" as optional-with-fallback and 6.3" as the mandatory iPhone slot
 
 ```bash
 node scripts/store-assets/render.mjs            # everything
-node scripts/store-assets/render.mjs ios/ipad   # one set (substring match); `feature-graphic` also works
+node scripts/store-assets/render.mjs ios/ipad   # one set (substring match); `feature-graphic` and `creative` (or `creative/header`) also work
 ```
 
 Needs Google Chrome or Chromium (`CHROME_BIN` overrides the path) and `sharp` (already in `node_modules` through Expo). Copy and layout live in `scripts/store-assets/slides.mjs`; fonts (Newsreader, IBM Plex Sans, SIL OFL) are bundled in `scripts/store-assets/fonts/`.

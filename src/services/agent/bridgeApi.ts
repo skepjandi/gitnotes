@@ -14,7 +14,7 @@ function toProbeResult(ready: ReadyFrame): BridgeProbeResult {
       `This bridge speaks protocol ${ready.protocol}, the app speaks ${BRIDGE_PROTOCOL_VERSION}. Update the older side.`,
     );
   }
-  return { hostname: ready.hostname, bridgeVersion: ready.bridgeVersion, agents: ready.agents, roots: ready.roots };
+  return { hostname: ready.hostname, bridgeVersion: ready.bridgeVersion, agents: ready.agents, roots: ready.roots, features: ready.features };
 }
 
 function asBridgeError(error: unknown): BridgeError {

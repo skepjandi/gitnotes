@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import type { ChatThread, ThreadBackend } from '../../models/Chat';
+import type { AgentConfigOption, ChatThread, ThreadBackend } from '../../models/Chat';
 import { AcpClient, AcpRpcError, AcpTransportError } from './AcpClient';
 import {
   ACP_AUTH_REQUIRED,
@@ -8,6 +8,7 @@ import {
   type AcpNewSessionResult,
   type AcpSessionModeState,
 } from './acpTypes';
+import { parseConfigOptions, withConfigValue } from './acpConfig';
 import { BridgeConnection } from './BridgeConnection';
 import { loadBridgeCredentials } from './bridgeApi';
 import { BridgeError } from './types';
@@ -27,6 +28,10 @@ export interface LiveAgentConnection {
   loadSession: boolean | null;
   authMethods: AcpAuthMethod[];
   modes: AcpSessionModeState | null;
+  configOptions: AgentConfigOption[];
+  /** `promptCapabilities.image`; `null` when this process attached to an agent it did not initialize. */
+  supportsImages: boolean | null;
+  supportsEmbeddedContext: boolean | null;
   /** True while a turn (or a resumed turn) is being driven. */
   busy: boolean;
 }
@@ -34,6 +39,7 @@ export interface LiveAgentConnection {
 export interface SessionSetup {
   sessionId: string;
   modes: AcpSessionModeState | null;
+  configOptions: AgentConfigOption[];
   /** Bridge cursor of the response that finished setup; everything up to it was discarded history. */
   seq?: number;
 }
@@ -93,6 +99,9 @@ function register(
     loadSession: null,
     authMethods: [],
     modes: null,
+    configOptions: [],
+    supportsImages: null,
+    supportsEmbeddedContext: null,
     busy: false,
   };
   liveByThread.set(threadId, live);
@@ -127,6 +136,8 @@ async function startFresh(
     const init = await acp.initialize('gitnotes', clientVersion());
     live.loadSession = init.agentCapabilities?.loadSession === true;
     live.authMethods = init.authMethods ?? [];
+    live.supportsImages = init.agentCapabilities?.promptCapabilities?.image === true;
+    live.supportsEmbeddedContext = init.agentCapabilities?.promptCapabilities?.embeddedContext === true;
     return live;
   } catch (error) {
     releaseAgentConnection(thread.id);
@@ -209,7 +220,8 @@ async function createSession(live: LiveAgentConnection, backend: AgentThreadBack
     }).response;
     live.sessionId = result.sessionId;
     live.modes = result.modes ?? null;
-    return { sessionId: result.sessionId, modes: live.modes, seq };
+    live.configOptions = parseConfigOptions(result.configOptions);
+    return { sessionId: result.sessionId, modes: live.modes, configOptions: live.configOptions, seq };
   } catch (error) {
     throw toError(error, backend);
   }
@@ -225,7 +237,8 @@ async function loadSession(live: LiveAgentConnection, backend: AgentThreadBacken
     ).response;
     live.sessionId = sessionId;
     live.modes = result?.modes ?? null;
-    return { sessionId, modes: live.modes, seq };
+    live.configOptions = parseConfigOptions(result?.configOptions);
+    return { sessionId, modes: live.modes, configOptions: live.configOptions, seq };
   } catch (error) {
     if (error instanceof AcpTransportError) throw error;
     if (error instanceof AcpRpcError && error.code === ACP_AUTH_REQUIRED) throw describeAuthFailure(backend);
@@ -248,6 +261,39 @@ async function restoreMode(live: LiveAgentConnection, setup: SessionSetup, modeI
   }
 }
 
+/** Re-applies the user's earlier choices (model, effort, ...) that a fresh or reloaded session lost. */
+async function restoreConfigOptions(live: LiveAgentConnection, setup: SessionSetup, saved: AgentConfigOption[] | undefined): Promise<void> {
+  if (!saved) return;
+  for (const wanted of saved) {
+    const current = setup.configOptions.find((option) => option.id === wanted.id);
+    if (!current || current.type !== wanted.type || current.currentValue === wanted.currentValue) continue;
+    if (current.type === 'select' && !current.options?.some((choice) => choice.value === wanted.currentValue)) continue;
+    try {
+      const updated = await setConfigOptionValue(live, wanted.id, wanted.currentValue, setup.sessionId);
+      setup.configOptions = updated;
+    } catch {
+      /* the agent keeps its default for this option */
+    }
+  }
+}
+
+/** `session/set_config_option`; resolves with the agent's full option list (patched locally when the agent omits it). */
+export async function setConfigOptionValue(
+  live: LiveAgentConnection,
+  configId: string,
+  value: string | boolean,
+  sessionId: string | null = live.sessionId,
+): Promise<AgentConfigOption[]> {
+  const response = await live.acp.request<{ configOptions?: unknown } | null>('session/set_config_option', {
+    sessionId,
+    configId,
+    value,
+  });
+  const reported = parseConfigOptions(response?.configOptions);
+  live.configOptions = reported.length > 0 ? reported : withConfigValue(live.configOptions, configId, value);
+  return live.configOptions;
+}
+
 /**
  * Makes sure `live` has an ACP session. A persisted session id is restored with
  * `session/load` (history it replays is discarded: the transcript lives on the phone);
@@ -263,5 +309,6 @@ export async function ensureSession(
   if (backend.sessionId && live.loadSession) setup = await loadSession(live, backend, backend.sessionId);
   if (!setup) setup = await createSession(live, backend);
   await restoreMode(live, setup, backend.modeId);
+  await restoreConfigOptions(live, setup, backend.configOptions);
   return setup;
 }

@@ -28,6 +28,12 @@ const MAX_QUEUED_MESSAGES = 256;
 export type ReadyFrame = Extract<ServerFrame, { type: 'ready' }>;
 export type ConnectedFrame = Extract<ServerFrame, { type: 'connected' }>;
 
+type ReplyFor<K extends RequestFrame['type']> = K extends 'fs-search'
+  ? Extract<ReplyFrame, { type: 'fs-results' }>
+  : K extends 'git'
+    ? Extract<ReplyFrame, { type: 'git-result' }>
+    : Extract<ReplyFrame, { type: 'ports-result' }>;
+
 export type BridgeLinkState = 'idle' | 'connecting' | 'ready' | 'reconnecting' | 'closed';
 
 /** Why the connection was abandoned for good. */
@@ -54,6 +60,8 @@ export interface BridgeConnectionOptions {
   pongTimeoutMs?: number;
   /** Time allowed for TCP/TLS + WebSocket upgrade, and for each control round-trip. */
   handshakeTimeoutMs?: number;
+  /** Time allowed for one `request()` round-trip. */
+  requestTimeoutMs?: number;
   reconnectBaseMs?: number;
   reconnectMaxMs?: number;
   random?: () => number;
@@ -63,6 +71,17 @@ interface Waiter {
   handle(frame: ServerFrame): boolean;
   fail(error: Error): void;
 }
+
+type RequestFrame = Extract<ClientFrame, { reqId: string }>;
+type ReplyFrame = Extract<ServerFrame, { type: 'fs-results' | 'git-result' | 'ports-result' }>;
+
+interface PendingRequest {
+  resolve(frame: ReplyFrame): void;
+  reject(error: Error): void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+const REQUEST_TIMEOUT_MS = 10_000;
 
 const CLEARTEXT_PATTERN = /cleartext|app transport security|\bats\b|not permitted by network security policy/i;
 
@@ -117,6 +136,7 @@ export class BridgeConnection {
   private socketGeneration = 0;
   private waiter: Waiter | null = null;
   private abortEstablish: ((error: Error) => void) | null = null;
+  private readonly requests = new Map<string, PendingRequest>();
   private outbox: JsonRpcMessage[] = [];
   private bound: { connectionId: string; agent: string } | null = null;
   private highestSeq = 0;
@@ -126,6 +146,7 @@ export class BridgeConnection {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectWake: (() => void) | null = null;
   private reconnecting = false;
+  private requestCounter = 0;
 
   constructor(options: BridgeConnectionOptions) {
     this.options = options;
@@ -196,6 +217,32 @@ export class BridgeConnection {
       this.bound = previous;
       throw error;
     }
+  }
+
+  /**
+   * Request/response frame (`fs-search`, `git`, `ports`) correlated by `reqId`. Rejects with a
+   * `BridgeError` carrying the bridge's code on `request-error`, `timeout` when unanswered.
+   */
+  request<K extends RequestFrame['type']>(
+    type: K,
+    body: Omit<Extract<RequestFrame, { type: K }>, 'type' | 'reqId'>,
+  ): Promise<ReplyFor<K>> {
+    if (!this.isSocketOpen()) return Promise.reject(new BridgeError('unreachable', 'Socket is not open'));
+    const reqId = `req_${++this.requestCounter}`;
+    return new Promise<ReplyFor<K>>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.requests.delete(reqId);
+        reject(new BridgeError('timeout', 'The bridge did not answer in time'));
+      }, this.options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS);
+      this.requests.set(reqId, { resolve: (reply) => resolve(reply as ReplyFor<K>), reject, timer });
+      try {
+        this.sendFrame({ ...body, type, reqId } as unknown as ClientFrame);
+      } catch (error) {
+        clearTimeout(timer);
+        this.requests.delete(reqId);
+        reject(error instanceof Error ? error : new BridgeError('unreachable', 'Could not send to the bridge'));
+      }
+    });
   }
 
   /** Queues while the socket is down; flushed in order after the next successful resume. */
@@ -435,6 +482,7 @@ export class BridgeConnection {
     if (!frame || typeof frame !== 'object' || typeof frame.type !== 'string') return;
 
     this.markAlive();
+    if (this.settleRequest(frame)) return;
     if (this.waiter?.handle(frame)) return;
 
     switch (frame.type) {
@@ -454,6 +502,28 @@ export class BridgeConnection {
         return;
       default:
         return;
+    }
+  }
+
+  private settleRequest(frame: ServerFrame): boolean {
+    if (frame.type !== 'fs-results' && frame.type !== 'git-result' && frame.type !== 'ports-result' && frame.type !== 'request-error') {
+      return false;
+    }
+    const pending = this.requests.get(frame.reqId);
+    if (!pending) return true;
+    this.requests.delete(frame.reqId);
+    clearTimeout(pending.timer);
+    if (frame.type === 'request-error') pending.reject(new BridgeError('unknown', frame.message, frame.code));
+    else pending.resolve(frame);
+    return true;
+  }
+
+  private failRequests(error: Error): void {
+    const pending = [...this.requests.values()];
+    this.requests.clear();
+    for (const request of pending) {
+      clearTimeout(request.timer);
+      request.reject(error);
     }
   }
 
@@ -530,6 +600,7 @@ export class BridgeConnection {
     const waiter = this.waiter;
     this.waiter = null;
     waiter?.fail(new BridgeError('unreachable', 'The connection to the bridge was lost'));
+    this.failRequests(new BridgeError('unreachable', 'The connection to the bridge was lost'));
     if (!this.bound) {
       this.setState('idle');
       return;
@@ -608,6 +679,7 @@ export class BridgeConnection {
     this.outbox = [];
     this.waiter?.fail(new BridgeError('unreachable', 'Connection closed'));
     this.waiter = null;
+    this.failRequests(new BridgeError('unreachable', 'Connection closed'));
     this.dropSocket();
     this.reconnectWake?.();
     this.setState('closed');

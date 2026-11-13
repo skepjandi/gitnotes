@@ -1,5 +1,6 @@
 import type { AgentCommand, PlanEntry, ToolDiff, ToolKind, ToolLocation, ToolStatus } from '../../models/Chat';
 import type { ChatEventBody, ToolPatch } from '../chat/types';
+import { parseConfigOptions } from './acpConfig';
 import type {
   AcpContentBlock,
   AcpPlanEntry,
@@ -184,6 +185,12 @@ export function mapSessionUpdate(update: AcpSessionUpdate): ChatEventBody[] {
     case 'current_mode_update': {
       const modeId = (update as { currentModeId?: unknown }).currentModeId;
       return typeof modeId === 'string' ? [{ type: 'agent-state', modeId }] : [];
+    }
+    case 'config_option_update': {
+      const raw = (update as { configOptions?: unknown }).configOptions;
+      if (!Array.isArray(raw)) return [];
+      const configOptions = parseConfigOptions(raw);
+      return configOptions.length > 0 ? [{ type: 'agent-state', configOptions }] : [];
     }
     case 'available_commands_update': {
       const raw = (update as { availableCommands?: unknown }).availableCommands;

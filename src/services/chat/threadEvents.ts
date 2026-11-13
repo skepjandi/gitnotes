@@ -3,6 +3,8 @@
  * thread-level changes without importing the session registry (which imports `chatStore`).
  */
 
+import { deleteThreadImages } from './imageStorage';
+
 type ThreadListener = (threadId: string) => void;
 /** Returns true when a live session took over the rename (and will persist it). */
 type RenameListener = (threadId: string, title: string) => boolean;
@@ -22,6 +24,7 @@ export function onThreadRenamed(listener: RenameListener): () => void {
 
 export function emitThreadRemoved(threadId: string): void {
   for (const listener of removedListeners) listener(threadId);
+  void deleteThreadImages(threadId).catch(() => undefined);
 }
 
 export function emitThreadRenamed(threadId: string, title: string): boolean {

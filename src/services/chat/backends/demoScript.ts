@@ -1,4 +1,5 @@
-import type { PlanEntry, ToolDiff } from '../../../models/Chat';
+import type { AgentConfigOption, PlanEntry, ToolDiff } from '../../../models/Chat';
+import type { ElicitationField } from '../types';
 
 export interface DemoScenario {
   thought: string;
@@ -7,7 +8,37 @@ export interface DemoScenario {
   edit: { path: string; title: string; diff: ToolDiff };
   command: string;
   reply: string[];
+  /** A form the agent asks before editing; answers are echoed in the reply. */
+  question?: { message: string; fields: ElicitationField[] };
 }
+
+/** Sample ACP config options the demo thread exposes so the model/effort menus work without a bridge. */
+export const DEMO_CONFIG_OPTIONS: AgentConfigOption[] = [
+  {
+    id: 'model',
+    name: 'Model',
+    category: 'model',
+    type: 'select',
+    currentValue: 'sonnet',
+    options: [
+      { value: 'opus', name: 'Opus', description: 'Most capable', group: 'Anthropic' },
+      { value: 'sonnet', name: 'Sonnet', description: 'Balanced', group: 'Anthropic' },
+      { value: 'haiku', name: 'Haiku', description: 'Fastest', group: 'Anthropic' },
+    ],
+  },
+  {
+    id: 'effort',
+    name: 'Reasoning effort',
+    category: 'thought_level',
+    type: 'select',
+    currentValue: 'medium',
+    options: [
+      { value: 'low', name: 'Low' },
+      { value: 'medium', name: 'Medium' },
+      { value: 'high', name: 'High' },
+    ],
+  },
+];
 
 export const DEMO_SCENARIOS: DemoScenario[] = [
   {
@@ -69,5 +100,42 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
     },
     command: 'npm test',
     reply: ['README updated. ', 'This is a scripted demo, ', 'so nothing on your ', 'device was changed.'],
+  },
+  {
+    thought: 'There are two reasonable test runners here. I should ask which one to use.',
+    plan: [
+      { content: 'Ask which test runner to use', status: 'in_progress' },
+      { content: 'Wire the chosen runner into package.json', status: 'pending' },
+      { content: 'Run the test suite', status: 'pending' },
+    ],
+    read: { path: 'package.json', content: '{\n  "scripts": {\n    "test": "echo no tests"\n  }\n}\n' },
+    edit: {
+      path: 'package.json',
+      title: 'Edit package.json',
+      diff: {
+        path: 'package.json',
+        oldText: '"test": "echo no tests"',
+        newText: '"test": "jest --ci"',
+      },
+    },
+    command: 'npm test',
+    reply: ['The test script ', 'now runs the runner you picked. ', 'This is a scripted demo, ', 'so nothing was changed.'],
+    question: {
+      message: 'Which test runner should I set up?',
+      fields: [
+        {
+          key: 'runner',
+          label: 'Test runner',
+          required: true,
+          kind: 'enum',
+          options: [
+            { value: 'jest', label: 'Jest' },
+            { value: 'vitest', label: 'Vitest' },
+          ],
+          default: 'jest',
+        },
+        { key: 'notes', label: 'Anything else I should know?', required: false, kind: 'string', multiline: true },
+      ],
+    },
   },
 ];

@@ -2,7 +2,14 @@ import type { ChatThread } from '@/models/Chat';
 import { demoBackend, setDemoDelay } from '@/services/chat/backends/demoBackend';
 import { resolveBackend } from '@/services/chat/backends';
 import { applyChatEvent } from '@/services/chat/reducer';
-import type { ChatEvent, ChatRunInput, PermissionDecision, PermissionRequest } from '@/services/chat/types';
+import type {
+  ChatEvent,
+  ChatRunInput,
+  ElicitationRequest,
+  ElicitationResult,
+  PermissionDecision,
+  PermissionRequest,
+} from '@/services/chat/types';
 
 jest.mock('@/services/chat/copy', () => ({ chatT: (key: string) => key }));
 jest.mock('@/services/chat/backends/agentBackend', () => ({ agentBackend: { type: 'agent' } }));
@@ -38,8 +45,20 @@ async function collect(
   thread: ChatThread,
   decide: (request: Omit<PermissionRequest, 'id'>) => Promise<PermissionDecision>,
   signal = new AbortController().signal,
+  decideElicitation: (request: Omit<ElicitationRequest, 'id'>) => Promise<ElicitationResult> = async () => ({
+    action: 'accept',
+    content: {},
+  }),
 ): Promise<ChatEvent[]> {
-  const input: ChatRunInput = { thread, userText: 'hi', contexts: [], signal, requestPermission: decide };
+  const input: ChatRunInput = {
+    thread,
+    userText: 'hi',
+    contexts: [],
+    images: [],
+    signal,
+    requestPermission: decide,
+    requestElicitation: decideElicitation,
+  };
   const events: ChatEvent[] = [];
   for await (const event of demoBackend.run(input)) events.push(event);
   return events;
@@ -89,10 +108,44 @@ describe('demoBackend', () => {
     expect(events[events.length - 1].type).toBe('turn-end');
   });
 
+  it('asks one form question in the question scenario and echoes the answer', async () => {
+    const asked: Array<Omit<ElicitationRequest, 'id'>> = [];
+    const events = await collect(
+      demoThread(4),
+      async () => ({ optionId: 'allow' }),
+      new AbortController().signal,
+      async (request) => {
+        asked.push(request);
+        return { action: 'accept', content: { runner: 'vitest' } };
+      },
+    );
+
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toMatchObject({ mode: 'form' });
+    const fields = asked[0]?.mode === 'form' ? asked[0].fields : [];
+    expect(fields.map((field) => field.kind)).toEqual(['enum', 'string']);
+    expect(fields[0]?.options?.map((option) => option.value)).toEqual(['jest', 'vitest']);
+    const text = events
+      .filter((event): event is Extract<ChatEvent, { type: 'text-delta' }> => event.type === 'text-delta')
+      .map((event) => event.text)
+      .join('');
+    expect(text).toContain('Going with vitest.');
+  });
+
+  it('ends the question scenario as cancelled when the question is dismissed', async () => {
+    const events = await collect(
+      demoThread(4),
+      async () => ({ optionId: 'allow' }),
+      new AbortController().signal,
+      async () => ({ action: 'cancel' }),
+    );
+    expect(events[events.length - 1]).toEqual({ type: 'turn-end', stopReason: 'cancelled' });
+  });
+
   it('cycles scenarios by user turn', async () => {
     const first = await collect(demoThread(1), async () => ({ optionId: 'allow' }));
     const second = await collect(demoThread(2), async () => ({ optionId: 'allow' }));
-    const wrapped = await collect(demoThread(4), async () => ({ optionId: 'allow' }));
+    const wrapped = await collect(demoThread(5), async () => ({ optionId: 'allow' }));
 
     const thought = (events: ChatEvent[]) => events.find((event) => event.type === 'thought-delta');
     expect(thought(first)).not.toEqual(thought(second));

@@ -6,4 +6,6 @@ import type { TFunction } from 'i18next';
  * key while i18next is not initialised so unit tests need no setup.
  */
 export const chatT = ((key: string, options?: Record<string, unknown>) =>
-  i18n.isInitialized ? i18n.t(key, options) : key) as TFunction;
+  i18n.isInitialized
+    ? i18n.t(key, options)
+    : ((options?.defaultValue as string | undefined) ?? key)) as TFunction;

@@ -86,7 +86,7 @@ export class MemoryStorage implements ThreadStorage {
 export class ScriptedBackend implements ChatBackend {
   readonly type: 'model' | 'agent';
   inputs: ChatRunInput[] = [];
-  resumeInputs: Array<Omit<ChatRunInput, 'userText' | 'contexts'>> = [];
+  resumeInputs: Array<Omit<ChatRunInput, 'userText' | 'contexts' | 'images'>> = [];
   private queue: Array<{ event?: ChatEvent; error?: Error; end?: boolean }> = [];
   private wake: (() => void) | null = null;
   /** When true the stream ends with `turn-end cancelled` as soon as the run's signal aborts. */
@@ -94,6 +94,7 @@ export class ScriptedBackend implements ChatBackend {
   onRun: (() => void) | null = null;
   resume?: ChatBackend['resume'];
   setMode?: ChatBackend['setMode'];
+  setConfigOption?: ChatBackend['setConfigOption'];
 
   constructor(type: 'model' | 'agent' = 'model', withResume = false) {
     this.type = type;

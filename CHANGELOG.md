@@ -16,7 +16,6 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 **Needs a bridge update:** `@` mentions, Review and ports require `gitnotes-bridge` >= 0.2.0 (`curl -fsSL https://raw.githubusercontent.com/skepjandi/gitnotes/main/bridge/install.sh | sh`).
 
-
 ### feat(chat): Togo-style chat overhaul — folded work lines, inline approvals, live line, queued prompts, mission control, demo agent
 
 **What:** Rebuilt the chat surface after the way Togo presents coding agents. Prompts are trailing raised bubbles and replies are unboxed markdown; consecutive tool calls fold into one expandable work line; approvals appear inline where the agent asked, with a "Needs you" jump pill; a single live line replaces the old strip and status text; the composer is a raised container with attach, voice, mode chip, agent slash-command palette and send/stop. Prompts typed during a turn are queued with retry/cancel. A mission control sheet (side inspector on wide screens) summarises approvals, plan, changed files, activity and status. The chat list shows live per-thread status, search, and sections. A scripted demo agent works without a bridge.

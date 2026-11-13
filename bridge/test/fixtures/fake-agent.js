@@ -92,7 +92,11 @@ const handle = (message) => {
         { stdio: ['ignore', 'pipe', 'inherit'] },
       );
       child.stdout.once('data', (chunk) => {
-        write({ jsonrpc: '2.0', id, result: { port: Number(String(chunk).trim()), pid: child.pid } });
+        write({
+          jsonrpc: '2.0',
+          id,
+          result: { port: Number(String(chunk).trim()), pid: child.pid },
+        });
       });
       process.on('exit', () => child.kill());
       process.on('SIGTERM', () => process.exit(0));

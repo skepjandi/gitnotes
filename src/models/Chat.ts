@@ -60,6 +60,14 @@ export interface AgentMode {
   description?: string;
 }
 
+/** A slash command the agent advertises (ACP `available_commands_update`). */
+export interface AgentCommand {
+  name: string;
+  description?: string;
+  /** Placeholder for the argument the command takes, when it takes one. */
+  hint?: string;
+}
+
 /**
  * Where a thread's assistant turns come from.
  * - `model`: in-app AI SDK model (Anthropic, OpenAI-compatible, Apple, Llama).
@@ -84,7 +92,10 @@ export type ThreadBackend =
       pendingPromptId?: number;
       modeId?: string;
       availableModes?: AgentMode[];
-    };
+      availableCommands?: AgentCommand[];
+    }
+  /** Scripted walkthrough that replays canned turns; needs no bridge. */
+  | { type: 'demo' };
 
 export interface ChatThread {
   id: string;
@@ -108,6 +119,8 @@ export interface ChatThreadSummary {
   messageCount: number;
   preview?: string;
   /** Absent = model thread. */
-  backend?: 'model' | 'agent';
+  backend?: 'model' | 'agent' | 'demo';
   agentName?: string;
+  /** Agent threads: absolute working directory on the bridge host. */
+  cwd?: string;
 }

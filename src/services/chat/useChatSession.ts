@@ -59,6 +59,8 @@ export function useChatSession(threadId: string): UseChatSessionResult {
       contextBudget,
       send: session.send,
       stop: session.stop,
+      cancelQueued: session.cancelQueued,
+      retryQueued: session.retryQueued,
       retry: session.retry,
       editAndResend: session.editAndResend,
       regenerate: session.regenerate,

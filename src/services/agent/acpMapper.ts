@@ -1,4 +1,4 @@
-import type { PlanEntry, ToolDiff, ToolKind, ToolLocation, ToolStatus } from '../../models/Chat';
+import type { AgentCommand, PlanEntry, ToolDiff, ToolKind, ToolLocation, ToolStatus } from '../../models/Chat';
 import type { ChatEventBody, ToolPatch } from '../chat/types';
 import type {
   AcpContentBlock,
@@ -152,7 +152,7 @@ function toolDisplayName(fields: AcpToolCallFields, patch: ToolPatch): string {
 
 /**
  * ACP `session/update` -> chat events. Pure; variants this app does not render
- * (`user_message_chunk`, `available_commands_update`, anything newer) map to nothing.
+ * (`user_message_chunk`, anything newer) map to nothing.
  */
 export function mapSessionUpdate(update: AcpSessionUpdate): ChatEventBody[] {
   switch (update.sessionUpdate) {
@@ -184,6 +184,21 @@ export function mapSessionUpdate(update: AcpSessionUpdate): ChatEventBody[] {
     case 'current_mode_update': {
       const modeId = (update as { currentModeId?: unknown }).currentModeId;
       return typeof modeId === 'string' ? [{ type: 'agent-state', modeId }] : [];
+    }
+    case 'available_commands_update': {
+      const raw = (update as { availableCommands?: unknown }).availableCommands;
+      if (!Array.isArray(raw)) return [];
+      const availableCommands: AgentCommand[] = [];
+      for (const entry of raw as { name?: unknown; description?: unknown; input?: { hint?: unknown } | null }[]) {
+        if (typeof entry?.name !== 'string') continue;
+        const name = entry.name.replace(/^\/+/, '');
+        if (!name) continue;
+        const command: AgentCommand = { name };
+        if (typeof entry.description === 'string' && entry.description) command.description = entry.description;
+        if (typeof entry.input?.hint === 'string' && entry.input.hint) command.hint = entry.input.hint;
+        availableCommands.push(command);
+      }
+      return [{ type: 'agent-state', availableCommands }];
     }
     default:
       return [];

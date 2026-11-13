@@ -12,6 +12,7 @@ import type {
   ChatSessionState,
   PermissionDecision,
   PermissionRequest,
+  QueuedPrompt,
 } from './types';
 
 export interface ChatSessionDeps {
@@ -41,6 +42,7 @@ type TurnSpec = { kind: 'prompt'; userText: string; contexts: AIContextItem[] } 
 interface TurnHandle {
   token: number;
   controller: AbortController;
+  queued?: { prompt: QueuedPrompt; messageId: string };
 }
 
 interface PendingDelta {
@@ -59,6 +61,7 @@ const INITIAL_STATE: ChatSessionState = {
   statusLine: null,
   pendingPermissions: [],
   retryable: false,
+  queuedPrompts: [],
 };
 
 const noop = (): void => {
@@ -76,6 +79,7 @@ function foldAgentState(
   if (event.connectionId !== undefined) next.connectionId = event.connectionId;
   if (event.modeId !== undefined) next.modeId = event.modeId;
   if (event.availableModes !== undefined) next.availableModes = event.availableModes;
+  if (event.availableCommands !== undefined) next.availableCommands = event.availableCommands;
   if (event.pendingPromptId === null) delete next.pendingPromptId;
   else if (event.pendingPromptId !== undefined) next.pendingPromptId = event.pendingPromptId;
   return next;
@@ -159,6 +163,7 @@ export class ChatSession implements ChatSessionActions {
     this.abortTurn();
     this.clearTimers();
     this.pendingDelta = null;
+    this.store.setState({ queuedPrompts: [] });
   }
 
   private async load(): Promise<void> {
@@ -199,7 +204,16 @@ export class ChatSession implements ChatSessionActions {
   send = async (text: string, contexts: AIContextItem[]): Promise<void> => {
     const thread = this.state.thread;
     const trimmed = text.trim();
-    if (!thread || this.busy || !trimmed) return;
+    if (!thread || !trimmed) return;
+    if (this.busy) {
+      this.store.setState({
+        queuedPrompts: [
+          ...this.state.queuedPrompts,
+          { id: this.deps.newId(), text: trimmed, contexts, state: 'queued' },
+        ],
+      });
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: this.deps.newId(),
@@ -216,6 +230,23 @@ export class ChatSession implements ChatSessionActions {
     this.abortTurn();
     this.flushDelta();
     void this.persist();
+  };
+
+  cancelQueued = (promptId: string): void => {
+    const { queuedPrompts } = this.state;
+    const target = queuedPrompts.find((p) => p.id === promptId);
+    if (!target || target.state === 'sending') return;
+    this.store.setState({ queuedPrompts: queuedPrompts.filter((p) => p.id !== promptId) });
+  };
+
+  retryQueued = (promptId: string): void => {
+    const { queuedPrompts } = this.state;
+    const target = queuedPrompts.find((p) => p.id === promptId);
+    if (!target || target.state !== 'failed') return;
+    this.store.setState({
+      queuedPrompts: [{ ...target, state: 'queued' }, ...queuedPrompts.filter((p) => p.id !== promptId)],
+    });
+    void this.drainQueue();
   };
 
   retry = async (): Promise<void> => {
@@ -316,7 +347,7 @@ export class ChatSession implements ChatSessionActions {
     return { ...thread, title, messages, updatedAt: this.deps.now() };
   }
 
-  private beginTurn(thread?: ChatThread): TurnHandle {
+  private beginTurn(thread?: ChatThread, queued?: TurnHandle['queued']): TurnHandle {
     this.controller?.abort();
     const controller = new AbortController();
     this.controller = controller;
@@ -329,12 +360,17 @@ export class ChatSession implements ChatSessionActions {
       statusLine: null,
       pendingPermissions: [],
     });
-    return { token: ++this.turnToken, controller };
+    return { token: ++this.turnToken, controller, queued };
   }
 
   /** Commits the prompt to the thread, persists it before the backend sees it, then runs the turn. */
-  private async startPrompt(thread: ChatThread, userText: string, contexts: AIContextItem[]): Promise<void> {
-    const handle = this.beginTurn(thread);
+  private async startPrompt(
+    thread: ChatThread,
+    userText: string,
+    contexts: AIContextItem[],
+    queued?: TurnHandle['queued'],
+  ): Promise<void> {
+    const handle = this.beginTurn(thread, queued);
     await this.persist();
     await this.runTurn(handle, { kind: 'prompt', userText, contexts });
   }
@@ -380,8 +416,17 @@ export class ChatSession implements ChatSessionActions {
     const aborted = handle.controller.signal.aborted;
     this.rejectAllPending();
 
-    const thread = this.state.thread;
+    let thread = this.state.thread;
     const failed = !aborted && failure !== null;
+    const unanswered =
+      failed && handle.queued && thread?.messages[thread.messages.length - 1]?.id === handle.queued.messageId;
+    if (thread && unanswered && handle.queued) {
+      thread = { ...thread, messages: thread.messages.slice(0, -1) };
+      this.store.setState({
+        thread,
+        queuedPrompts: [{ ...handle.queued.prompt, state: 'failed' }, ...this.state.queuedPrompts],
+      });
+    }
     if (thread) {
       let messages = applyChatEvent(thread.messages, { type: 'turn-end', stopReason: 'finished' }, this.reducerDeps);
       if (aborted || failed) messages = settleInterruptedTools(messages);
@@ -395,12 +440,35 @@ export class ChatSession implements ChatSessionActions {
     this.store.setState({
       status: failed ? 'error' : 'idle',
       error: failed ? this.errorMessage(failure) : this.persistWarning,
-      retryable: failed && lastIsUser,
+      retryable: failed && lastIsUser && !unanswered,
       statusLine: null,
       streamStartedAt: 0,
       pendingPermissions: [],
     });
     await this.persist();
+    if (!aborted && !failed) await this.drainQueue();
+  }
+
+  private async drainQueue(): Promise<void> {
+    if (this.disposed || this.busy) return;
+    const thread = this.state.thread;
+    const next = this.state.queuedPrompts[0];
+    if (!thread || !next || next.state !== 'queued') return;
+
+    const userMessage: ChatMessage = {
+      id: this.deps.newId(),
+      role: 'user',
+      content: next.text,
+      timestamp: this.deps.now(),
+      attachedContexts: next.contexts,
+    };
+    this.store.setState({ queuedPrompts: this.state.queuedPrompts.slice(1) });
+    await this.startPrompt(
+      this.withMessages(thread, [...thread.messages, userMessage]),
+      next.text,
+      next.contexts,
+      { prompt: next, messageId: userMessage.id },
+    );
   }
 
   private errorMessage(failure: unknown): string {

@@ -21,7 +21,6 @@ describe('mapSessionUpdate', () => {
     const ignored: AcpSessionUpdate[] = [
       { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: '' } },
       { sessionUpdate: 'user_message_chunk', content: { type: 'text', text: 'replayed' } },
-      { sessionUpdate: 'available_commands_update', availableCommands: [] },
       { sessionUpdate: 'config_option_update', configOptions: [] },
       { sessionUpdate: 'something_from_the_future', payload: 1 },
     ];
@@ -142,6 +141,25 @@ describe('mapSessionUpdate', () => {
       { type: 'agent-state', modeId: 'plan' },
     ]);
     expect(mapSessionUpdate({ sessionUpdate: 'current_mode_update' })).toEqual([]);
+  });
+
+  it('maps available commands, stripping the slash and reading the input hint', () => {
+    expect(
+      mapSessionUpdate({
+        sessionUpdate: 'available_commands_update',
+        availableCommands: [
+          { name: '/review', description: 'Review code', input: { hint: 'path' } },
+          { name: 'compact', input: null },
+          { name: '' },
+        ],
+      }),
+    ).toEqual([
+      {
+        type: 'agent-state',
+        availableCommands: [{ name: 'review', description: 'Review code', hint: 'path' }, { name: 'compact' }],
+      },
+    ]);
+    expect(mapSessionUpdate({ sessionUpdate: 'available_commands_update' })).toEqual([]);
   });
 
   it('ignores tool updates without an id instead of throwing', () => {

@@ -51,17 +51,19 @@ describe('ChatSession send', () => {
     expect(h.storage.last.messages.map((m) => m.role)).toEqual(['user', 'assistant']);
   });
 
-  it('ignores blank input and sends while a turn is running', async () => {
+  it('ignores blank input and keeps edit/regenerate a no-op while a turn is running', async () => {
     const h = makeSession(makeThread());
     await h.session.send('   ', []);
     expect(h.backend.inputs).toHaveLength(0);
+    expect(h.session.store.getState().queuedPrompts).toEqual([]);
 
     const first = h.session.send('one', []);
     await tick(0);
-    await h.session.send('two', []);
+    await h.session.send('  ', []);
     await h.session.editAndResend('nope', 'x');
+    await h.session.regenerate('nope');
     expect(h.backend.inputs).toHaveLength(1);
-    expect(h.session.store.getState().thread!.messages).toHaveLength(1);
+    expect(h.session.store.getState().queuedPrompts).toEqual([]);
 
     h.backend.end();
     await first;
@@ -728,5 +730,141 @@ describe('ChatSession misc actions', () => {
     await sent;
     expect(h.backend.inputs[0].signal.aborted).toBe(true);
     expect(h.storage.saved.length).toBe(savesBefore);
+  });
+});
+
+describe('ChatSession queued prompts', () => {
+  it('queues sends while busy in order and drains them after each turn', async () => {
+    const h = makeSession(makeThread());
+    const first = h.session.send('one', []);
+    await tick(0);
+    await h.session.send(' two ', []);
+    await h.session.send('three', []);
+
+    expect(h.backend.inputs).toHaveLength(1);
+    expect(h.session.store.getState().queuedPrompts.map((p) => [p.text, p.state])).toEqual([
+      ['two', 'queued'],
+      ['three', 'queued'],
+    ]);
+    expect(h.session.store.getState().thread!.messages).toHaveLength(1);
+
+    h.backend.end();
+    await tick(0);
+    expect(h.backend.inputs.map((i) => i.userText)).toEqual(['one', 'two']);
+    expect(h.session.store.getState().queuedPrompts.map((p) => p.text)).toEqual(['three']);
+    const users = h.session.store.getState().thread!.messages.filter((m) => m.role === 'user');
+    expect(users.map((m) => m.content)).toEqual(['one', 'two']);
+
+    h.backend.end();
+    await tick(0);
+    expect(h.backend.inputs.map((i) => i.userText)).toEqual(['one', 'two', 'three']);
+    expect(h.session.store.getState().queuedPrompts).toEqual([]);
+
+    h.backend.end();
+    await first;
+    await tick(0);
+    expect(h.session.store.getState().status).toBe('idle');
+  });
+
+  it('keeps the queue after stop and does not auto-send; the next send runs immediately', async () => {
+    const h = makeSession(makeThread());
+    const first = h.session.send('one', []);
+    await tick(0);
+    await h.session.send('queued', []);
+
+    h.session.stop();
+    await tick(300);
+    await first;
+    expect(h.session.store.getState().status).toBe('idle');
+    expect(h.backend.inputs).toHaveLength(1);
+    expect(h.session.store.getState().queuedPrompts.map((p) => p.text)).toEqual(['queued']);
+
+    const next = h.session.send('fresh', []);
+    await tick(0);
+    expect(h.backend.inputs.map((i) => i.userText)).toEqual(['one', 'fresh']);
+    h.backend.end();
+    await tick(0);
+    expect(h.backend.inputs.map((i) => i.userText)).toEqual(['one', 'fresh', 'queued']);
+    h.backend.end();
+    await next;
+  });
+
+  it('marks a queued prompt failed when its turn errors before any output and stops draining', async () => {
+    const h = makeSession(makeThread());
+    const first = h.session.send('one', []);
+    await tick(0);
+    await h.session.send('two', []);
+    await h.session.send('three', []);
+
+    h.backend.end();
+    await tick(0);
+    h.backend.fail(new Error('boom'));
+    await tick(0);
+    await first;
+
+    const state = h.session.store.getState();
+    expect(state.status).toBe('error');
+    expect(state.queuedPrompts.map((p) => [p.text, p.state])).toEqual([
+      ['two', 'failed'],
+      ['three', 'queued'],
+    ]);
+    expect(state.thread!.messages.filter((m) => m.role === 'user').map((m) => m.content)).toEqual(['one']);
+    expect(h.backend.inputs).toHaveLength(2);
+  });
+
+  it('cancels queued and failed prompts, and retries a failed one at the head', async () => {
+    const h = makeSession(makeThread());
+    const first = h.session.send('one', []);
+    await tick(0);
+    await h.session.send('two', []);
+    await h.session.send('three', []);
+    const [two, three] = h.session.store.getState().queuedPrompts;
+
+    h.session.cancelQueued(three.id);
+    expect(h.session.store.getState().queuedPrompts.map((p) => p.text)).toEqual(['two']);
+
+    h.backend.end();
+    await tick(0);
+    h.backend.fail(new Error('boom'));
+    await tick(0);
+    await first;
+    expect(h.session.store.getState().queuedPrompts[0]).toMatchObject({ text: 'two', state: 'failed' });
+
+    h.session.dismissError();
+    h.session.retryQueued(two.id);
+    await tick(0);
+    expect(h.backend.inputs.map((i) => i.userText)).toEqual(['one', 'two', 'two']);
+    expect(h.session.store.getState().queuedPrompts).toEqual([]);
+
+    h.backend.end();
+    await tick(0);
+    expect(h.session.store.getState().status).toBe('idle');
+
+    h.session.cancelQueued('missing');
+    h.session.retryQueued('missing');
+    expect(h.session.store.getState().queuedPrompts).toEqual([]);
+  });
+
+  it('clears the queue on dispose', async () => {
+    const h = makeSession(makeThread());
+    void h.session.send('one', []);
+    await tick(0);
+    await h.session.send('two', []);
+    h.session.dispose();
+    expect(h.session.store.getState().queuedPrompts).toEqual([]);
+  });
+});
+
+describe('ChatSession agent commands', () => {
+  it('folds availableCommands onto the agent backend', async () => {
+    const h = makeSession(makeAgentThread());
+    const sent = h.session.send('go', []);
+    await tick(0);
+    h.backend.push({ type: 'agent-state', availableCommands: [{ name: 'review', description: 'Review' }] });
+    await tick();
+    const backend = h.session.store.getState().thread!.backend;
+    expect(backend).toMatchObject({ type: 'agent', availableCommands: [{ name: 'review', description: 'Review' }] });
+    h.backend.end();
+    await sent;
   });
 });

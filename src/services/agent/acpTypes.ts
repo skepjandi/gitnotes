@@ -66,6 +66,10 @@ export type AcpSessionUpdate =
   | ({ sessionUpdate: 'tool_call_update' } & AcpToolCallFields)
   | { sessionUpdate: 'plan'; entries: AcpPlanEntry[] }
   | { sessionUpdate: 'current_mode_update'; currentModeId: string }
+  | {
+      sessionUpdate: 'available_commands_update';
+      availableCommands: { name: string; description?: string; input?: { hint?: string } | null }[];
+    }
   | { sessionUpdate: string; [key: string]: unknown };
 
 export interface AcpSessionNotification {

@@ -1,5 +1,5 @@
 import type { ChatMessage } from '@/models/Chat';
-import { selectMission } from '@/components/chat/mission/selectMission';
+import { selectMission, withPortsSection } from '@/components/chat/mission/selectMission';
 
 const base = { pendingPermissions: [], backend: { type: 'model' as const }, status: 'idle' as const, streamStartedAt: 0, now: 10_000 };
 
@@ -95,5 +95,68 @@ describe('selectMission', () => {
       elapsedMs: 6_000,
       messageCount: 1,
     });
+  });
+});
+
+describe('selectMission background and agents', () => {
+  const text = (id: string, ts: number): ChatMessage => ({ id, role: 'assistant', content: 'hello', timestamp: ts });
+
+  it('lists running executes that are older than the latest assistant text', () => {
+    const messages: ChatMessage[] = [
+      tool('bg', {
+        toolKind: 'execute',
+        toolStatus: 'running',
+        timestamp: 4_000,
+        toolCallArgs: { command: 'npm run dev' },
+        toolCallResult: Array.from({ length: 60 }, (_, i) => `line ${i}`).join('\n'),
+      }),
+      text('a', 5_000),
+      tool('fg', { toolKind: 'execute', toolStatus: 'running', timestamp: 6_000 }),
+    ];
+    const section = selectMission({ ...base, messages, status: 'running', streamStartedAt: 1 }).sections.find(
+      (s) => s.type === 'background',
+    );
+    expect(section).toMatchObject({ commands: [{ id: 'bg', command: 'npm run dev', elapsedMs: 6_000 }] });
+    const tail = (section as { commands: { tail: string }[] }).commands[0].tail.split('\n');
+    expect(tail).toHaveLength(40);
+    expect(tail[39]).toBe('line 59');
+  });
+
+  it('treats every running execute as background once the turn is over', () => {
+    const messages = [tool('x', { toolKind: 'execute', toolStatus: 'running', toolTitle: 'sleep 100' })];
+    const section = selectMission({ ...base, messages }).sections.find((s) => s.type === 'background');
+    expect(section).toMatchObject({ commands: [{ command: 'sleep 100' }] });
+  });
+
+  it('detects subagent calls by name, title or subagent_type', () => {
+    const messages = [
+      tool('t1', { toolCallName: 'Task', toolStatus: 'completed', toolCallArgs: { description: 'Find usages' }, toolCallResult: 'Found 3' }),
+      tool('t2', { toolCallName: 'x', toolCallArgs: { subagent_type: 'explore', prompt: 'look\nmore' }, toolStatus: 'running' }),
+      tool('t3', { toolCallName: 'Read', toolKind: 'read' }),
+    ];
+    const section = selectMission({ ...base, messages }).sections.find((s) => s.type === 'agents');
+    expect(section).toEqual({
+      type: 'agents',
+      agents: [
+        { id: 't1', description: 'Find usages', status: 'completed', resultSummary: 'Found 3' },
+        { id: 't2', description: 'look', status: 'running', resultSummary: null },
+      ],
+    });
+  });
+
+  it('orders agents and background before plan and ports before activity', () => {
+    const messages: ChatMessage[] = [
+      tool('t1', { toolCallName: 'Task', toolStatus: 'running' }),
+      tool('bg', { toolKind: 'execute', toolStatus: 'running' }),
+      { id: 'p', role: 'assistant', content: '', timestamp: 1, kind: 'plan', plan: [{ content: 'a', status: 'pending' }] },
+      tool('e', { toolKind: 'edit', toolDiffs: [{ path: 'a.ts', oldText: null, newText: 'x' }] }),
+    ];
+    const mission = withPortsSection(selectMission({ ...base, messages }), [{ port: 3000 }]);
+    expect(mission.sections.map((s) => s.type)).toEqual(['agents', 'background', 'plan', 'changes', 'ports', 'activity', 'status']);
+  });
+
+  it('adds no ports section for an empty list', () => {
+    const mission = selectMission({ ...base, messages: [] });
+    expect(withPortsSection(mission, [])).toBe(mission);
   });
 });

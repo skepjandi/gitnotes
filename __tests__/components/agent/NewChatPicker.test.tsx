@@ -137,3 +137,32 @@ describe('NewChatPicker', () => {
     expect(await findByTestId('new-chat-picker.workspaces.empty')).toBeTruthy();
   });
 });
+
+describe('NewChatPicker setup guide', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockListBridgeAgents.mockResolvedValue({ hostname: 'dev', bridgeVersion: '1', agents, roots: ['/code'] });
+  });
+
+  it('offers the guide only when no bridge is paired', () => {
+    useAgentBridgeStore.setState({ bridges: [] });
+    const empty = renderPicker();
+    expect(empty.getByTestId('new-chat-picker.guide')).toBeTruthy();
+    empty.unmount();
+
+    useAgentBridgeStore.setState({ bridges: [bridge] });
+    const paired = renderPicker();
+    expect(paired.queryByTestId('new-chat-picker.guide')).toBeNull();
+  });
+
+  it('starts the demo thread from the guide', async () => {
+    useAgentBridgeStore.setState({ bridges: [] });
+    mockCreateDemoThread.mockResolvedValue({ id: 'demo-2' });
+    const { getByTestId, onAgentThreadCreated } = renderPicker();
+
+    fireEvent.press(getByTestId('new-chat-picker.guide'));
+    fireEvent.press(getByTestId('bridge-guide.demo'));
+
+    await waitFor(() => expect(onAgentThreadCreated).toHaveBeenCalledWith('demo-2'));
+  });
+});

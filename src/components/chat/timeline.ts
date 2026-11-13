@@ -1,5 +1,5 @@
 import type { ChatMessage, ToolKind, ToolStatus } from '../../models/Chat';
-import type { PermissionRequest, QueuedPrompt } from '../../services/chat/types';
+import type { ElicitationRequest, PermissionRequest, QueuedPrompt } from '../../services/chat/types';
 import { resolveMessageKind, resolveToolStatus } from './toolPresentation';
 
 /** A pause longer than this between two messages gets a timestamp divider. */
@@ -14,6 +14,7 @@ export type TimelineItem =
   | { kind: 'notice'; key: string; message: ChatMessage }
   | { kind: 'work'; key: string; messages: ChatMessage[] }
   | { kind: 'needs'; key: string; request: PermissionRequest }
+  | { kind: 'elicitation'; key: string; request: ElicitationRequest }
   | { kind: 'queued'; key: string; prompt: QueuedPrompt };
 
 export type WorkCounter = 'commands' | 'edits' | 'reads' | 'searches' | 'fetches' | 'steps';
@@ -58,13 +59,14 @@ function itemFor(message: ChatMessage): TimelineItem | null {
 
 /**
  * Flattens a transcript into the rows the chat list renders: consecutive tool calls fold into one
- * work row, open approvals sit right after the work that asked for them, and prompts typed while a
+ * work row, open approvals and agent questions sit right after the work that asked for them, and prompts typed while a
  * turn runs trail the transcript.
  */
 export function buildTimeline(
   messages: readonly ChatMessage[],
   pendingPermissions: readonly PermissionRequest[] = [],
   queuedPrompts: readonly QueuedPrompt[] = [],
+  pendingElicitations: readonly ElicitationRequest[] = [],
 ): TimelineItem[] {
   const items: TimelineItem[] = [];
   let work: Extract<TimelineItem, { kind: 'work' }> | null = null;
@@ -93,17 +95,33 @@ export function buildTimeline(
     if (item) items.push(item);
   }
 
-  const unplaced: PermissionRequest[] = [];
-  for (const request of pendingPermissions) {
-    const anchor = request.toolCallId
+  const requests: TimelineItem[] = [
+    ...pendingPermissions.map((request): TimelineItem => ({ kind: 'needs', key: `needs:${request.id}`, request })),
+    ...pendingElicitations.map(
+      (request): TimelineItem => ({ kind: 'elicitation', key: `elicitation:${request.id}`, request }),
+    ),
+  ];
+  const anchored = new Map<number, TimelineItem[]>();
+  const unplaced: TimelineItem[] = [];
+  for (const entry of requests) {
+    const toolCallId = entry.kind === 'needs' || entry.kind === 'elicitation' ? entry.request.toolCallId : undefined;
+    const anchor = toolCallId
       ? items.findIndex(
-          (item) => item.kind === 'work' && item.messages.some((message) => message.toolCallId === request.toolCallId),
+          (item) => item.kind === 'work' && item.messages.some((message) => message.toolCallId === toolCallId),
         )
       : -1;
-    if (anchor === -1) unplaced.push(request);
-    else items.splice(anchor + 1, 0, { kind: 'needs', key: `needs:${request.id}`, request });
+    if (anchor === -1) {
+      unplaced.push(entry);
+      continue;
+    }
+    const group = anchored.get(anchor);
+    if (group) group.push(entry);
+    else anchored.set(anchor, [entry]);
   }
-  for (const request of unplaced) items.push({ kind: 'needs', key: `needs:${request.id}`, request });
+  for (const anchor of [...anchored.keys()].sort((left, right) => right - left)) {
+    items.splice(anchor + 1, 0, ...(anchored.get(anchor) ?? []));
+  }
+  items.push(...unplaced);
 
   for (const prompt of queuedPrompts) items.push({ kind: 'queued', key: `queued:${prompt.id}`, prompt });
   return items;

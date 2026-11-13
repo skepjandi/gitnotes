@@ -10,6 +10,13 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-11-14
 
+### feat(chat): agent chat parity — config menus, questions, images, notes, @ mentions, Review, mission control, setup guide
+
+**What:** Agent chats gained ACP session config options (model, reasoning effort, mode) with a live model chip; ACP elicitation questions (form and URL) as inline cards; image attachments for agents that accept them; attached notes now reach the agent as embedded resources instead of just names; `@` file mentions; an "Earlier" history window; selectable replies; a Review screen (git status, diff, stage, commit); mission control sections for subagents, background commands and listening ports; fade/haptic motion; a two-pane thread list on wide screens; and a "How it works" guide with bridge diagnostics. `gitnotes-bridge` 0.2.0 adds `fs-search`, `git` and `ports` request frames advertised through `ready.features`; older bridges keep working and hide the matching UI.
+
+**Needs a bridge update:** `@` mentions, Review and ports require `gitnotes-bridge` >= 0.2.0 (`curl -fsSL https://raw.githubusercontent.com/skepjandi/gitnotes/main/bridge/install.sh | sh`).
+
+
 ### feat(chat): Togo-style chat overhaul — folded work lines, inline approvals, live line, queued prompts, mission control, demo agent
 
 **What:** Rebuilt the chat surface after the way Togo presents coding agents. Prompts are trailing raised bubbles and replies are unboxed markdown; consecutive tool calls fold into one expandable work line; approvals appear inline where the agent asked, with a "Needs you" jump pill; a single live line replaces the old strip and status text; the composer is a raised container with attach, voice, mode chip, agent slash-command palette and send/stop. Prompts typed during a turn are queued with retry/cancel. A mission control sheet (side inspector on wide screens) summarises approvals, plan, changed files, activity and status. The chat list shows live per-thread status, search, and sections. A scripted demo agent works without a bridge.

@@ -38,3 +38,14 @@ describe('ChatThreadCard', () => {
     expect(onPress).toHaveBeenCalled();
   });
 });
+
+describe('ChatThreadCard selection', () => {
+  it('marks the selected card for the two-pane layout', () => {
+    const selected = render(<ChatThreadCard thread={thread} selected onPress={jest.fn()} onLongPress={jest.fn()} />);
+    expect(selected.getByTestId('chat-thread-card.t1').props.accessibilityState).toEqual({ selected: true });
+    selected.unmount();
+
+    const idle = render(<ChatThreadCard thread={thread} onPress={jest.fn()} onLongPress={jest.fn()} />);
+    expect(idle.getByTestId('chat-thread-card.t1').props.accessibilityState).toEqual({ selected: false });
+  });
+});

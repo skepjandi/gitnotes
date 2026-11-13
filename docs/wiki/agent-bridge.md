@@ -37,6 +37,7 @@ Key properties:
 - **Survives app death.** `thread.backend` stores `connectionId`, `lastSeq` and `pendingPromptId` in the same snapshot as the messages, so a cold-started app can `resume` a turn that finished while it was gone without duplicating text.
 - **Secure by default.** Binds `127.0.0.1`, token auth (32 random bytes), failed-auth back-off, `cwd` containment to configured roots. Roots are a guard rail, **not a sandbox** — the agent's own permission prompts (relayed to the phone) and the token are the security boundary.
 - **Any ACP agent.** Presets: `claude` (`@agentclientprotocol/claude-agent-acp`), `opencode` (`opencode acp`), `pi` (`pi-acp`), `codex` (`@agentclientprotocol/codex-acp`), `gemini` (`gemini --acp`); more via `~/.gitnotes-bridge/config.json`.
+- **Request/response frames (bridge >= 0.2.0).** Besides the agent socket the bridge answers `fs-search` (`@` file mentions, gitignore-aware), `git` (status, diff, stage, unstage, commit; never push, never amend) and `ports` (listening TCP ports of the agent's process tree). They carry a client `reqId`, work on unbound sockets, validate `cwd` against the roots and are advertised in `ready.features`; an older bridge omits them and the app hides the matching UI (`unsupported`). Protocol version stays 1.
 
 ### Reaching the bridge from a phone
 
@@ -52,4 +53,14 @@ Key properties:
 - `src/services/agent/pairing.ts` — `gitnotes://agents/pair?url=…&token=…&name=…`; the app always shows a confirmation with the host before saving a pairing link.
 - `src/services/agent/BridgeConnection.ts` — WebSocket, auth, heartbeat (20s ping / 10s pong timeout), backoff reconnect + `resume`.
 - `src/services/agent/AcpClient.ts`, `acpMapper.ts` — JSON-RPC ACP client and `session/update → ChatEvent` mapping. Advertises no `fs`/`terminal` client capabilities; agents use their own tools on the host.
-- `src/screens/AgentBridgesScreen.tsx` — manage bridges; new-chat picker lets users choose a model or an agent + workspace.
+- `src/screens/AgentBridgesScreen.tsx` — manage bridges; new-chat picker lets users choose a model or an agent + workspace. `BridgeSetupGuide` (How it works + connection diagnostics) opens from here and from the picker.
+- `src/services/agent/bridgeTools.ts` — `fs-search` / `git` / `ports` calls over one reused authenticated socket per bridge (`BridgeConnection.request`, 10 s timeout); features cached per bridge.
+
+## Agent chat capabilities
+
+- **Config options.** ACP `configOptions` (model, reasoning effort, mode, custom) are parsed from `session/new|load`, kept live through `config_option_update`, changed with `session/set_config_option` (optimistic, rolled back on failure) and stored on `thread.backend.configOptions`. Agents without them fall back to legacy `modes`.
+- **Elicitation.** The client advertises `elicitation: { form, url }`. `elicitation/create` becomes a `ElicitationRequest` (flat JSON Schema → fields: string, number, integer, boolean, enum, multi-enum) rendered inline as `ElicitationCard`; url mode shows the host and requires an explicit tap. Answers are `accept` / `decline` / `cancel`. The replay cursor is held while one is open, so a cold restart asks again.
+- **Images.** Picked or captured images are copied to `documentDirectory/chat-images/<threadId>/` (`imageStorage.ts`, max 5 per message, 5 MB each), never embedded in the transcript JSON, and sent as ACP `image` blocks only when the agent advertises `promptCapabilities.image`. Otherwise they are dropped with a visible note.
+- **Notes.** Attached notes, files, folders and repos are resolved to text (`contextContent.ts`, 64 KB per item, 256 KB total, explicit `[truncated]` marker) and sent as ACP `resource` blocks (`gitnotes://note/<path>`), or as plain text when the agent lacks `embeddedContext`.
+- **Review.** `ReviewScreen` (route `ReviewScreen { bridgeId, cwd, path? }`) shows git status, per-file diffs, stage/unstage and commit through the bridge `git` frames. Mission control links to it from its Changes section.
+- **Mission control.** Sections: needs you, subagents (tool calls named Task/Agent or carrying `subagent_type`), background (running `execute` tools with a live output tail), plan, changes, listening ports (polled every 5 s while visible), activity, status.

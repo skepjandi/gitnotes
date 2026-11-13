@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { AddBridgeModal } from '../components/agent/AddBridgeModal';
 import { bridgeErrorMessage } from '../components/agent/bridgeErrors';
 import { bridgeHost } from '../components/agent/format';
+import { BRIDGE_INSTALL_COMMAND, BRIDGE_README_URL, BridgeSetupGuide } from '../components/chat/setup/BridgeSetupGuide';
 import { TextPromptModal } from '../components/chat/TextPromptModal';
 import ContextMenu from '../components/ContextMenu';
 import { Button, EmptyState, Group, GroupRow, IconButton, ScreenHeader, useScreenHeaderHeight } from '../components/ui';
@@ -24,9 +25,6 @@ import { BridgeError, type AgentBridge, type BridgeProbeResult, type PairingLink
 import { useAgentBridgeStore } from '../stores/agentBridgeStore';
 import { HapticService } from '../utils/haptics';
 
-export const BRIDGE_RUN_COMMAND =
-  'curl -fsSL https://raw.githubusercontent.com/skepjandi/gitnotes/main/bridge/install.sh | sh';
-export const BRIDGE_README_URL = 'https://github.com/skepjandi/gitnotes/tree/main/bridge#readme';
 
 type RouteProps = RouteProp<RootStackParamList, 'AgentBridges'>;
 type BridgeStatus = { state: 'checking' } | { state: 'online'; probe: BridgeProbeResult } | { state: 'offline'; error: unknown };
@@ -51,6 +49,7 @@ export default function AgentBridgesScreen() {
   const [renaming, setRenaming] = useState<AgentBridge | null>(null);
   const [copied, setCopied] = useState(false);
   const [checkToken, setCheckToken] = useState(0);
+  const [guideVisible, setGuideVisible] = useState(false);
 
   const params = route.params;
   const pairUrl = params?.url;
@@ -102,7 +101,7 @@ export default function AgentBridgesScreen() {
   );
 
   const handleCopyCommand = useCallback(async () => {
-    await Clipboard.setStringAsync(BRIDGE_RUN_COMMAND);
+    await Clipboard.setStringAsync(BRIDGE_INSTALL_COMMAND);
     HapticService.success();
     setCopied(true);
   }, []);
@@ -254,7 +253,7 @@ export default function AgentBridgesScreen() {
               selectable
               style={{ color: colors.text, fontSize: type.sm, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}
             >
-              {BRIDGE_RUN_COMMAND}
+              {BRIDGE_INSTALL_COMMAND}
             </Text>
           </GroupRow>
           <GroupRow
@@ -298,10 +297,21 @@ export default function AgentBridgesScreen() {
         onCancel={() => setRenaming(null)}
       />
 
+      <BridgeSetupGuide visible={guideVisible} onClose={() => setGuideVisible(false)} />
+
       <ScreenHeader
         title={t('agents.title')}
         onBack={safeBack}
         actions={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[1] }}>
+            <IconButton
+              testID="agent-bridges.button.guide"
+              size="sm"
+              accessibilityLabel={t('agents.guide.title')}
+              onPress={() => setGuideVisible(true)}
+            >
+              <Ionicons name="help-circle-outline" size={20} color={colors.accent} />
+            </IconButton>
           <IconButton
             testID="agent-bridges.button.add"
             size="sm"
@@ -313,6 +323,7 @@ export default function AgentBridgesScreen() {
           >
             <Ionicons name="add" size={20} color={colors.accent} />
           </IconButton>
+          </View>
         }
       />
     </SafeAreaView>

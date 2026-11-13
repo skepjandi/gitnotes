@@ -5,7 +5,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTokens } from '../../contexts/ThemeContext';
 import { AIContextItem } from '../../models/AIProvider';
-import type { AgentCommand } from '../../models/Chat';
+import type { AgentCommand, ImageAttachment } from '../../models/Chat';
+import type { FileMatch } from '../../services/agent/bridgeTools';
+import ContextMenu, { type ContextMenuItem } from '../ContextMenu';
+import { ImageThumbnails } from '../chat/composer/ImageThumbnails';
+import { MentionPalette } from '../chat/composer/MentionPalette';
+import { applyMention } from '../chat/composer/mentions';
+import { useFileMentions, type FileSearch } from '../chat/composer/useFileMentions';
+import type { ImageSource } from '../chat/composer/useImageAttachments';
 import { matchSlashCommands } from '../chat/slashCommands';
 import { IconButton } from '../ui/IconButton';
 
@@ -24,8 +31,16 @@ export interface ChatInputBarProps {
   onChangeText?: (text: string) => void;
   /** Slash commands the connected agent advertises. */
   commands?: AgentCommand[];
-  /** Controls shown beside the send button (mode picker). */
+  /** Controls shown beside the send button (model / effort / mode chips). */
   accessory?: ReactNode;
+  /** Images staged for the next prompt. */
+  attachedImages?: ImageAttachment[];
+  onRemoveImage?: (imageId: string) => void;
+  onImagePress?: (image: ImageAttachment) => void;
+  /** Present only when the agent accepts images; turns the '+' button into a Notes / Photos / Camera menu. */
+  onPickImage?: (source: ImageSource) => void;
+  /** Present only when the bridge can search files; enables `@` mentions. */
+  fileSearch?: FileSearch;
 }
 
 export function ChatInputBar({
@@ -42,6 +57,11 @@ export function ChatInputBar({
   onChangeText,
   commands,
   accessory,
+  attachedImages = [],
+  onRemoveImage,
+  onImagePress,
+  onPickImage,
+  fileSearch,
 }: ChatInputBarProps) {
   const [internalText, setInternalText] = useState('');
   const isControlled = value !== undefined && !!onChangeText;
@@ -53,11 +73,46 @@ export function ChatInputBar({
   const hasText = text.trim().length > 0;
   const showStop = isStreaming && !hasText && Boolean(onStop);
   const suggestions = useMemo(() => matchSlashCommands(text, commands), [text, commands]);
+  const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
+  const [forcedSelection, setForcedSelection] = useState<{ start: number; end: number } | undefined>(undefined);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const { mention, results: mentionResults } = useFileMentions(
+    text,
+    selection ? selection.end : text.length,
+    fileSearch,
+    suggestions.length === 0,
+  );
+
+  const changeText = (next: string) => {
+    setSelection(null);
+    setForcedSelection(undefined);
+    handleTextChange(next);
+  };
+
+  const pickMention = (match: FileMatch) => {
+    if (!mention) return;
+    const applied = applyMention(text, mention, match.path, match.isDir);
+    handleTextChange(applied.text);
+    setSelection({ start: applied.caret, end: applied.caret });
+    setForcedSelection({ start: applied.caret, end: applied.caret });
+  };
+
+  const attachItems = useMemo<ContextMenuItem[]>(
+    () =>
+      onPickImage
+        ? [
+            { icon: 'document-text-outline', label: t('chat.attachNotes'), testID: 'chat-input.attach.notes', onPress: onAttach },
+            { icon: 'images-outline', label: t('chat.images.library'), testID: 'chat-input.attach.library', onPress: () => onPickImage('library') },
+            { icon: 'camera-outline', label: t('chat.images.camera'), testID: 'chat-input.attach.camera', onPress: () => onPickImage('camera') },
+          ]
+        : [],
+    [onPickImage, onAttach, t],
+  );
 
   const handleSend = () => {
     if (!hasText || disabled) return;
     onSend(text);
-    handleTextChange('');
+    changeText('');
   };
 
   const sendDisabled = !hasText || disabled;
@@ -88,7 +143,7 @@ export function ChatInputBar({
               key={command.name}
               testID={`chat-input.slash.${command.name}`}
               accessibilityRole="button"
-              onPress={() => handleTextChange(`/${command.name} `)}
+              onPress={() => changeText(`/${command.name} `)}
               style={{ paddingHorizontal: spacing[3], paddingVertical: spacing[2] }}
             >
               <Text style={{ color: colors.text, fontSize: type.sm, fontWeight: '600' }}>
@@ -104,6 +159,8 @@ export function ChatInputBar({
           ))}
         </View>
       ) : null}
+
+      {mention ? <MentionPalette results={mentionResults} onSelect={pickMention} /> : null}
 
       {contextWarning && contextWarning.message ? (
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing[2], marginBottom: spacing[2] }}>
@@ -154,6 +211,10 @@ export function ChatInputBar({
           </ScrollView>
         ) : null}
 
+        {attachedImages.length > 0 && onRemoveImage ? (
+          <ImageThumbnails images={attachedImages} onRemove={onRemoveImage} onPress={onImagePress} />
+        ) : null}
+
         <TextInput
           testID="chat-input.input.message"
           style={{
@@ -170,7 +231,12 @@ export function ChatInputBar({
           autoCapitalize="sentences"
           multiline
           value={text}
-          onChangeText={handleTextChange}
+          onChangeText={changeText}
+          onSelectionChange={(event) => {
+            setSelection(event.nativeEvent.selection);
+            setForcedSelection(undefined);
+          }}
+          selection={forcedSelection}
           editable={!disabled}
         />
 
@@ -178,7 +244,8 @@ export function ChatInputBar({
           <IconButton
             variant="ghost"
             size="sm"
-            onPress={onAttach}
+            testID="chat-input.button.attach"
+            onPress={onPickImage ? () => setAttachMenuOpen(true) : onAttach}
             disabled={disabled}
             accessibilityLabel={t('chat.attachContext')}
           >
@@ -235,6 +302,17 @@ export function ChatInputBar({
           )}
         </View>
       </View>
+
+      {onPickImage ? (
+        <ContextMenu
+          visible={attachMenuOpen}
+          onClose={() => setAttachMenuOpen(false)}
+          title={t('chat.attachContext')}
+          headerIcon="attach-outline"
+          items={attachItems}
+          bottomSheet
+        />
+      ) : null}
     </View>
   );
 }

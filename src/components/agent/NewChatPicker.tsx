@@ -9,6 +9,7 @@ import { createAgentThread, createDemoThread } from '../../services/chat';
 import { useAgentBridgeStore } from '../../stores/agentBridgeStore';
 import { HapticService } from '../../utils/haptics';
 import { Button, Modal } from '../ui';
+import { BridgeSetupGuide } from '../chat/setup/BridgeSetupGuide';
 import { bridgeErrorMessage } from './bridgeErrors';
 import { folderName } from './format';
 
@@ -112,6 +113,7 @@ export function NewChatPicker({ visible, onClose, onSelectModel, onAgentThreadCr
   const [reloadToken, setReloadToken] = useState(0);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [guideVisible, setGuideVisible] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -256,6 +258,18 @@ export function NewChatPicker({ visible, onClose, onSelectModel, onAgentThreadCr
           </View>
         );
       })}
+      {bridges.length === 0 ? (
+        <PickerRow
+          testID="new-chat-picker.guide"
+          icon="help-circle-outline"
+          title={t('agents.guide.title')}
+          subtitle={t('agents.guide.pickerHint')}
+          onPress={() => {
+            HapticService.selection();
+            setGuideVisible(true);
+          }}
+        />
+      ) : null}
       <SectionLabel>{t('chat.demoSection')}</SectionLabel>
       <PickerRow
         testID="new-chat-picker.demo"
@@ -341,6 +355,15 @@ export function NewChatPicker({ visible, onClose, onSelectModel, onAgentThreadCr
       <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 460 }} contentContainerStyle={{ paddingBottom: spacing[4] }}>
         {step.kind === 'choose' ? renderChoose() : renderWorkspace(step)}
       </ScrollView>
+      <BridgeSetupGuide
+        visible={guideVisible}
+        onClose={() => setGuideVisible(false)}
+        onTryDemo={() => {
+          setGuideVisible(false);
+          void handleSelectDemo();
+        }}
+        demoBusy={creating}
+      />
     </Modal>
   );
 }

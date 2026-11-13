@@ -36,15 +36,14 @@ describe('ToolCallCard', () => {
     ['failed', 'Failed'],
     ['rejected', 'Rejected'],
   ])('renders the %s status badge', (status, label) => {
-    const { getByTestId, getByText } = render(<ToolCallCard message={toolMessage({ toolStatus: status })} />);
+    const { getByTestId } = render(<ToolCallCard message={toolMessage({ toolStatus: status })} />);
 
-    expect(getByTestId(`chat-tool.status.${status}`)).toBeTruthy();
-    expect(getByText(label)).toBeTruthy();
+    expect(getByTestId(`chat-tool.status.${status}`).props.accessibilityLabel).toBe(label);
   });
 
   it('uses the agent title, falling back to the humanised tool name', () => {
     const titled = render(<ToolCallCard message={toolMessage()} />);
-    expect(titled.getByTestId('chat-tool.title').props.children).toBe('Run npm test');
+    expect(titled.getByTestId('chat-tool.title').props.children).toBe('npm test');
     titled.unmount();
 
     const legacy = render(
@@ -107,10 +106,10 @@ describe('ToolCallCard', () => {
         { path: 'src/big.ts', oldText: null, newText },
       ],
     });
-    const { getByTestId, getAllByTestId, getByText } = render(<ToolCallCard message={message} />);
+    const { getByTestId, getAllByTestId, getAllByText } = render(<ToolCallCard message={message} />);
     fireEvent.press(getByTestId('chat-tool.button.toggle'));
 
-    expect(getByText('src/small.ts')).toBeTruthy();
+    expect(getAllByText('src/small.ts').length).toBeGreaterThan(0);
     expect(getAllByTestId('chat-tool.diff-line.del')).toHaveLength(1);
     // 1 add in the small diff + MAX_DIFF_LINES in the capped big diff
     expect(getAllByTestId('chat-tool.diff-line.add')).toHaveLength(1 + MAX_DIFF_LINES);

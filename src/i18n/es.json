@@ -326,7 +326,6 @@
     "useApi": "Usar API",
     "clone": "Clonar",
     "cloneModeDescription": "Clon (árbol de trabajo local)",
-
     "cloneWriteThroughHint": "Guarda y envía inmediatamente cuando hay conexión. Los cambios sin conexión se guardan y se envían automáticamente al volver.",
     "download": "Descargar",
     "syncFrequently": "Sincronizar con frecuencia",
@@ -396,7 +395,6 @@
     "lfsDoneTitle": "Descargas de LFS completadas",
     "lfsDoneBody": "{{count}} archivo(s) descargado(s) de {{name}}.",
     "lfsFailedTitle": "Algunas descargas de LFS fallaron",
-
     "switch": "Cambiar",
     "unpushedCommitsTitle": "Commits sin enviar",
     "unpushedCommitsBody": "{{name}} en la rama \"{{branch}}\" tiene commits locales sin enviar. Por favor, envía tus cambios.",
@@ -527,6 +525,45 @@
       "chooseWorkspace": "Elige una carpeta",
       "workspaceEmpty": "No hay carpetas disponibles. Añade una raíz al iniciar el bridge.",
       "lastUsed": "Última usada"
+    },
+    "guide": {
+      "title": "Cómo funciona",
+      "intro": "Un pequeño programa puente en tu ordenador permite que GitNotes hable con agentes de código como Claude Code.",
+      "step1": "Instala el puente en tu ordenador",
+      "step2": "Inícialo",
+      "step3": "Vincula este teléfono",
+      "step3Body": "Escanea el código QR que muestra, o pega el enlace de vinculación, en Ajustes > Agentes de código.",
+      "reachTitle": "Llegar a tu ordenador desde el teléfono",
+      "routes": {
+        "tailscale": {
+          "name": "Tailscale (recomendado)",
+          "note": "Ejecuta `tailscale serve --bg 7878`. Cifrado, funciona en iOS y Android, sin abrir puertos."
+        },
+        "lan": {
+          "name": "Red local",
+          "note": "Inicia el puente con --host 0.0.0.0. Solo iOS; las versiones release de Android bloquean el tráfico sin cifrar."
+        },
+        "tunnel": {
+          "name": "Cloudflare Tunnel",
+          "note": "Punto de acceso público; el token es la única barrera."
+        }
+      },
+      "diagnosticsTitle": "Comprobar conexión",
+      "check": "Comprobar conexión",
+      "reachable": "Puente accesible",
+      "unreachable": "Puente no accesible",
+      "protocolOk": "La versión de protocolo {{version}} coincide",
+      "protocolMismatch": "La versión de protocolo no coincide (la app usa {{expected}})",
+      "bridgeVersion": "Versión del puente {{version}}",
+      "features": {
+        "fs-search": "Búsqueda de archivos (menciones @)",
+        "git": "Revisión (estado de git, diff, commit)",
+        "ports": "Puertos en escucha"
+      },
+      "updateHint": "A este puente le faltan funciones. Actualiza gitnotes-bridge en tu ordenador.",
+      "tryDemo": "Probar el agente de demostración",
+      "pickerHint": "Instala el puente y vincula tu ordenador",
+      "nudge": "Chatea con agentes de código en tu ordenador. Cómo funciona"
     }
   },
   "chat": {
@@ -714,8 +751,66 @@
       "state_awaiting": "Esperando aprobación",
       "state_idle": "Inactivo",
       "elapsed": "Transcurrido",
-      "messages": "Mensajes"
-    }
+      "messages": "Mensajes",
+      "openInReview": "Abrir en Revisión",
+      "reviewChanges": "Revisar cambios",
+      "agents": "Subagentes",
+      "background": "En segundo plano",
+      "ports": "Puertos en escucha",
+      "copyPort": "Copiar puerto {{port}}",
+      "noOutput": "Aún no hay salida",
+      "subagent_pending": "Pendiente",
+      "subagent_awaiting-approval": "Esperando aprobación",
+      "subagent_running": "En ejecución",
+      "subagent_completed": "Hecho",
+      "subagent_failed": "Fallido",
+      "subagent_rejected": "Rechazado"
+    },
+    "attachNotes": "Adjuntar notas",
+    "config": {
+      "effortTitle": "Esfuerzo",
+      "modelTitle": "Modelo",
+      "options": "Opciones"
+    },
+    "elicitation": {
+      "decline": "Rechazar",
+      "needsYou": "Te necesita",
+      "open": "Abrir",
+      "openConfirmTitle": "¿Abrir {{host}}?",
+      "submit": "Enviar",
+      "unsafeUrl": "Enlace no seguro",
+      "urlWarning": "Abre solo enlaces de confianza. El agente pidió esta URL.",
+      "error": {
+        "required": "Este campo es obligatorio",
+        "number": "Introduce un número",
+        "integer": "Introduce un número entero",
+        "min": "Introduce {{min}} o más",
+        "max": "Introduce {{max}} o menos"
+      }
+    },
+    "images": {
+      "camera": "Cámara",
+      "library": "Fotos",
+      "remove": "Quitar imagen",
+      "permissionDenied": "Permiso de cámara denegado",
+      "pickFailed": "No se pudo añadir esa imagen"
+    },
+    "loadEarlier_one": "Mostrar {{count}} mensaje anterior",
+    "loadEarlier_other": "Mostrar {{count}} mensajes anteriores",
+    "rateLimited": "El proveedor está limitando las solicitudes. Espera un momento y reintenta.",
+    "splitPlaceholderTitle": "Selecciona un chat",
+    "splitPlaceholderSubtitle": "Elige una conversación de la lista o inicia una nueva.",
+    "step": {
+      "ran": "Ejecutó",
+      "edited": "Editó",
+      "read": "Leyó",
+      "searched": "Buscó",
+      "deleted": "Eliminó",
+      "moved": "Movió",
+      "fetched": "Obtuvo"
+    },
+    "tooManyImages": "Puedes adjuntar como máximo {{max}} imágenes por mensaje.",
+    "imageTooLarge": "{{name}} supera los {{max}} MB"
   },
   "errors": {
     "somethingWrong": "Algo salió mal",
@@ -799,7 +894,6 @@
       "backgroundSync": "La sincronización en segundo plano se ejecuta incluso cuando la app no está activa, asegurando que tus notas estén actualizadas.",
       "floatingGitButton": "Toca para hacer stage, commit o push. Mantén presionado para una sincronización rápida en todos los repos.",
       "cloneMode": "El modo clone sincroniza a través de un árbol de trabajo git local. Requiere más almacenamiento pero funciona sin conexión con soporte LFS.",
-
       "lfsFiles": "Los archivos grandes rastreados por Git LFS se descargan bajo demanda. Descarga los archivos pendientes para verlos sin conexión.",
       "templatesRepo": "Conecta un repositorio de GitHub para almacenar y sincronizar tus plantillas de notas personalizadas.",
       "clearData": "Elimina permanentemente todas las notas, tareas y lienzos de este dispositivo. Tus archivos en GitHub no se ven afectados.",
@@ -1025,8 +1119,8 @@
         "failed": "Error de Inicio de Sesión"
       },
       "message": {
-      "successSimple": "Tu cuenta de GitHub está conectada. Configurando tus notas…",
-      "successQuickSetup": "Tu cuenta de GitHub está conectada. Continúa configurando tus notas…",
+        "successSimple": "Tu cuenta de GitHub está conectada. Configurando tus notas…",
+        "successQuickSetup": "Tu cuenta de GitHub está conectada. Continúa configurando tus notas…",
         "success": "Tu cuenta de GitHub ahora está conectada.",
         "denied": "El inicio de sesión en GitHub se canceló o denegó.",
         "freeTierLimit": "Has alcanzado el número máximo de cuentas en el plan gratuito. Mejora a Pro para añadir más cuentas.",
@@ -1552,5 +1646,29 @@
       "customCssHint": "Se añade tras los estilos del tema y se aplica a todas las páginas.",
       "previewHint": "Las fuentes son las del dispositivo de cada visitante, así el sitio carga rápido y funciona sin conexión."
     }
+  },
+  "review": {
+    "binary": "Archivo binario no mostrado",
+    "renamed": "Renombrado de {{from}} a {{to}}",
+    "noChanges": "No hay cambios que mostrar",
+    "noNewline": "Sin salto de línea al final del archivo",
+    "moreLines": "{{count}} líneas más no mostradas",
+    "truncated": "Diff truncado",
+    "stage": "Preparar",
+    "unstage": "Quitar de preparados",
+    "stageAll": "Preparar todo",
+    "unstageAll": "Quitar todo de preparados",
+    "section_staged": "Preparados",
+    "section_changes": "Cambios",
+    "section_untracked": "Sin seguimiento",
+    "detached": "HEAD desacoplado",
+    "notARepo": "No es un repositorio git",
+    "notARepoHint": "Esta carpeta de trabajo no está dentro de un repositorio git.",
+    "unsupported": "Actualiza gitnotes-bridge",
+    "unsupportedHint": "Este puente es demasiado antiguo para la revisión. Actualiza gitnotes-bridge en tu ordenador.",
+    "loadFailed": "No se pudieron cargar los cambios",
+    "clean": "Árbol de trabajo limpio",
+    "commitPlaceholder": "Mensaje del commit",
+    "commit": "Commit ({{count}})"
   }
 }

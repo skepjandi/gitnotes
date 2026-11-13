@@ -1,10 +1,12 @@
-import React, { Fragment, useMemo } from 'react';
-import { View, Text, Pressable, useColorScheme } from 'react-native';
+import React, { Fragment, useMemo, useState } from 'react';
+import { View, Text, Pressable, Platform, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useMarkdown, type MarkedStyles } from 'react-native-marked';
 import { useTokens, useTheme } from '../../contexts/ThemeContext';
-import type { ChatMessage } from '../../models/Chat';
+import type { ChatMessage, ImageAttachment } from '../../models/Chat';
 import { parseThoughtContent } from '../../utils/chatThoughts';
+import { ImageViewerModal } from '../chat/composer/ImageViewerModal';
 import { PlanCard } from '../chat/PlanCard';
 import { ThoughtBlock } from '../chat/ThoughtBlock';
 import { ToolCallCard } from '../chat/ToolCallCard';
@@ -46,11 +48,19 @@ export function TypingDots() {
 }
 
 const USER_BUBBLE_RADIUS = 18;
+const IMAGE_SIZE = 96;
+const MONOSPACE = Platform.select({ ios: 'Menlo', android: 'monospace', default: undefined });
+
+/** A user message that is a slash command (`/compact`, `/review src`) reads as a command chip, not prose. */
+export function isCommandEcho(content: string): boolean {
+  return /^\/[^\s/]/.test(content) && !content.includes('\n');
+}
 
 function TextRow({ message, isStreaming, onLongPress }: ChatMessageBubbleProps) {
   const { colors, spacing, type } = useTokens();
   const { isDark } = useTheme();
   const colorScheme = useColorScheme();
+  const [viewerImage, setViewerImage] = useState<ImageAttachment | null>(null);
 
   const isUser = message.role === 'user';
   const { thought: legacyThought, visible: visibleContent } = useMemo(
@@ -91,11 +101,13 @@ function TextRow({ message, isStreaming, onLongPress }: ChatMessageBubbleProps) 
     theme: markdownTheme,
     styles: markdownStyles,
     colorScheme,
+    selectable: true,
   });
 
   if (!isUser && isStreaming && !message.content) return <TypingDots />;
 
   if (isUser) {
+    const command = isCommandEcho(message.content);
     return (
       <Pressable
         testID="chat-message-bubble.button.long-press"
@@ -104,17 +116,46 @@ function TextRow({ message, isStreaming, onLongPress }: ChatMessageBubbleProps) 
         delayLongPress={350}
         android_ripple={{ color: 'transparent' }}
       >
+        {message.attachedImages && message.attachedImages.length > 0 ? (
+          <View testID="chat-message-bubble.images" style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: spacing[1], marginBottom: spacing[1] }}>
+            {message.attachedImages.map((image) => (
+              <Pressable
+                key={image.id}
+                testID={`chat-message-bubble.image.${image.id}`}
+                accessibilityRole="imagebutton"
+                accessibilityLabel={image.name}
+                onPress={() => setViewerImage(image)}
+              >
+                <Image
+                  source={{ uri: image.uri }}
+                  contentFit="cover"
+                  style={{ width: IMAGE_SIZE, height: IMAGE_SIZE, borderRadius: 12, backgroundColor: colors.border }}
+                />
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
         <View
+          testID={command ? 'chat-message-bubble.command' : undefined}
           style={{
+            alignSelf: 'flex-end',
             backgroundColor: colors.elevated,
             borderWidth: 1,
             borderColor: colors.border,
-            borderRadius: USER_BUBBLE_RADIUS,
+            borderRadius: command ? 999 : USER_BUBBLE_RADIUS,
             paddingHorizontal: 14,
             paddingVertical: 10,
           }}
         >
-          <Text selectable style={{ color: colors.text, fontSize: type.md, lineHeight: type.md * 1.4 }}>
+          <Text
+            selectable
+            style={{
+              color: colors.text,
+              fontSize: type.md,
+              lineHeight: type.md * 1.4,
+              fontFamily: command ? MONOSPACE : undefined,
+            }}
+          >
             {message.content}
           </Text>
         </View>
@@ -151,6 +192,7 @@ function TextRow({ message, isStreaming, onLongPress }: ChatMessageBubbleProps) 
             ))}
           </View>
         ) : null}
+        {viewerImage ? <ImageViewerModal image={viewerImage} onClose={() => setViewerImage(null)} /> : null}
       </Pressable>
     );
   }
@@ -214,6 +256,7 @@ export function areBubblePropsEqual(prev: ChatMessageBubbleProps, next: ChatMess
     && a.toolLocations === b.toolLocations
     && a.plan === b.plan
     && a.attachedContexts === b.attachedContexts
+    && a.attachedImages === b.attachedImages
   );
 }
 

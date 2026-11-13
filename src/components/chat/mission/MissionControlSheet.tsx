@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTokens } from '../../../contexts/ThemeContext';
@@ -7,7 +8,9 @@ import type { PermissionDecision, PermissionOptionKind } from '../../../services
 import { Button, Modal, type ButtonVariant } from '../../ui';
 import { ToolDiffView } from '../ToolDiffView';
 import { PLAN_STATUS_ICONS, PLAN_STATUS_LABEL_KEYS } from '../toolPresentation';
-import type { Mission, MissionChange, MissionSection } from './selectMission';
+import type { Mission, MissionBackgroundCommand, MissionChange, MissionSection, MissionSubagent } from './selectMission';
+import { withPortsSection } from './selectMission';
+import { useBridgePorts, type MissionBridge } from './useBridgePorts';
 
 const VARIANT_BY_KIND: Record<PermissionOptionKind, ButtonVariant> = {
   allow_once: 'primary',
@@ -21,7 +24,11 @@ export interface MissionControlSheetProps {
   onClose: () => void;
   mission: Mission;
   onResolvePermission: (requestId: string, decision: PermissionDecision) => void;
+  bridge?: MissionBridge | null;
+  onOpenReview?: (path?: string) => void;
 }
+
+const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 function formatElapsed(ms: number): string {
   const total = Math.floor(ms / 1000);
@@ -55,7 +62,7 @@ function Separator() {
   return <View style={{ height: 1, backgroundColor: colors.border }} />;
 }
 
-function ChangeRow({ change }: { change: MissionChange }) {
+function ChangeRow({ change, onOpenReview }: { change: MissionChange; onOpenReview?: (path?: string) => void }) {
   const { colors, spacing, type } = useTokens();
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -87,6 +94,16 @@ function ChangeRow({ change }: { change: MissionChange }) {
         <Text style={{ color: colors.success, fontSize: type.xs, marginLeft: spacing[2] }}>+{change.added}</Text>
         <Text style={{ color: colors.error, fontSize: type.xs, marginLeft: spacing[1] }}>-{change.removed}</Text>
       </Pressable>
+      {onOpenReview ? (
+        <Pressable
+          testID={`chat-mission.change-review.${change.path}`}
+          accessibilityRole="button"
+          onPress={() => onOpenReview(change.path)}
+          style={{ alignSelf: 'flex-start', paddingBottom: spacing[2], paddingLeft: spacing[5] }}
+        >
+          <Text style={{ color: colors.accent, fontSize: type.xs, fontWeight: '600' }}>{t('chat.mission.openInReview')}</Text>
+        </Pressable>
+      ) : null}
       {open ? (
         <View testID={`chat-mission.change-diff.${change.path}`} style={{ paddingBottom: spacing[2] }}>
           <ToolDiffView diffs={[change.diff]} />
@@ -96,12 +113,75 @@ function ChangeRow({ change }: { change: MissionChange }) {
   );
 }
 
+function BackgroundRow({ command }: { command: MissionBackgroundCommand }) {
+  const { colors, spacing, type } = useTokens();
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <View testID={`chat-mission.background.${command.id}`}>
+      <Pressable
+        testID={`chat-mission.background-toggle.${command.id}`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen((prev) => !prev)}
+        style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing[2] }}
+      >
+        <Ionicons
+          name={open ? 'chevron-down' : 'chevron-forward'}
+          size={14}
+          color={colors.textSecondary}
+          style={{ marginRight: spacing[2] }}
+        />
+        <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontSize: type.sm, fontFamily: MONO }}>
+          {command.command}
+        </Text>
+        <Text style={{ color: colors.textSecondary, fontSize: type.xs, marginLeft: spacing[2] }}>
+          {formatElapsed(command.elapsedMs)}
+        </Text>
+      </Pressable>
+      {open ? (
+        <Text
+          testID={`chat-mission.background-tail.${command.id}`}
+          style={{ color: colors.textSecondary, fontSize: type.xs, lineHeight: 16, fontFamily: MONO, paddingBottom: spacing[2] }}
+        >
+          {command.tail || t('chat.mission.noOutput')}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function SubagentRow({ agent }: { agent: MissionSubagent }) {
+  const { colors, spacing, type } = useTokens();
+  const { t } = useTranslation();
+  const tint = agent.status === 'failed' ? colors.error : agent.status === 'completed' ? colors.success : colors.primary;
+  return (
+    <View testID={`chat-mission.subagent.${agent.id}`} style={{ paddingVertical: spacing[2] }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Text numberOfLines={2} style={{ flex: 1, color: colors.text, fontSize: type.sm, fontWeight: '600' }}>
+          {agent.description}
+        </Text>
+        <Text style={{ color: tint, fontSize: type.xs, marginLeft: spacing[2] }}>
+          {t(`chat.mission.subagent_${agent.status}`)}
+        </Text>
+      </View>
+      {agent.resultSummary ? (
+        <Text numberOfLines={4} style={{ color: colors.textSecondary, fontSize: type.xs, marginTop: spacing[1] }}>
+          {agent.resultSummary}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 function SectionBody({
   section,
   onResolvePermission,
+  onOpenReview,
 }: {
   section: MissionSection;
   onResolvePermission: MissionControlSheetProps['onResolvePermission'];
+  onOpenReview?: (path?: string) => void;
 }) {
   const { colors, spacing, type } = useTokens();
   const { t } = useTranslation();
@@ -140,6 +220,53 @@ function SectionBody({
                   );
                 })}
               </View>
+            </View>
+          ))}
+        </View>
+      );
+    case 'agents':
+      return (
+        <View>
+          <SectionHeader id="agents" label={`${t('chat.mission.agents')} ${section.agents.length}`} />
+          {section.agents.map((agent, index) => (
+            <View key={agent.id}>
+              {index > 0 ? <Separator /> : null}
+              <SubagentRow agent={agent} />
+            </View>
+          ))}
+        </View>
+      );
+    case 'background':
+      return (
+        <View>
+          <SectionHeader id="background" label={`${t('chat.mission.background')} ${section.commands.length}`} />
+          {section.commands.map((command, index) => (
+            <View key={command.id}>
+              {index > 0 ? <Separator /> : null}
+              <BackgroundRow command={command} />
+            </View>
+          ))}
+        </View>
+      );
+    case 'ports':
+      return (
+        <View>
+          <SectionHeader id="ports" label={t('chat.mission.ports')} />
+          {section.ports.map((entry, index) => (
+            <View key={entry.port}>
+              {index > 0 ? <Separator /> : null}
+              <Pressable
+                testID={`chat-mission.port.${entry.port}`}
+                accessibilityRole="button"
+                accessibilityLabel={t('chat.mission.copyPort', { port: entry.port })}
+                onPress={() => void Clipboard.setStringAsync(String(entry.port))}
+                style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing[2] }}
+              >
+                <Text style={{ color: colors.text, fontSize: type.sm, fontFamily: MONO }}>:{entry.port}</Text>
+                {entry.process ? (
+                  <Text style={{ color: colors.textSecondary, fontSize: type.sm }}>{entry.process}</Text>
+                ) : null}
+              </Pressable>
             </View>
           ))}
         </View>
@@ -189,7 +316,7 @@ function SectionBody({
           {section.changes.map((change, index) => (
             <View key={change.path}>
               {index > 0 ? <Separator /> : null}
-              <ChangeRow change={change} />
+              <ChangeRow change={change} onOpenReview={onOpenReview} />
             </View>
           ))}
         </View>
@@ -259,11 +386,23 @@ function SectionBody({
 export interface MissionControlContentProps {
   mission: Mission;
   onResolvePermission: MissionControlSheetProps['onResolvePermission'];
+  bridge?: MissionBridge | null;
+  onOpenReview?: (path?: string) => void;
+  active?: boolean;
 }
 
-export function MissionControlContent({ mission, onResolvePermission }: MissionControlContentProps) {
-  const { colors, type } = useTokens();
+export function MissionControlContent({
+  mission: baseMission,
+  onResolvePermission,
+  bridge,
+  onOpenReview,
+  active = true,
+}: MissionControlContentProps) {
+  const { colors, spacing, type } = useTokens();
   const { t } = useTranslation();
+  const ports = useBridgePorts(bridge, active);
+  const mission = withPortsSection(baseMission, ports);
+  const showReview = !!bridge && !!onOpenReview && mission.sections.some((section) => section.type === 'changes');
 
   return (
     <ScrollView testID="chat-mission.content" contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
@@ -274,15 +413,35 @@ export function MissionControlContent({ mission, onResolvePermission }: MissionC
       ) : (
         mission.sections.map((section, index) => (
           <View key={section.type} style={{ marginTop: index === 0 ? 0 : 26 }}>
-            <SectionBody section={section} onResolvePermission={onResolvePermission} />
+            <SectionBody
+              section={section}
+              onResolvePermission={onResolvePermission}
+              onOpenReview={bridge ? onOpenReview : undefined}
+            />
           </View>
         ))
       )}
+      {showReview ? (
+        <Button
+          testID="chat-mission.review"
+          variant="secondary"
+          label={t('chat.mission.reviewChanges')}
+          onPress={() => onOpenReview?.()}
+          style={{ marginTop: spacing[6] }}
+        />
+      ) : null}
     </ScrollView>
   );
 }
 
-export function MissionControlSheet({ visible, onClose, mission, onResolvePermission }: MissionControlSheetProps) {
+export function MissionControlSheet({
+  visible,
+  onClose,
+  mission,
+  onResolvePermission,
+  bridge,
+  onOpenReview,
+}: MissionControlSheetProps) {
   const { colors, type } = useTokens();
   const { t } = useTranslation();
 
@@ -303,7 +462,13 @@ export function MissionControlSheet({ visible, onClose, mission, onResolvePermis
             <Ionicons name="close" size={22} color={colors.textSecondary} />
           </Pressable>
         </View>
-        <MissionControlContent mission={mission} onResolvePermission={onResolvePermission} />
+        <MissionControlContent
+          mission={mission}
+          onResolvePermission={onResolvePermission}
+          bridge={bridge}
+          onOpenReview={onOpenReview}
+          active={visible}
+        />
       </View>
     </Modal>
   );

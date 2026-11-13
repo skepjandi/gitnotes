@@ -1,9 +1,13 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecyclingState } from '@shopify/flash-list';
+import Animated from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
-import { useTheme, useTokens } from '../../contexts/ThemeContext';
+import { useTokens } from '../../contexts/ThemeContext';
+import { HapticService } from '../../utils/haptics';
+import { CARD_RADIUS, CHAT_TYPE, CONTINUOUS_CORNERS, HAIRLINE } from './chatStyle';
+import { useChatTransitions } from './motion/transitions';
 
 export interface ThoughtBlockProps {
   /** Resets the expanded state when the list recycles this cell for another message. */
@@ -13,23 +17,25 @@ export interface ThoughtBlockProps {
 }
 
 function ThoughtBlockImpl({ messageId, text, isStreaming }: ThoughtBlockProps) {
-  const { colors, spacing, type } = useTokens();
-  const { isDark } = useTheme();
+  const { colors, spacing } = useTokens();
+  const { entering, exiting, layout } = useChatTransitions();
   const { t } = useTranslation();
   const [expanded, setExpanded] = useRecyclingState(false, [messageId]);
 
   return (
-    <View
+    <Animated.View
+      layout={layout}
       testID="chat-thought.block"
       style={{
         alignSelf: 'flex-start',
         maxWidth: '92%',
         marginVertical: spacing[1],
-        borderRadius: 12,
-        borderWidth: expanded ? 1 : 0,
-        borderColor: isDark ? '#4a4a4f' : '#d8dbe5',
-        backgroundColor: expanded ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(99,102,241,0.05)') : 'transparent',
+        borderRadius: CARD_RADIUS,
+        borderWidth: expanded ? HAIRLINE : 0,
+        borderColor: colors.border,
+        backgroundColor: expanded ? colors.surface : 'transparent',
         overflow: 'hidden',
+        ...CONTINUOUS_CORNERS,
       }}
     >
       <Pressable
@@ -37,7 +43,10 @@ function ThoughtBlockImpl({ messageId, text, isStreaming }: ThoughtBlockProps) {
         accessibilityRole="button"
         accessibilityLabel={t('chat.thoughtTitle')}
         accessibilityState={{ expanded }}
-        onPress={() => setExpanded((current) => !current)}
+        onPress={() => {
+          void HapticService.selection();
+          setExpanded((current) => !current);
+        }}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -53,32 +62,34 @@ function ThoughtBlockImpl({ messageId, text, isStreaming }: ThoughtBlockProps) {
           style={{ marginLeft: spacing[1], marginRight: spacing[1] }}
         />
         <Text
-          style={{ color: colors.textSecondary, fontSize: type.sm, fontWeight: '600' }}
+          style={{ ...CHAT_TYPE.status, color: colors.textSecondary, fontWeight: '600' }}
           numberOfLines={1}
           allowFontScaling={false}
         >
           {t('chat.thoughtTitle')}
         </Text>
         {isStreaming ? (
-          <Text style={{ color: colors.textSecondary, fontSize: type.sm, marginLeft: spacing[1] }}>…</Text>
+          <Text style={{ ...CHAT_TYPE.status, color: colors.textSecondary, marginLeft: spacing[1] }}>…</Text>
         ) : null}
       </Pressable>
       {expanded ? (
-        <View
+        <Animated.View
+          entering={entering}
+          exiting={exiting}
           style={{
             paddingHorizontal: spacing[3],
             paddingBottom: spacing[3],
-            borderTopWidth: 1,
-            borderTopColor: isDark ? '#3a3a3f' : '#e5e7eb',
+            borderTopWidth: HAIRLINE,
+            borderTopColor: colors.border,
             paddingTop: spacing[2],
           }}
         >
-          <Text testID="chat-thought.text" selectable style={{ color: colors.textSecondary, fontSize: type.sm, lineHeight: 20 }}>
+          <Text testID="chat-thought.text" selectable style={{ ...CHAT_TYPE.status, color: colors.textSecondary, lineHeight: 20 }}>
             {text}
           </Text>
-        </View>
+        </Animated.View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 

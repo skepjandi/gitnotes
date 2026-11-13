@@ -1,6 +1,6 @@
 import type { ChatMessage } from '@/models/Chat';
 import { TIMESTAMP_GAP_MS, buildTimeline, summarizeWork, workStatus } from '@/components/chat/timeline';
-import type { PermissionRequest, QueuedPrompt } from '@/services/chat/types';
+import type { ElicitationRequest, PermissionRequest, QueuedPrompt } from '@/services/chat/types';
 
 const text = (id: string, role: ChatMessage['role'], timestamp: number): ChatMessage => ({
   id,
@@ -111,5 +111,48 @@ describe('workStatus', () => {
     expect(workStatus([tool('a'), tool('b', { toolStatus: 'running' })], true)).toBe('running');
     expect(workStatus([tool('a'), tool('b', { toolStatus: 'rejected' })], false)).toBe('failed');
     expect(workStatus([tool('a'), tool('b')], false)).toBe('completed');
+  });
+});
+
+describe('buildTimeline with elicitations', () => {
+  const elicitation = (id: string, toolCallId?: string): ElicitationRequest => ({
+    mode: 'form',
+    id,
+    toolCallId,
+    message: 'Which one?',
+    fields: [],
+  });
+
+  it('keeps the three argument call working', () => {
+    const items = buildTimeline([text('u', 'user', 1), text('a', 'assistant', 2)]);
+    expect(items.map((item) => item.kind)).toEqual(['user', 'reply']);
+  });
+
+  it('places an elicitation right after the work that owns its tool call', () => {
+    const items = buildTimeline(
+      [text('u', 'user', 1), tool('t1'), text('a', 'assistant', 2)],
+      [],
+      [],
+      [elicitation('e1', 'call-t1')],
+    );
+
+    expect(items.map((item) => item.kind)).toEqual(['user', 'work', 'elicitation', 'reply']);
+    expect(items[2]).toMatchObject({ kind: 'elicitation', key: 'elicitation:e1' });
+  });
+
+  it('appends an elicitation without a tool call at the end', () => {
+    const items = buildTimeline([text('u', 'user', 1)], [], [], [elicitation('e1')]);
+    expect(items.map((item) => item.kind)).toEqual(['user', 'elicitation']);
+  });
+
+  it('keeps approvals and elicitations in their own places', () => {
+    const items = buildTimeline(
+      [text('u', 'user', 1), tool('t1'), tool('t2')],
+      [request('p1', 'call-t1')],
+      [],
+      [elicitation('e1', 'call-t2')],
+    );
+
+    expect(items.map((item) => item.kind)).toEqual(['user', 'work', 'needs', 'elicitation']);
   });
 });

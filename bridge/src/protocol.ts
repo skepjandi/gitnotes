@@ -72,7 +72,7 @@ export type BridgeErrorCode =
  * Optional capabilities beyond the agent socket. `ready.features` lists what the bridge supports;
  * a bridge that predates a feature simply omits it, and the app hides the matching UI.
  */
-export type BridgeFeature = 'fs-search' | 'git' | 'ports';
+export type BridgeFeature = 'fs-search' | 'git' | 'ports' | 'sessions';
 
 export interface FileMatch {
   /** Path relative to the request's `cwd`, always `/`-separated. */
@@ -113,6 +113,20 @@ export interface ListeningPort {
   pid?: number;
 }
 
+export interface BridgeSessionInfo {
+  connectionId: string;
+  agentId: string;
+  agentName: string;
+  /** Working directory of the ACP session; null until the client created or loaded one. */
+  cwd: string | null;
+  sessionId: string | null;
+  /** Epoch milliseconds at which the agent process was spawned. */
+  startedAt: number;
+  headSeq: number;
+  /** A client socket is currently bound to this connection. */
+  attached: boolean;
+}
+
 export type ClientFrame =
   | { type: 'auth'; token: string; protocol: number }
   | { type: 'ping' }
@@ -132,7 +146,9 @@ export type ClientFrame =
   | { type: 'fs-search'; reqId: string; cwd: string; query: string; limit?: number }
   | { type: 'git'; reqId: string; cwd: string; op: GitOp }
   /** Listening TCP ports owned by the agent process tree of `connectionId`. */
-  | { type: 'ports'; reqId: string; connectionId: string };
+  | { type: 'ports'; reqId: string; connectionId: string }
+  /** Live agent connections with the ACP session each one runs, so an app can continue them. */
+  | { type: 'list-sessions'; reqId: string };
 
 export type ServerFrame =
   | {
@@ -166,6 +182,7 @@ export type ServerFrame =
   | { type: 'fs-results'; reqId: string; items: FileMatch[]; truncated: boolean }
   | { type: 'git-result'; reqId: string; result: GitResult }
   | { type: 'ports-result'; reqId: string; ports: ListeningPort[] }
+  | { type: 'sessions-result'; reqId: string; sessions: BridgeSessionInfo[] }
   /** Failure of one request/response frame; the socket stays usable. */
   | { type: 'request-error'; reqId: string; code: BridgeErrorCode; message: string };
 

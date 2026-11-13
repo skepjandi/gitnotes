@@ -14,7 +14,7 @@ import {
 import type { AgentInfo } from './protocol.js';
 import { BridgeServer } from './server.js';
 
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 
 async function pathExists(target: string): Promise<boolean> {
   try {

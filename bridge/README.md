@@ -51,7 +51,7 @@ On start the bridge prints its listening address, the workspace roots, the agent
 availability) and a **pairing link**:
 
 ```
-gitnotes-bridge 0.2.0
+gitnotes-bridge 0.3.0
   listening  ws://127.0.0.1:7878
   roots
     - /Users/you/code
@@ -194,6 +194,7 @@ One WebSocket carries JSON text frames. The wire format is defined in
 | `{type:'fs-search', reqId, cwd, query, limit?}` | Fuzzy path search under `cwd`. Answers `fs-results`. Works on unbound sockets. |
 | `{type:'git', reqId, cwd, op}` | `op.kind` is `status`, `diff`, `stage`, `unstage` or `commit`. Answers `git-result`. |
 | `{type:'ports', reqId, connectionId}` | Listening TCP ports of the agent process tree. Answers `ports-result`. |
+| `{type:'list-sessions', reqId}` | Live agent connections with their ACP session. Answers `sessions-result`. Works on unbound sockets. |
 
 **Bridge → client**
 
@@ -210,6 +211,7 @@ One WebSocket carries JSON text frames. The wire format is defined in
 | `{type:'fs-results', reqId, items, truncated}` | Matches (`{path, isDir}`), best first. |
 | `{type:'git-result', reqId, result}` | Result of a `git` op. |
 | `{type:'ports-result', reqId, ports}` | Sorted, de-duplicated `{port, process?, pid?}`. |
+| `{type:'sessions-result', reqId, sessions}` | `{connectionId, agentId, agentName, cwd, sessionId, startedAt, headSeq, attached}` per live agent; `cwd`/`sessionId` are `null` until the client ran `session/new` or `session/load`. |
 | `{type:'request-error', reqId, code, message}` | One request failed (`bad-request`, `forbidden-cwd`, `not-a-repo`, `git-failed`, `unsupported`, `unknown-connection`); the socket stays open. |
 
 **Optional features.** `ready.features` is computed once at startup and is additive (protocol stays
@@ -220,6 +222,7 @@ at version 1):
 | `fs-search` | always | Respects `.gitignore` in git repos (`git ls-files`); otherwise a bounded walk that skips `node_modules`, `.git`, `dist`, `build`. Default 50 results, max 200, 2 s budget. Symlinks are never followed. |
 | `git` | `git --version` succeeds | Commands run without a shell, serialized per directory. Paths must be repository-relative (no `..`, absolute paths or leading `-`). Patches are cut at 200 KB (`truncated:true`). Commits never use `--amend` or `--no-verify`, and the bridge never pushes. |
 | `ports` | `lsof` or `ss` is installed | Lists TCP LISTEN sockets owned by the agent process and its descendants. |
+| `sessions` | always | Lists running agent connections so an app can continue them after losing its local thread. |
 
 Every request frame carries a `reqId` that is echoed on the reply, and `cwd` must lie inside a
 configured root (`forbidden-cwd` otherwise).

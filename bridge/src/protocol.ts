@@ -61,7 +61,57 @@ export type BridgeErrorCode =
   | 'too-many-connections'
   /** Another socket attached to this connection. */
   | 'superseded'
-  | 'not-bound';
+  | 'not-bound'
+  /** A `git` request failed (non-zero exit); `message` carries git's stderr. */
+  | 'git-failed'
+  | 'not-a-repo'
+  /** The request needs a feature this bridge does not advertise in `ready.features`. */
+  | 'unsupported';
+
+/**
+ * Optional capabilities beyond the agent socket. `ready.features` lists what the bridge supports;
+ * a bridge that predates a feature simply omits it, and the app hides the matching UI.
+ */
+export type BridgeFeature = 'fs-search' | 'git' | 'ports';
+
+export interface FileMatch {
+  /** Path relative to the request's `cwd`, always `/`-separated. */
+  path: string;
+  isDir: boolean;
+}
+
+export type GitFileStatus = 'modified' | 'added' | 'deleted' | 'renamed' | 'untracked' | 'conflicted';
+
+export interface GitFileChange {
+  /** Relative to the repository root of `cwd`. */
+  path: string;
+  /** Set for renames: the previous path. */
+  from?: string;
+  status: GitFileStatus;
+  staged: boolean;
+  unstaged: boolean;
+}
+
+export type GitOp =
+  | { kind: 'status' }
+  /** Unified diff of one file. Untracked files diff against /dev/null. */
+  | { kind: 'diff'; path: string; staged: boolean }
+  | { kind: 'stage'; paths: string[] }
+  | { kind: 'unstage'; paths: string[] }
+  | { kind: 'commit'; message: string };
+
+export type GitResult =
+  | { kind: 'status'; branch: string | null; ahead: number; behind: number; files: GitFileChange[] }
+  | { kind: 'diff'; path: string; staged: boolean; patch: string; truncated: boolean }
+  | { kind: 'ok' }
+  | { kind: 'commit'; hash: string; summary: string };
+
+export interface ListeningPort {
+  port: number;
+  /** Process name, when the OS reports it. */
+  process?: string;
+  pid?: number;
+}
 
 export type ClientFrame =
   | { type: 'auth'; token: string; protocol: number }
@@ -74,7 +124,15 @@ export type ClientFrame =
   /** Forward a JSON-RPC message to the bound agent's stdin. */
   | { type: 'rpc'; message: JsonRpcMessage }
   /** Unbind this socket. `kill: true` also terminates the agent and forgets the connection. */
-  | { type: 'disconnect'; kill?: boolean };
+  | { type: 'disconnect'; kill?: boolean }
+  /**
+   * Request/response frames below are allowed on an unbound socket. Each carries a client-chosen
+   * `reqId` echoed on the reply. `cwd` must lie inside the configured roots (`forbidden-cwd` otherwise).
+   */
+  | { type: 'fs-search'; reqId: string; cwd: string; query: string; limit?: number }
+  | { type: 'git'; reqId: string; cwd: string; op: GitOp }
+  /** Listening TCP ports owned by the agent process tree of `connectionId`. */
+  | { type: 'ports'; reqId: string; connectionId: string };
 
 export type ServerFrame =
   | {
@@ -84,6 +142,8 @@ export type ServerFrame =
       hostname: string;
       agents: AgentInfo[];
       roots: string[];
+      /** Absent on bridges that predate optional features: treat as `[]`. */
+      features?: BridgeFeature[];
     }
   | { type: 'pong' }
   | { type: 'workspaces'; items: WorkspaceInfo[] }
@@ -102,7 +162,12 @@ export type ServerFrame =
   /** Agent stderr, newest lines only; never replayed. */
   | { type: 'log'; text: string }
   | { type: 'agent-exit'; code: number | null; signal: string | null }
-  | { type: 'error'; code: BridgeErrorCode; message: string };
+  | { type: 'error'; code: BridgeErrorCode; message: string }
+  | { type: 'fs-results'; reqId: string; items: FileMatch[]; truncated: boolean }
+  | { type: 'git-result'; reqId: string; result: GitResult }
+  | { type: 'ports-result'; reqId: string; ports: ListeningPort[] }
+  /** Failure of one request/response frame; the socket stays usable. */
+  | { type: 'request-error'; reqId: string; code: BridgeErrorCode; message: string };
 
 export const DEFAULT_PORT = 7878;
 

@@ -40,7 +40,7 @@ export function Modal(props: ModalProps) {
   const { isDark } = useTheme();
   const { spacing, colors } = useTokens();
   const { height: viewportHeight } = useWindowDimensions();
-  const { top: topInset } = useSafeAreaInsets();
+  const { top: topInset, bottom: bottomInset } = useSafeAreaInsets();
 
   const pad = spacing[5];
   const slotHeight = Math.max(0, viewportHeight - pad * 2 - topInset);
@@ -52,6 +52,7 @@ export function Modal(props: ModalProps) {
     ? {
         backgroundColor: bgColor,
         maxHeight: bottomSheetSlotHeight,
+        paddingBottom: bottomInset,
         overflow: 'hidden',
         borderBottomLeftRadius: 0,
         borderBottomRightRadius: 0,

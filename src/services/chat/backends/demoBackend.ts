@@ -1,3 +1,4 @@
+import type { AgentConfigOption, ChatThread } from '../../../models/Chat';
 import type { ChatBackend, ChatEvent, ChatRunInput } from '../types';
 import { DEMO_SCENARIOS, type DemoScenario } from './demoScript';
 
@@ -75,7 +76,27 @@ async function* runScenario(input: ChatRunInput): AsyncGenerator<ChatEvent> {
     [{ type: 'tool-update', toolCallId: editId, patch: { status: 'completed', diffs: [scenario.edit.diff] } }],
   ];
 
-  for (const events of steps) {
+  for (const events of steps.slice(0, 2)) {
+    if (!(yield* step(events))) {
+      yield { type: 'turn-end', stopReason: 'cancelled' };
+      return;
+    }
+  }
+
+  let answer = '';
+  if (scenario.question) {
+    const result = await input.requestElicitation({ mode: 'form', message: scenario.question.message, fields: scenario.question.fields });
+    if (signal.aborted || result.action === 'cancel') {
+      yield { type: 'turn-end', stopReason: 'cancelled' };
+      return;
+    }
+    if (result.action === 'accept') {
+      const runner = result.content.runner;
+      if (typeof runner === 'string') answer = `Going with ${runner}. `;
+    }
+  }
+
+  for (const events of steps.slice(2)) {
     if (!(yield* step(events))) {
       yield { type: 'turn-end', stopReason: 'cancelled' };
       return;
@@ -120,6 +141,7 @@ async function* runScenario(input: ChatRunInput): AsyncGenerator<ChatEvent> {
     yield { type: 'tool-update', toolCallId: execId, patch: { status: 'rejected' } };
   }
 
+  if (answer) yield { type: 'text-delta', text: answer };
   for (const chunk of scenario.reply) {
     await pause(signal);
     if (signal.aborted) {
@@ -132,7 +154,13 @@ async function* runScenario(input: ChatRunInput): AsyncGenerator<ChatEvent> {
   yield { type: 'turn-end', stopReason: signal.aborted ? 'cancelled' : 'end_turn' };
 }
 
+async function setDemoConfigOption(thread: ChatThread, configId: string, value: string | boolean): Promise<AgentConfigOption[]> {
+  const options = thread.backend?.type === 'demo' ? (thread.backend.configOptions ?? []) : [];
+  return options.map((option) => (option.id === configId ? { ...option, currentValue: value } : option));
+}
+
 export const demoBackend: ChatBackend = {
   type: 'demo',
   run: runScenario,
+  setConfigOption: setDemoConfigOption,
 };

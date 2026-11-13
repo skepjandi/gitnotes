@@ -1,10 +1,14 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecyclingState } from '@shopify/flash-list';
+import Animated from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { useTokens } from '../../contexts/ThemeContext';
 import type { ChatMessage } from '../../models/Chat';
+import { HapticService } from '../../utils/haptics';
+import { CHAT_TYPE } from './chatStyle';
+import { useChatTransitions } from './motion/transitions';
 import { ToolCallCard } from './ToolCallCard';
 import { summarizeWork, workStatus, type WorkStatus } from './timeline';
 
@@ -25,8 +29,9 @@ function StatusGlyph({ status }: { status: WorkStatus }) {
 }
 
 function WorkLineImpl({ groupKey, messages, isStreaming }: WorkLineProps) {
-  const { colors, spacing, type } = useTokens();
+  const { colors, spacing } = useTokens();
   const { t } = useTranslation();
+  const { entering, exiting, layout } = useChatTransitions();
   const [expanded, setExpanded] = useRecyclingState(false, [groupKey]);
 
   const status = workStatus(messages, isStreaming);
@@ -40,25 +45,30 @@ function WorkLineImpl({ groupKey, messages, isStreaming }: WorkLineProps) {
   const lead = status === 'running' || status === 'awaiting-approval' ? t('chat.work.working') : t('chat.work.worked');
 
   return (
-    <View testID="chat-work" style={{ alignSelf: 'stretch' }}>
+    <Animated.View layout={layout} testID="chat-work" style={{ alignSelf: 'stretch' }}>
       <Pressable
         testID="chat-work.button.toggle"
         accessibilityRole="button"
         accessibilityState={{ expanded }}
         accessibilityLabel={`${lead}: ${summary}`}
-        onPress={() => setExpanded((current) => !current)}
+        onPress={() => {
+          void HapticService.selection();
+          setExpanded((current) => !current);
+        }}
         hitSlop={6}
         style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2], minHeight: 32 }}
       >
         <StatusGlyph status={status} />
-        <Text style={{ flexShrink: 1, color: colors.textSecondary, fontSize: type.sm }} numberOfLines={1}>
-          <Text style={{ fontWeight: '600' }}>{lead}</Text>
-          {summary ? ` · ${summary}` : ''}
-        </Text>
+        <Animated.View key={`${lead}|${summary}`} entering={entering} style={{ flexShrink: 1 }}>
+          <Text style={{ ...CHAT_TYPE.status, color: colors.textSecondary }} numberOfLines={1}>
+            <Text style={{ fontWeight: '600' }}>{lead}</Text>
+            {summary ? ` · ${summary}` : ''}
+          </Text>
+        </Animated.View>
         <Ionicons name={expanded ? 'chevron-down' : 'chevron-forward'} size={12} color={colors.textSecondary} />
       </Pressable>
       {expanded ? (
-        <View testID="chat-work.steps" style={{ marginTop: spacing[1], gap: spacing[1] }}>
+        <Animated.View entering={entering} exiting={exiting} testID="chat-work.steps" style={{ marginTop: spacing[1], gap: spacing[1] }}>
           {messages.map((message, index) => (
             <ToolCallCard
               key={message.id}
@@ -66,9 +76,9 @@ function WorkLineImpl({ groupKey, messages, isStreaming }: WorkLineProps) {
               isStreaming={isStreaming && index === messages.length - 1}
             />
           ))}
-        </View>
+        </Animated.View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 

@@ -205,7 +205,7 @@ The `NoteHistoryModal` is accessible from both Preview mode (`NoteViewer`) and E
 - `WorkLine` — "Ran 2 commands · Edited 1 file" summary that expands to `ToolCallCard` steps (status, args, result, diffs)
 - `PermissionCard` — inline approval/needs-you row (agent `session/request_permission` and model tool confirmations)
 - `LiveLine` — the single status line above the composer while a turn runs (working / waiting for you / connection state, elapsed time, stop)
-- `ChatInputBar` — raised composer: attach, voice, mode chip (`AgentModeChip`), agent slash-command palette (`available_commands_update`), send / stop; sending during a turn queues the prompt (`queuedPrompts` on the session; retry/cancel rows in the timeline)
+- `ChatInputBar` — raised composer: attach menu (notes, images), voice, config chips (model / effort / mode, `ConfigOptionsMenu`), agent slash-command palette (`available_commands_update`), `@` file-mention palette (bridge `fs-search`), send / stop; sending during a turn queues the prompt (`queuedPrompts` on the session; retry/cancel rows in the timeline)
 - `MissionControlSheet` / `MissionControlContent` (`components/chat/mission/`) — needs-you, plan, changes (diffs aggregated by path), activity and status, derived from the transcript by `selectMission`. Docks as a 340pt side inspector at widths of 900pt and up, bottom sheet otherwise
 - `MessageActionSheet` (edit & resend, regenerate, copy), `TextPromptModal`, `ContextPickerModal`
 
@@ -226,6 +226,8 @@ The `NoteHistoryModal` is accessible from both Preview mode (`NoteViewer`) and E
 **Key components:**
 - `ChatThreadCard` — flat row with live status (working / needs you / error) from the session registry, preview, agent badge, timestamp; sections come from `threadSections.ts` (Needs you, agents by workspace folder, Chats, Demo) and a search field filters them
 - `ChatThreadContextMenu` — delete, rename thread
+- Two-pane layout at window width >= 900: the list (360pt) on the left, `ChatConversation embedded` on the right; selecting a row sets local state instead of navigating, and the selected `ChatThreadCard` is highlighted. Below 900 rows navigate to `ChatScreen`.
+- First-run nudge: while no agent thread exists a dismissible banner (remembered in `@gitnotes:agentGuideDismissed`) opens `BridgeSetupGuide`, the same bottom sheet reachable from the `AgentBridgesScreen` header and the new-chat picker when no bridge is paired. It explains install / run / pair, the Tailscale / LAN / tunnel routes, and runs `probeBridge` diagnostics (reachable, protocol, agent availability, advertised `features`).
 
 ---
 

@@ -236,3 +236,66 @@ export function buildDiffView(diff: ToolDiff, maxLines: number = MAX_DIFF_LINES)
     removed,
   };
 }
+
+export type StepVerb = 'ran' | 'edited' | 'read' | 'searched' | 'deleted' | 'moved' | 'fetched';
+
+export interface StepLine {
+  /** Past-tense lead word; null when the call carries nothing to summarise beyond its title. */
+  verb: StepVerb | null;
+  detail: string;
+  monospace: boolean;
+}
+
+const STEP_VERB_BY_KIND: Partial<Record<ToolKind, StepVerb>> = {
+  execute: 'ran',
+  edit: 'edited',
+  read: 'read',
+  search: 'searched',
+  delete: 'deleted',
+  move: 'moved',
+  fetch: 'fetched',
+};
+
+const COMMAND_KEYS = ['command', 'cmd'];
+const PATH_KEYS = ['path', 'file_path', 'filePath', 'filename', 'file', 'url'];
+const QUERY_KEYS = ['query', 'pattern', 'q', 'regex', 'search'];
+const LEADING_VERB = /^(?:run|ran|running|execute|executing|edit|edited|editing|write|read|reading|search|searching|delete|deleting|move|moving|fetch|fetching)\s+/i;
+
+function firstText(args: Record<string, unknown> | undefined, keys: string[]): string | null {
+  if (!args) return null;
+  for (const key of keys) {
+    const value = args[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (Array.isArray(value) && value.length > 0 && value.every((part) => typeof part === 'string')) {
+      return value.join(' ').trim();
+    }
+  }
+  return null;
+}
+
+function firstLine(text: string): string {
+  return text.split('\n', 1)[0].trim();
+}
+
+/** Togo-style step summary: "Ran `npm test`", "Edited src/a.ts", "Read README.md", "Searched \"query\"". */
+export function describeToolStep(message: ChatMessage): StepLine {
+  const title = message.toolTitle?.trim() ?? '';
+  const fallback: StepLine = { verb: null, detail: title || formatToolCallLabel(message.toolCallName), monospace: false };
+  const verb = message.toolKind ? STEP_VERB_BY_KIND[message.toolKind] : undefined;
+  if (!verb) return fallback;
+
+  const stripped = title.replace(LEADING_VERB, '').trim();
+  const args = message.toolCallArgs;
+
+  if (verb === 'ran') {
+    const command = firstText(args, COMMAND_KEYS) ?? (stripped || null);
+    return command ? { verb, detail: firstLine(command), monospace: true } : fallback;
+  }
+  if (verb === 'searched') {
+    const query = firstText(args, QUERY_KEYS) ?? (stripped || null);
+    return query ? { verb, detail: `"${firstLine(query)}"`, monospace: false } : fallback;
+  }
+  const path =
+    message.toolLocations?.[0]?.path ?? message.toolDiffs?.[0]?.path ?? firstText(args, PATH_KEYS) ?? (stripped || null);
+  return path ? { verb, detail: path, monospace: true } : fallback;
+}

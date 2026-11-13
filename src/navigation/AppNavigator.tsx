@@ -13,6 +13,7 @@ import { LinkingOptions } from '@react-navigation/native';
 
 import TabNavigator from './TabNavigator';
 import ChatScreen from '../screens/ChatScreen';
+import ReviewScreen from '../screens/ReviewScreen';
 import AgentBridgesScreen from '../screens/AgentBridgesScreen';
 import { NewChatPickerHost } from '../components/agent/NewChatPickerHost';
 import GraphViewScreen from '../screens/GraphViewScreen';
@@ -342,6 +343,11 @@ export default function AppNavigator({
             <Stack.Screen
               name="ChatScreen"
               component={ChatScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ReviewScreen"
+              component={ReviewScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen

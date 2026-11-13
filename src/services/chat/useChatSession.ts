@@ -65,6 +65,8 @@ export function useChatSession(threadId: string): UseChatSessionResult {
       editAndResend: session.editAndResend,
       regenerate: session.regenerate,
       resolvePermission: session.resolvePermission,
+      resolveElicitation: session.resolveElicitation,
+      setConfigOption: session.setConfigOption,
       setMode: session.setMode,
       dismissError: session.dismissError,
     }),

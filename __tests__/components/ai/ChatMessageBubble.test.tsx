@@ -133,4 +133,35 @@ describe('areBubblePropsEqual', () => {
   it('re-renders when the streaming flag flips', () => {
     expect(areBubblePropsEqual({ message: base, isStreaming: true }, { message: base, isStreaming: false })).toBe(false);
   });
+
+  it('renders attached images and opens the full screen viewer on tap', () => {
+    const message: ChatMessage = {
+      id: 'u2',
+      role: 'user',
+      content: 'look at this',
+      timestamp: 1,
+      kind: 'text',
+      attachedImages: [{ id: 'img1', uri: 'file:///docs/img1.png', mimeType: 'image/png' }],
+    };
+    const { getByTestId } = render(<ChatMessageBubble message={message} />);
+
+    expect(getByTestId('chat-message-bubble.image.img1')).toBeTruthy();
+    fireEvent.press(getByTestId('chat-message-bubble.image.img1'));
+    expect(getByTestId('chat-image-viewer')).toBeTruthy();
+  });
+
+  it('renders a slash command as a command chip', () => {
+    const message: ChatMessage = { id: 'u3', role: 'user', content: '/compact', timestamp: 1, kind: 'text' };
+    const { getByTestId, queryByTestId } = render(<ChatMessageBubble message={message} />);
+
+    expect(getByTestId('chat-message-bubble.command')).toBeTruthy();
+    expect(queryByTestId('chat-message-bubble.command')).toBeTruthy();
+  });
+
+  it('keeps a plain message out of the command chip', () => {
+    const message: ChatMessage = { id: 'u4', role: 'user', content: 'run /compact now', timestamp: 1, kind: 'text' };
+    const { queryByTestId } = render(<ChatMessageBubble message={message} />);
+
+    expect(queryByTestId('chat-message-bubble.command')).toBeNull();
+  });
 });

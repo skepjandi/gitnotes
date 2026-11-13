@@ -2,6 +2,7 @@ import {
   MAX_DIFF_LINES,
   MAX_TOOL_TEXT_CHARS,
   buildDiffView,
+  describeToolStep,
   formatToolCallLabel,
   parseNoteToolResult,
   resolveMessageKind,
@@ -109,5 +110,44 @@ describe('formatToolCallLabel', () => {
     expect(formatToolCallLabel('create_note')).toBe('Create Note');
     expect(formatToolCallLabel('  ')).toBe('Tool call');
     expect(formatToolCallLabel(undefined)).toBe('Tool call');
+  });
+});
+
+describe('describeToolStep', () => {
+  const tool = (overrides: Partial<ChatMessage>): ChatMessage => ({ ...base, kind: 'tool', ...overrides });
+
+  it('summarises execute steps from args.command in monospace', () => {
+    expect(describeToolStep(tool({ toolKind: 'execute', toolTitle: 'Terminal', toolCallArgs: { command: 'npm test' } }))).toEqual({
+      verb: 'ran',
+      detail: 'npm test',
+      monospace: true,
+    });
+  });
+
+  it('falls back to the title without its leading verb and keeps only the first command line', () => {
+    expect(describeToolStep(tool({ toolKind: 'execute', toolTitle: 'Run yarn lint' })).detail).toBe('yarn lint');
+    expect(describeToolStep(tool({ toolKind: 'execute', toolCallArgs: { command: ['git', 'status'] } })).detail).toBe('git status');
+    expect(describeToolStep(tool({ toolKind: 'execute', toolCallArgs: { command: 'echo a\necho b' } })).detail).toBe('echo a');
+  });
+
+  it('names the file for edit/read steps, preferring diffs and locations over args', () => {
+    expect(
+      describeToolStep(tool({ toolKind: 'edit', toolDiffs: [{ path: 'src/a.ts', oldText: null, newText: 'x' }], toolCallArgs: { path: 'ignored' } })),
+    ).toEqual({ verb: 'edited', detail: 'src/a.ts', monospace: true });
+    expect(describeToolStep(tool({ toolKind: 'read', toolLocations: [{ path: 'README.md' }] })).verb).toBe('read');
+    expect(describeToolStep(tool({ toolKind: 'read', toolCallArgs: { file_path: 'docs/x.md' } })).detail).toBe('docs/x.md');
+  });
+
+  it('quotes search queries', () => {
+    expect(describeToolStep(tool({ toolKind: 'search', toolCallArgs: { pattern: 'TODO' } }))).toEqual({
+      verb: 'searched',
+      detail: '"TODO"',
+      monospace: false,
+    });
+  });
+
+  it('uses the plain title when the kind has no verb or nothing can be extracted', () => {
+    expect(describeToolStep(tool({ toolKind: 'think', toolTitle: 'Planning' }))).toEqual({ verb: null, detail: 'Planning', monospace: false });
+    expect(describeToolStep(tool({ toolKind: 'edit', toolCallName: 'apply_patch' })).detail).toBe('Apply Patch');
   });
 });

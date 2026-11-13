@@ -117,7 +117,12 @@ export class AcpClient {
     if (!this.initialized) {
       this.initialized = this.request<AcpInitializeResult>('initialize', {
         protocolVersion: ACP_PROTOCOL_VERSION,
-        clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
+        clientCapabilities: {
+          fs: { readTextFile: false, writeTextFile: false },
+          terminal: false,
+          elicitation: { form: {}, url: {} },
+          session: { configOptions: { boolean: {} } },
+        },
         clientInfo: { name: clientName, version: clientVersion },
       }).catch((error: unknown) => {
         this.initialized = null;

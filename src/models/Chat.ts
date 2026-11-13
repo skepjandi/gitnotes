@@ -52,6 +52,38 @@ export interface ChatMessage {
   toolLocations?: ToolLocation[];
   plan?: PlanEntry[];
   attachedContexts?: AIContextItem[];
+  /** Images sent with a user message (agent threads only). Files live in app storage, never in the transcript JSON. */
+  attachedImages?: ImageAttachment[];
+}
+
+export interface ImageAttachment {
+  id: string;
+  /** `file://` URI inside the app's document directory. */
+  uri: string;
+  mimeType: string;
+  name?: string;
+  width?: number;
+  height?: number;
+}
+
+/** An ACP session config option (model, reasoning effort, mode, ...). `select` and `boolean` only. */
+export interface AgentConfigOption {
+  id: string;
+  name: string;
+  description?: string;
+  /** ACP semantic category: `mode`, `model`, `model_config`, `thought_level`, or a custom `_name`. */
+  category?: string;
+  type: 'select' | 'boolean';
+  currentValue: string | boolean;
+  /** Flattened; groups become `group` labels. Present for `select`. */
+  options?: AgentConfigChoice[];
+}
+
+export interface AgentConfigChoice {
+  value: string;
+  name: string;
+  description?: string;
+  group?: string;
 }
 
 export interface AgentMode {
@@ -93,9 +125,15 @@ export type ThreadBackend =
       modeId?: string;
       availableModes?: AgentMode[];
       availableCommands?: AgentCommand[];
+      /** ACP `configOptions` from the agent. When non-empty they supersede `modeId`/`availableModes`. */
+      configOptions?: AgentConfigOption[];
+      /** Agent accepts image blocks in `session/prompt` (`promptCapabilities.image`). */
+      supportsImages?: boolean;
+      /** Agent accepts embedded `resource` blocks (`promptCapabilities.embeddedContext`); unknown (`undefined`) is treated as supported. */
+      supportsEmbeddedContext?: boolean;
     }
   /** Scripted walkthrough that replays canned turns; needs no bridge. */
-  | { type: 'demo' };
+  | { type: 'demo'; configOptions?: AgentConfigOption[] };
 
 export interface ChatThread {
   id: string;

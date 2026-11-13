@@ -1,8 +1,21 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 
 jest.mock('@/contexts/ThemeContext', () => ({
-  useTheme: () => ({ isDark: false }),
+  useTheme: () => ({
+    isDark: false,
+    colors: {
+      background: '#fff',
+      border: '#ddd',
+      primary: '#00f',
+      text: '#000',
+      textSecondary: '#999',
+      accent: '#00f',
+      elevated: '#eee',
+      warning: '#fa0',
+      error: '#f00',
+    },
+  }),
   useTokens: () => ({
     colors: {
       background: '#fff',
@@ -99,5 +112,150 @@ describe('ChatInputBar', () => {
     fireEvent.press(getByTestId('chat-input.slash.compact'));
     expect(getByTestId('chat-input.input.message').props.value).toBe('/compact ');
     expect(queryByTestId('chat-input.slash-palette')).toBeNull();
+  });
+
+  it('opens a menu with notes and images when the agent accepts images', () => {
+    jest.useFakeTimers();
+    try {
+    const onAttach = jest.fn();
+    const onPickImage = jest.fn();
+    const { getByTestId } = render(
+      <ChatInputBar
+        onSend={jest.fn()}
+        onAttach={onAttach}
+        attachedContexts={[]}
+        onRemoveContext={jest.fn()}
+        isStreaming={false}
+        onPickImage={onPickImage}
+      />,
+    );
+
+    fireEvent.press(getByTestId('chat-input.button.attach'));
+
+    fireEvent.press(getByTestId('chat-input.attach.notes'));
+    act(() => {
+      jest.advanceTimersByTime(400);
+    });
+    expect(onAttach).toHaveBeenCalled();
+
+    fireEvent.press(getByTestId('chat-input.attach.camera'));
+    act(() => {
+      jest.advanceTimersByTime(400);
+    });
+    expect(onPickImage).toHaveBeenCalledWith('camera');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('lists staged images with a remove button', () => {
+    const onRemoveImage = jest.fn();
+    const { getByTestId } = render(
+      <ChatInputBar
+        onSend={jest.fn()}
+        onAttach={jest.fn()}
+        attachedContexts={[]}
+        onRemoveContext={jest.fn()}
+        isStreaming={false}
+        attachedImages={[{ id: 'img1', uri: 'file:///docs/img1.png', mimeType: 'image/png' }]}
+        onRemoveImage={onRemoveImage}
+      />,
+    );
+
+    expect(getByTestId('chat-input.image.img1')).toBeTruthy();
+    fireEvent.press(getByTestId('chat-input.image.remove.img1'));
+    expect(onRemoveImage).toHaveBeenCalledWith('img1');
+  });
+
+  it('suggests files for an @token and inserts the chosen path at the caret', async () => {
+    jest.useFakeTimers();
+    try {
+      const fileSearch = jest.fn(async () => [
+        { path: 'src/app.ts', isDir: false },
+        { path: 'src', isDir: true },
+      ]);
+      const { getByTestId, queryByTestId } = render(
+        <ChatInputBar
+          onSend={jest.fn()}
+          onAttach={jest.fn()}
+          attachedContexts={[]}
+          onRemoveContext={jest.fn()}
+          isStreaming={false}
+          fileSearch={fileSearch}
+        />,
+      );
+
+      fireEvent.changeText(getByTestId('chat-input.input.message'), 'look at @sr');
+      expect(queryByTestId('chat-input.mention-palette')).toBeNull();
+
+      await act(async () => {
+        jest.advanceTimersByTime(200);
+      });
+
+      expect(fileSearch).toHaveBeenCalledWith('sr');
+      expect(getByTestId('chat-input.mention-palette')).toBeTruthy();
+      expect(getByTestId('chat-input.mention.src/app.ts')).toBeTruthy();
+
+      fireEvent.press(getByTestId('chat-input.mention.src/app.ts'));
+      expect(getByTestId('chat-input.input.message').props.value).toBe('look at @src/app.ts ');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a directory open with a trailing slash so the next segment can follow', async () => {
+    jest.useFakeTimers();
+    try {
+      const fileSearch = jest.fn(async () => [{ path: 'src', isDir: true }]);
+      const { getByTestId } = render(
+        <ChatInputBar
+          onSend={jest.fn()}
+          onAttach={jest.fn()}
+          attachedContexts={[]}
+          onRemoveContext={jest.fn()}
+          isStreaming={false}
+          fileSearch={fileSearch}
+        />,
+      );
+
+      fireEvent.changeText(getByTestId('chat-input.input.message'), '@');
+      await act(async () => {
+        jest.advanceTimersByTime(200);
+      });
+      fireEvent.press(getByTestId('chat-input.mention.src'));
+
+      expect(getByTestId('chat-input.input.message').props.value).toBe('@src/');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows the slash palette instead of the mention palette at the start of the text', async () => {
+    jest.useFakeTimers();
+    try {
+      const fileSearch = jest.fn(async () => [{ path: 'src/app.ts', isDir: false }]);
+      const { getByTestId, queryByTestId } = render(
+        <ChatInputBar
+          onSend={jest.fn()}
+          onAttach={jest.fn()}
+          attachedContexts={[]}
+          onRemoveContext={jest.fn()}
+          isStreaming={false}
+          commands={[{ name: 'compact' }]}
+          fileSearch={fileSearch}
+        />,
+      );
+
+      fireEvent.changeText(getByTestId('chat-input.input.message'), '/');
+      await act(async () => {
+        jest.advanceTimersByTime(200);
+      });
+
+      expect(getByTestId('chat-input.slash-palette')).toBeTruthy();
+      expect(queryByTestId('chat-input.mention-palette')).toBeNull();
+      expect(fileSearch).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

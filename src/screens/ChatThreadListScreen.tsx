@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { View, Text, TextInput, ActivityIndicator, Alert, SectionList, RefreshControl } from 'react-native';
+import { View, Text, TextInput, ActivityIndicator, Alert, Pressable, SectionList, RefreshControl, StyleSheet, useWindowDimensions } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,14 +13,17 @@ import { useTokens } from '../contexts/ThemeContext';
 import { RootStackParamList } from '../navigation/types';
 import { ChatThreadSummary } from '../models/Chat';
 import type { ChatRunStatus } from '../services/chat/types';
-import { ScreenHeader, Button, EmptyState, useScreenHeaderHeight, useTabBarHeight } from '../components/ui';
+import { ScreenHeader, Button, EmptyState, IconButton, useScreenHeaderHeight, useTabBarHeight } from '../components/ui';
 import { SafeAreaView } from '../components/ui/SafeAreaView';
 import { SwipeableListItem } from '../components/list/SwipeableListItem';
 import { BulkActionBar } from '../components/list/BulkActionBar';
+import { ChatConversation } from '../components/chat/ChatConversation';
 import { ChatThreadCard } from '../components/chat/ChatThreadCard';
+import { BridgeSetupGuide } from '../components/chat/setup/BridgeSetupGuide';
 import { ChatThreadContextMenu } from '../components/chat/ChatThreadContextMenu';
 import { TextPromptModal } from '../components/chat/TextPromptModal';
 import { buildThreadSections, type ThreadSection, type ThreadStatusMap } from '../components/chat/threadSections';
+import { createDemoThread } from '../services/chat';
 import { peekChatSession } from '../services/chat/sessions';
 import { HapticService } from '../utils/haptics';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +31,10 @@ import { useProScreenGuard } from '../hooks/useProScreenGuard';
 import { useSafeBack } from '../hooks/useSafeBack';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+export const SPLIT_VIEW_MIN_WIDTH = 900;
+const LIST_PANE_WIDTH = 360;
+export const AGENT_GUIDE_DISMISSED_KEY = '@gitnotes:agentGuideDismissed';
 
 function useThreadStatuses(threads: ChatThreadSummary[]): ThreadStatusMap {
   const [statuses, setStatuses] = useState<ThreadStatusMap>({});
@@ -62,7 +70,9 @@ export default function ChatThreadListScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const safeBack = useSafeBack();
-  const { colors, spacing } = useTokens();
+  const { colors, spacing, type } = useTokens();
+  const { width } = useWindowDimensions();
+  const wide = width >= SPLIT_VIEW_MIN_WIDTH;
   const headerHeight = useScreenHeaderHeight();
   const tabBarHeight = useTabBarHeight();
 
@@ -82,10 +92,15 @@ export default function ChatThreadListScreen() {
   const [longPressedThread, setLongPressedThread] = useState<ChatThreadSummary | null>(null);
   const [renamingThread, setRenamingThread] = useState<ChatThreadSummary | null>(null);
 
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [guideVisible, setGuideVisible] = useState(false);
+  const [guideDismissed, setGuideDismissed] = useState(true);
   const [query, setQuery] = useState('');
   const statuses = useThreadStatuses(threads);
   const sections = useMemo(() => buildThreadSections(threads, statuses, query), [threads, statuses, query]);
 
+  const showGuideNudge = !guideDismissed && !isLoading && !threads.some((thread) => thread.backend === 'agent');
+  const activeThreadId = wide ? selectedThreadId : null;
   const selectionMode = selectedIds.size > 0;
   const isFocused = useIsFocused();
 
@@ -96,6 +111,14 @@ export default function ChatThreadListScreen() {
       setIsPullRefreshing(false);
     }
   }, [isFocused]);
+
+  useEffect(() => {
+    void AsyncStorage.getItem(AGENT_GUIDE_DISMISSED_KEY).then((value) => setGuideDismissed(value === 'true'));
+  }, []);
+
+  useEffect(() => {
+    if (selectedThreadId && !threads.some((thread) => thread.id === selectedThreadId)) setSelectedThreadId(null);
+  }, [threads, selectedThreadId]);
 
   useEffect(() => {
     void loadThreads();
@@ -127,16 +150,36 @@ export default function ChatThreadListScreen() {
     });
   }, []);
 
+  const openThread = useCallback(
+    (threadId: string) => {
+      if (wide) setSelectedThreadId(threadId);
+      else navigation.navigate('ChatScreen', { threadId });
+    },
+    [navigation, wide],
+  );
+
   const handleThreadPress = useCallback(
     (threadId: string) => {
-      if (selectionMode) {
-        toggleSelected(threadId);
-      } else {
-        navigation.navigate('ChatScreen', { threadId });
-      }
+      if (selectionMode) toggleSelected(threadId);
+      else openThread(threadId);
     },
-    [navigation, selectionMode, toggleSelected],
+    [openThread, selectionMode, toggleSelected],
   );
+
+  const dismissGuideNudge = useCallback(() => {
+    setGuideDismissed(true);
+    void AsyncStorage.setItem(AGENT_GUIDE_DISMISSED_KEY, 'true');
+  }, []);
+
+  const handleTryDemo = useCallback(async () => {
+    setGuideVisible(false);
+    try {
+      const thread = await createDemoThread();
+      openThread(thread.id);
+    } catch (error) {
+      Alert.alert(t('chat.createFailed'), error instanceof Error ? error.message : undefined);
+    }
+  }, [openThread, t]);
 
   const handleThreadLongPress = useCallback((thread: ChatThreadSummary) => {
     HapticService.selection();
@@ -145,7 +188,7 @@ export default function ChatThreadListScreen() {
 
   const handleOpenThread = (thread: ChatThreadSummary) => {
     setLongPressedThread(null);
-    navigation.navigate('ChatScreen', { threadId: thread.id });
+    openThread(thread.id);
   };
 
   const handleRenameConfirm = (title: string) => {
@@ -217,12 +260,13 @@ export default function ChatThreadListScreen() {
         <ChatThreadCard
           thread={item}
           status={statuses[item.id]}
+          selected={item.id === activeThreadId}
           onPress={() => handleThreadPress(item.id)}
           onLongPress={() => handleThreadLongPress(item)}
         />
       </SwipeableListItem>
     ),
-    [selectedIds, selectionMode, statuses, toggleSelected, handleThreadPress, handleThreadLongPress],
+    [selectedIds, selectionMode, statuses, activeThreadId, toggleSelected, handleThreadPress, handleThreadLongPress],
   );
 
   const sectionTitle = useCallback(
@@ -286,59 +330,130 @@ export default function ChatThreadListScreen() {
 
   if (blocked) return null;
 
-  return (
-    <SafeAreaView className="flex-1 bg-background" edges={[]}>
-      <View className="flex-1" style={{ paddingTop: headerHeight }}>
-        <View className="px-4 pt-4 pb-3">
-          <Button
-            testID="chat-thread-list.button.new-chat"
-            label={t('chat.newChat')}
-            onPress={() => useAIHubStore.getState().goNewChat(navigation)}
-            variant="primary"
-            leadingIcon={<Ionicons name="add" size={20} color={colors.accent} />}
-            iconAlign="edge"
-            fullWidth
+  const listPane = (
+    <View className="flex-1">
+        <View className="flex-1" style={{ paddingTop: headerHeight }}>
+          <View className="px-4 pt-4 pb-3">
+            <Button
+              testID="chat-thread-list.button.new-chat"
+              label={t('chat.newChat')}
+              onPress={() => useAIHubStore.getState().goNewChat(navigation)}
+              variant="primary"
+              leadingIcon={<Ionicons name="add" size={20} color={colors.accent} />}
+              iconAlign="edge"
+              fullWidth
+            />
+          </View>
+
+          {showGuideNudge ? (
+            <View
+              testID="chat-thread-list.guide-nudge"
+              className="mx-4 mb-3 flex-row items-center rounded-md px-3"
+              style={{ backgroundColor: colors.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, gap: spacing[2] }}
+            >
+              <Ionicons name="terminal-outline" size={16} color={colors.textSecondary} />
+              <Pressable
+                testID="chat-thread-list.guide-nudge.open"
+                accessibilityRole="button"
+                onPress={() => setGuideVisible(true)}
+                style={{ flex: 1, paddingVertical: spacing[2] }}
+              >
+                <Text style={{ color: colors.text, fontSize: type.sm }}>{t('agents.guide.nudge')}</Text>
+              </Pressable>
+              <Pressable
+                testID="chat-thread-list.guide-nudge.dismiss"
+                accessibilityRole="button"
+                accessibilityLabel={t('common.dismiss')}
+                onPress={dismissGuideNudge}
+                hitSlop={8}
+              >
+                <Ionicons name="close" size={16} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+          ) : null}
+
+          <View className="px-4 pb-2">
+            <View
+              className="flex-row items-center rounded-md px-3"
+              style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
+            >
+              <Ionicons name="search" size={16} color={colors.textSecondary} />
+              <TextInput
+                testID="chat-thread-list.input.search"
+                value={query}
+                onChangeText={setQuery}
+                placeholder={t('chat.searchPlaceholder')}
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                clearButtonMode="while-editing"
+                style={{ flex: 1, color: colors.text, paddingVertical: spacing[2], paddingHorizontal: spacing[2] }}
+              />
+            </View>
+          </View>
+
+          <SectionList
+            sections={sections}
+            renderItem={renderThread}
+            renderSectionHeader={renderSectionHeader}
+            keyExtractor={(item) => item.id}
+            stickySectionHeadersEnabled={false}
+            contentContainerStyle={{ paddingBottom: spacing[6] }}
+            refreshControl={
+              <RefreshControl
+                refreshing={isPullRefreshing}
+                onRefresh={handleRefresh}
+                tintColor="transparent"
+                colors={['transparent']}
+              />
+            }
+            ListEmptyComponent={renderEmptyState}
           />
         </View>
 
-        <View className="px-4 pb-2">
-          <View
-            className="flex-row items-center rounded-md px-3"
-            style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
-          >
-            <Ionicons name="search" size={16} color={colors.textSecondary} />
-            <TextInput
-              testID="chat-thread-list.input.search"
-              value={query}
-              onChangeText={setQuery}
-              placeholder={t('chat.searchPlaceholder')}
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="none"
-              autoCorrect={false}
-              clearButtonMode="while-editing"
-              style={{ flex: 1, color: colors.text, paddingVertical: spacing[2], paddingHorizontal: spacing[2] }}
-            />
+        <ScreenHeader
+          title={t('chat.title')}
+          onBack={safeBack}
+          actions={
+            showGuideNudge ? (
+              <IconButton
+                testID="chat-thread-list.button.guide"
+                size="sm"
+                accessibilityLabel={t('agents.guide.title')}
+                onPress={() => setGuideVisible(true)}
+              >
+                <Ionicons name="help-circle-outline" size={20} color={colors.accent} />
+              </IconButton>
+            ) : undefined
+          }
+        />
+
+    </View>
+  );
+
+  return (
+    <SafeAreaView className="flex-1 bg-background" edges={[]}>
+      {wide ? (
+        <View testID="chat-thread-list.split" className="flex-1 flex-row">
+          <View style={{ width: LIST_PANE_WIDTH, borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: colors.border }}>
+            {listPane}
+          </View>
+          <View className="flex-1">
+            {activeThreadId ? (
+              <ChatConversation key={activeThreadId} threadId={activeThreadId} embedded />
+            ) : (
+              <EmptyState
+                testID="chat-thread-list.split.placeholder"
+                icon="chatbubbles-outline"
+                title={t('chat.splitPlaceholderTitle')}
+                subtitle={t('chat.splitPlaceholderSubtitle')}
+              />
+            )}
           </View>
         </View>
-
-        <SectionList
-          sections={sections}
-          renderItem={renderThread}
-          renderSectionHeader={renderSectionHeader}
-          keyExtractor={(item) => item.id}
-          stickySectionHeadersEnabled={false}
-          contentContainerStyle={{ paddingBottom: spacing[6] }}
-          refreshControl={
-            <RefreshControl
-              refreshing={isPullRefreshing}
-              onRefresh={handleRefresh}
-              tintColor="transparent"
-              colors={['transparent']}
-            />
-          }
-          ListEmptyComponent={renderEmptyState}
-        />
-      </View>
+      ) : (
+        listPane
+      )}
 
       <ChatThreadContextMenu
         thread={longPressedThread}
@@ -369,10 +484,7 @@ export default function ChatThreadListScreen() {
         onDelete={handleBulkDelete}
       />
 
-      <ScreenHeader
-        title={t('chat.title')}
-        onBack={safeBack}
-      />
+      <BridgeSetupGuide visible={guideVisible} onClose={() => setGuideVisible(false)} onTryDemo={() => void handleTryDemo()} />
     </SafeAreaView>
   );
 }

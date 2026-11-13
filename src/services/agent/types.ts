@@ -3,7 +3,7 @@
  * Wire format: bridge/src/protocol.ts. Agent protocol: ACP (https://agentclientprotocol.com).
  */
 
-import type { AgentInfo, BridgeErrorCode, WorkspaceInfo } from '../../../bridge/src/protocol';
+import type { AgentInfo, BridgeErrorCode, BridgeFeature, WorkspaceInfo } from '../../../bridge/src/protocol';
 
 export type { AgentInfo, WorkspaceInfo };
 
@@ -24,6 +24,7 @@ export interface BridgeProbeResult {
   bridgeVersion: string;
   agents: AgentInfo[];
   roots: string[];
+  features?: BridgeFeature[];
 }
 
 export interface PairingLink {

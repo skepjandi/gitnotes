@@ -1,27 +1,41 @@
 import type { AIContextItem } from '../../../models/AIProvider';
-import type { AgentMode, ChatThread } from '../../../models/Chat';
+import type { AgentConfigOption, AgentMode, ChatThread, ImageAttachment } from '../../../models/Chat';
 import { AcpClient, AcpRpcError, AcpTransportError, type AcpRequestContext } from '../../agent/AcpClient';
+import { parseElicitation } from '../../agent/acpElicitation';
 import { mapSessionUpdate, mapToolCallPatch } from '../../agent/acpMapper';
-import type {
-  AcpPermissionOption,
-  AcpPermissionOutcome,
-  AcpPermissionRequest,
-  AcpPromptBlock,
-  AcpSessionModeState,
-  AcpSessionNotification,
-  AcpToolCallFields,
+import {
+  JSON_RPC_INVALID_PARAMS,
+  type AcpPermissionOption,
+  type AcpPermissionOutcome,
+  type AcpPermissionRequest,
+  type AcpPromptBlock,
+  type AcpSessionModeState,
+  type AcpSessionNotification,
+  type AcpToolCallFields,
 } from '../../agent/acpTypes';
 import {
   acquireConnection,
   ensureSession,
   releaseAgentConnection,
+  setConfigOptionValue,
   type AgentThreadBackend,
   type LiveAgentConnection,
 } from '../../agent/agentConnections';
 import { AsyncQueue } from '../../agent/AsyncQueue';
 import type { BridgeLostReason } from '../../agent/BridgeConnection';
 import type { JsonRpcMessage } from '../../../../bridge/src/protocol';
-import type { ChatBackend, ChatEvent, ChatEventBody, ChatRunInput, PermissionOption, ToolPatch } from '../types';
+import { resolveContexts } from '../contextContent';
+import { readImageBase64 } from '../imageStorage';
+import type {
+  ChatBackend,
+  ChatEvent,
+  ChatEventBody,
+  ChatRunInput,
+  ElicitationResult,
+  ElicitationValue,
+  PermissionOption,
+  ToolPatch,
+} from '../types';
 
 export { releaseAgentConnection };
 
@@ -34,7 +48,7 @@ type TurnItem =
   | { kind: 'abort' }
   | { kind: 'grace' };
 
-type TurnIo = Pick<ChatRunInput, 'signal' | 'requestPermission' | 'reportStatus'>;
+type TurnIo = Pick<ChatRunInput, 'signal' | 'requestPermission' | 'requestElicitation' | 'reportStatus'>;
 
 type PromptOutcome = { ok: true; result: unknown; seq: number } | { ok: false; error: Error };
 
@@ -49,12 +63,57 @@ function requireAgentBackend(thread: ChatThread): AgentThreadBackend {
   return thread.backend;
 }
 
-function buildPrompt(text: string, contexts: AIContextItem[]): AcpPromptBlock[] {
-  const blocks: AcpPromptBlock[] = [{ type: 'text', text }];
-  if (contexts.length > 0) {
-    const lines = contexts.map((context) => `- ${context.name}${context.path ? ` (${context.path})` : ''}`);
-    blocks.push({ type: 'text', text: `Notes and files attached to this message:\n${lines.join('\n')}` });
+interface PromptCapabilities {
+  images: boolean;
+  embeddedContext: boolean;
+}
+
+async function imageBlocks(images: ImageAttachment[]): Promise<{ blocks: AcpPromptBlock[]; skipped: number }> {
+  const blocks: AcpPromptBlock[] = [];
+  let skipped = 0;
+  for (const image of images) {
+    try {
+      blocks.push({ type: 'image', data: await readImageBase64(image), mimeType: image.mimeType });
+    } catch {
+      skipped += 1;
+    }
   }
+  return { blocks, skipped };
+}
+
+async function buildPrompt(
+  text: string,
+  contexts: AIContextItem[],
+  images: ImageAttachment[],
+  capabilities: PromptCapabilities,
+): Promise<AcpPromptBlock[]> {
+  const blocks: AcpPromptBlock[] = [{ type: 'text', text }];
+  const notes: string[] = [];
+
+  if (contexts.length > 0) {
+    const { items, truncatedCount } = await resolveContexts(contexts);
+    if (capabilities.embeddedContext) {
+      for (const item of items) {
+        blocks.push({ type: 'resource', resource: { uri: item.uri, mimeType: item.mimeType, text: item.text } });
+      }
+    } else {
+      const sections = items.map((item) => `<attachment name="${item.item.name}" uri="${item.uri}">\n${item.text}\n</attachment>`);
+      blocks.push({ type: 'text', text: `Notes and files attached to this message:\n${sections.join('\n')}` });
+    }
+    if (truncatedCount > 0) notes.push(`${truncatedCount} attached item(s) were truncated or left out to stay within size limits.`);
+  }
+
+  if (images.length > 0) {
+    if (capabilities.images) {
+      const { blocks: encoded, skipped } = await imageBlocks(images);
+      blocks.push(...encoded);
+      if (skipped > 0) notes.push(`${skipped} attached image(s) could not be read and were not sent.`);
+    } else {
+      notes.push(`${images.length} attached image(s) were not sent because this agent does not accept images.`);
+    }
+  }
+
+  if (notes.length > 0) blocks.push({ type: 'text', text: notes.map((note) => `[gitnotes] ${note}`).join('\n') });
   return blocks;
 }
 
@@ -110,6 +169,11 @@ function modesToEvent(modes: AcpSessionModeState | null | undefined): { modeId?:
   };
 }
 
+type ElicitationResponse =
+  | { action: 'accept'; content?: Record<string, ElicitationValue> }
+  | { action: 'decline' }
+  | { action: 'cancel' };
+
 /** Everything that happens between "user pressed send" (or "app re-attached") and the turn's `turn-end`. */
 class AgentTurn {
   readonly queue = new AsyncQueue<TurnItem>();
@@ -120,6 +184,8 @@ class AgentTurn {
   private cancelSent = false;
   aborted = false;
 
+  /** Keeps `configOptions` in step with `config_option_update` notifications. */
+  live: LiveAgentConnection | null = null;
   private acp: AcpClient | null = null;
   private expectedPromptId: number | null = null;
   private failed = false;
@@ -148,6 +214,7 @@ class AgentTurn {
     acp.onAgentExit = ({ code, signal }) =>
       this.fail(new Error(`The agent process exited (${signal ? `signal ${signal}` : `code ${code ?? 'unknown'}`}).`));
     acp.handle('session/request_permission', (params, context) => this.handlePermission(params, context));
+    acp.handle('elicitation/create', (params, context) => this.handleElicitation(params, context));
     this.io.signal.addEventListener('abort', this.onAbort, { once: true });
   }
 
@@ -173,6 +240,7 @@ class AgentTurn {
       acp.onTransportLost = null;
       acp.onAgentExit = null;
       acp.unhandle('session/request_permission');
+      acp.unhandle('elicitation/create');
     }
     this.io.reportStatus?.(null);
   }
@@ -261,7 +329,7 @@ class AgentTurn {
     this.emit({ type: 'turn-end', stopReason: this.aborted ? 'cancelled' : stopReason }, seq);
   }
 
-  /** The cursor is held back while a permission question is open so a cold restart replays it. */
+  /** The cursor is held back while a permission or elicitation question is open so a cold restart replays it. */
   private tag(seq: number): number {
     let limit = seq;
     for (const pending of this.pendingRequestSeqs.values()) limit = Math.min(limit, pending - 1);
@@ -286,6 +354,7 @@ class AgentTurn {
     if (this.sessionId && notification.sessionId !== this.sessionId) return;
     for (const body of mapSessionUpdate(notification.update)) {
       if (body.type === 'tool-start' || body.type === 'tool-update') this.seenTools.add(body.toolCallId);
+      if (body.type === 'agent-state' && body.configOptions && this.live) this.live.configOptions = body.configOptions;
       this.emit(body, seq);
     }
   }
@@ -333,6 +402,28 @@ class AgentTurn {
     this.pushToolPatch(toolCall.toolCallId, { status: chosen.kind.startsWith('reject') ? 'rejected' : 'running' });
     return { outcome: { outcome: 'selected', optionId: chosen.optionId } };
   }
+
+  private async handleElicitation(params: unknown, context: AcpRequestContext): Promise<ElicitationResponse> {
+    const parsed = parseElicitation(params);
+    if (!parsed) throw new AcpRpcError(JSON_RPC_INVALID_PARAMS, 'Invalid elicitation request');
+    if (this.sessionId && parsed.sessionId && parsed.sessionId !== this.sessionId) return { action: 'cancel' };
+
+    const key = String(context.id);
+    this.pendingRequestSeqs.set(key, context.seq);
+    let result: ElicitationResult;
+    try {
+      result = await this.io.requestElicitation(
+        parsed.mode === 'url'
+          ? { mode: 'url', message: parsed.message, url: parsed.url, ...(parsed.toolCallId ? { toolCallId: parsed.toolCallId } : {}) }
+          : { mode: 'form', message: parsed.message, fields: parsed.fields, ...(parsed.toolCallId ? { toolCallId: parsed.toolCallId } : {}) },
+      );
+    } finally {
+      this.pendingRequestSeqs.delete(key);
+    }
+    if (this.io.signal.aborted || result.action === 'cancel') return { action: 'cancel' };
+    if (result.action === 'decline') return { action: 'decline' };
+    return parsed.mode === 'url' ? { action: 'accept' } : { action: 'accept', content: result.content };
+  }
 }
 
 interface AcpPermissionOutcomeResult {
@@ -371,14 +462,29 @@ async function* runTurn(input: ChatRunInput): AsyncGenerator<ChatEvent> {
     }
     input.reportStatus?.(null);
     turn.sessionId = live.sessionId;
+    turn.live = live;
 
     yield {
       type: 'agent-state',
       sessionId: live.sessionId ?? undefined,
       connectionId: live.connectionId,
       ...modesToEvent(live.modes),
+      ...(setup && live.configOptions.length > 0 ? { configOptions: live.configOptions } : {}),
+      ...(live.supportsImages !== null ? { supportsImages: live.supportsImages } : {}),
+      ...(live.supportsEmbeddedContext !== null ? { supportsEmbeddedContext: live.supportsEmbeddedContext } : {}),
       ...(setup ? { seq: setup.seq } : {}),
     };
+
+    const prompt = await turn.race(
+      buildPrompt(input.userText, input.contexts, input.images, {
+        images: live.supportsImages ?? backend.supportsImages ?? false,
+        embeddedContext: live.supportsEmbeddedContext ?? backend.supportsEmbeddedContext ?? true,
+      }),
+    );
+    if (prompt === ABORTED) {
+      yield { type: 'turn-end', stopReason: 'cancelled' };
+      return;
+    }
 
     const promptId = live.acp.reserveRequestId();
     turn.expectResponseFor(promptId);
@@ -390,7 +496,7 @@ async function* runTurn(input: ChatRunInput): AsyncGenerator<ChatEvent> {
 
     turn.promptSent = true;
     void live.acp
-      .startRequest('session/prompt', { sessionId: live.sessionId, prompt: buildPrompt(input.userText, input.contexts) }, {
+      .startRequest('session/prompt', { sessionId: live.sessionId, prompt }, {
         id: promptId,
         timeoutMs: null,
         onSettled: (outcome) => turn.promptSettled(outcome),
@@ -416,7 +522,7 @@ function cancelOnceAttached(acquisition: Promise<LiveAgentConnection>, sessionId
   );
 }
 
-async function* resumeTurn(input: Omit<ChatRunInput, 'userText' | 'contexts'>): AsyncGenerator<ChatEvent> {
+async function* resumeTurn(input: Omit<ChatRunInput, 'userText' | 'contexts' | 'images'>): AsyncGenerator<ChatEvent> {
   const backend = requireAgentBackend(input.thread);
   if (backend.pendingPromptId === undefined) {
     yield { type: 'turn-end', stopReason: 'end_turn' };
@@ -439,6 +545,7 @@ async function* resumeTurn(input: Omit<ChatRunInput, 'userText' | 'contexts'>): 
     live = acquired;
     if (live.busy) throw new Error('This agent is already being followed by another turn.');
     live.busy = true;
+    turn.live = live;
     turn.sessionId = live.sessionId ?? turn.sessionId;
     turn.watchLink(live);
     input.reportStatus?.(null);
@@ -458,9 +565,17 @@ async function applyMode(thread: ChatThread, modeId: string): Promise<void> {
   if (live.modes) live.modes = { ...live.modes, currentModeId: modeId };
 }
 
+async function applyConfigOption(thread: ChatThread, configId: string, value: string | boolean): Promise<AgentConfigOption[]> {
+  const backend = requireAgentBackend(thread);
+  const live = await acquireConnection(thread, backend, { install: noopInstall });
+  await ensureSession(live, backend);
+  return setConfigOptionValue(live, configId, value);
+}
+
 export const agentBackend: ChatBackend = {
   type: 'agent',
   run: runTurn,
   resume: resumeTurn,
   setMode: applyMode,
+  setConfigOption: applyConfigOption,
 };

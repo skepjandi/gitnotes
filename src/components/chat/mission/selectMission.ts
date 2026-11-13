@@ -1,4 +1,5 @@
-import type { ChatMessage, PlanEntry, ThreadBackend, ToolDiff } from '../../../models/Chat';
+import type { ChatMessage, PlanEntry, ThreadBackend, ToolDiff, ToolStatus } from '../../../models/Chat';
+import type { ListeningPort } from '../../../services/agent/bridgeTools';
 import type { ChatRunStatus, PermissionRequest } from '../../../services/chat/types';
 import { buildDiffView, resolveMessageKind } from '../toolPresentation';
 
@@ -53,8 +54,40 @@ export interface MissionStatusSection {
   messageCount: number;
 }
 
+export interface MissionSubagent {
+  id: string;
+  description: string;
+  status: ToolStatus;
+  resultSummary: string | null;
+}
+
+export interface MissionAgentsSection {
+  type: 'agents';
+  agents: MissionSubagent[];
+}
+
+export interface MissionBackgroundCommand {
+  id: string;
+  command: string;
+  elapsedMs: number;
+  tail: string;
+}
+
+export interface MissionBackgroundSection {
+  type: 'background';
+  commands: MissionBackgroundCommand[];
+}
+
+export interface MissionPortsSection {
+  type: 'ports';
+  ports: ListeningPort[];
+}
+
 export type MissionSection =
   | MissionNeedsYouSection
+  | MissionAgentsSection
+  | MissionBackgroundSection
+  | MissionPortsSection
   | MissionPlanSection
   | MissionChangesSection
   | MissionActivitySection
@@ -76,6 +109,76 @@ export interface SelectMissionInput {
 function lastSegment(path: string): string | null {
   const parts = path.split(/[\\/]/).filter(Boolean);
   return parts.length > 0 ? parts[parts.length - 1] : null;
+}
+
+const BACKGROUND_TAIL_LINES = 40;
+const SUBAGENT_TOOL_NAMES = new Set(['task', 'agent', 'subagent']);
+const SUBAGENT_SUMMARY_MAX = 240;
+
+function isSubagentCall(message: ChatMessage): boolean {
+  if (resolveMessageKind(message) !== 'tool') return false;
+  const name = (message.toolCallName ?? '').toLowerCase();
+  const title = (message.toolTitle ?? '').toLowerCase().split(/[\s:(]/)[0];
+  return (
+    SUBAGENT_TOOL_NAMES.has(name) ||
+    SUBAGENT_TOOL_NAMES.has(title) ||
+    typeof message.toolCallArgs?.subagent_type === 'string'
+  );
+}
+
+function stringArg(message: ChatMessage, key: string): string | null {
+  const value = message.toolCallArgs?.[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function selectSubagents(messages: ChatMessage[]): MissionSubagent[] {
+  return messages.filter(isSubagentCall).map((message) => {
+    const result = message.toolCallResult?.trim();
+    return {
+      id: message.id,
+      description:
+        stringArg(message, 'description') ??
+        stringArg(message, 'prompt')?.split('\n')[0] ??
+        message.toolTitle ??
+        message.toolCallName ??
+        '',
+      status: message.toolStatus ?? 'pending',
+      resultSummary: result ? result.slice(0, SUBAGENT_SUMMARY_MAX) : null,
+    };
+  });
+}
+
+function selectBackground(messages: ChatMessage[], status: ChatRunStatus, now: number): MissionBackgroundCommand[] {
+  let latestAssistantText = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.role === 'assistant' && resolveMessageKind(message) === 'text' && message.content.trim()) {
+      latestAssistantText = i;
+      break;
+    }
+  }
+  const turnOver = status !== 'running' && status !== 'awaiting-permission';
+  const commands: MissionBackgroundCommand[] = [];
+  messages.forEach((message, index) => {
+    if (message.toolKind !== 'execute' || message.toolStatus !== 'running') return;
+    if (!turnOver && index > latestAssistantText) return;
+    commands.push({
+      id: message.id,
+      command: stringArg(message, 'command') ?? message.toolTitle ?? message.toolCallName ?? '',
+      elapsedMs: Math.max(0, now - message.timestamp),
+      tail: (message.toolCallResult ?? '').split('\n').slice(-BACKGROUND_TAIL_LINES).join('\n').trimEnd(),
+    });
+  });
+  return commands;
+}
+
+export function withPortsSection(mission: Mission, ports: ListeningPort[]): Mission {
+  if (ports.length === 0) return mission;
+  const section: MissionPortsSection = { type: 'ports', ports };
+  const before = mission.sections.findIndex((entry) => entry.type === 'activity' || entry.type === 'status');
+  const sections = [...mission.sections];
+  sections.splice(before === -1 ? sections.length : before, 0, section);
+  return { sections };
 }
 
 function selectChanges(messages: ChatMessage[]): MissionChange[] {
@@ -131,6 +234,12 @@ export function selectMission(input: SelectMissionInput): Mission {
   const sections: MissionSection[] = [];
 
   if (pendingPermissions.length > 0) sections.push({ type: 'needsYou', requests: pendingPermissions });
+
+  const agents = selectSubagents(messages);
+  if (agents.length > 0) sections.push({ type: 'agents', agents });
+
+  const background = selectBackground(messages, status, now);
+  if (background.length > 0) sections.push({ type: 'background', commands: background });
 
   const plan = selectPlan(messages);
   if (plan) sections.push(plan);

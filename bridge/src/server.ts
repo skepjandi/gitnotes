@@ -9,11 +9,18 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { AgentConnection, sendFrame } from './connection.js';
 import { isExecutableOnPath, toAgentInfo, type AgentDefinition } from './agents.js';
 import { listWorkspaces } from './workspaces.js';
+import { detectFeatures } from './features.js';
+import { clampLimit, searchFiles } from './fsSearch.js';
+import { runGitOp } from './git.js';
+import { listeningPorts, processTree } from './ports.js';
+import { RequestError } from './requestError.js';
 import { isInsideRoot, realpathOrNull, resolveRoots } from './paths.js';
 import {
   BRIDGE_PROTOCOL_VERSION,
   type AgentInfo,
+  type BridgeFeature,
   type ClientFrame,
+  type GitOp,
   type JsonRpcMessage,
 } from './protocol.js';
 
@@ -88,6 +95,7 @@ export class BridgeServer {
   private wss: WebSocketServer | null = null;
   private idleTimer: NodeJS.Timeout | undefined = undefined;
   private resolvedRoots: string[] = [];
+  private features: BridgeFeature[] = [];
 
   constructor(options: BridgeServerOptions) {
     this.options = options;
@@ -96,6 +104,7 @@ export class BridgeServer {
 
   async listen(): Promise<{ address: string; port: number }> {
     this.resolvedRoots = await resolveRoots(this.options.roots);
+    this.features = await detectFeatures(this.resolvedRoots[0] ?? process.cwd());
 
     if (this.options.tls) {
       const [cert, key] = await Promise.all([
@@ -352,6 +361,7 @@ export class BridgeServer {
       hostname: hostname(),
       agents: this.agentInfos,
       roots: this.resolvedRoots,
+      features: this.features,
     });
   }
 
@@ -376,6 +386,11 @@ export class BridgeServer {
         return;
       case 'disconnect':
         this.handleDisconnect(state, frame);
+        return;
+      case 'fs-search':
+      case 'git':
+      case 'ports':
+        void this.handleRequest(state, frame);
         return;
       case 'auth':
         sendFrame(state.socket, {
@@ -605,17 +620,78 @@ export class BridgeServer {
     if (typeof cwd !== 'string' || cwd.length === 0) {
       return `params.cwd must be a non-empty string for ${method}`;
     }
+    return (await this.resolveCwd(cwd, 'params.cwd')).error ?? null;
+  }
+
+  /** Absolute, existing and inside a configured root; `error` explains the first failed rule. */
+  private async resolveCwd(cwd: string, field: string): Promise<{ real?: string; error?: string }> {
     if (!isAbsolute(cwd)) {
-      return `params.cwd must be an absolute path (got "${cwd}")`;
+      return { error: `${field} must be an absolute path (got "${cwd}")` };
     }
     const real = await realpathOrNull(cwd);
     if (!real) {
-      return `params.cwd does not exist: ${cwd}`;
+      return { error: `${field} does not exist: ${cwd}` };
     }
     for (const root of this.resolvedRoots) {
-      if (isInsideRoot(real, root)) return null;
+      if (isInsideRoot(real, root)) return { real };
     }
-    return `params.cwd "${cwd}" is outside the bridge roots (${this.resolvedRoots.join(', ')})`;
+    return { error: `${field} "${cwd}" is outside the bridge roots (${this.resolvedRoots.join(', ')})` };
+  }
+
+  private async handleRequest(
+    state: SocketState,
+    frame: Extract<ClientFrame, { type: 'fs-search' | 'git' | 'ports' }>,
+  ): Promise<void> {
+    const raw = frame as unknown as Record<string, unknown>;
+    const reqId = typeof raw.reqId === 'string' ? raw.reqId : '';
+    try {
+      if (reqId === '') throw new RequestError('bad-request', `${frame.type} requires a string reqId`);
+      const feature: BridgeFeature = frame.type;
+      if (!this.features.includes(feature)) {
+        throw new RequestError('unsupported', `This bridge does not support ${feature} on this host`);
+      }
+      if (frame.type === 'ports') {
+        if (typeof raw.connectionId !== 'string') {
+          throw new RequestError('bad-request', 'ports requires a string connectionId');
+        }
+        const connection = this.connections.get(raw.connectionId);
+        if (!connection) throw new RequestError('unknown-connection', 'Unknown connection');
+        const pid = connection.pid;
+        const ports = pid === undefined || connection.exited ? [] : await listeningPorts(await processTree(pid));
+        sendFrame(state.socket, { type: 'ports-result', reqId, ports });
+        return;
+      }
+      if (typeof raw.cwd !== 'string' || raw.cwd.length === 0) {
+        throw new RequestError('bad-request', `${frame.type} requires a string cwd`);
+      }
+      const resolved = await this.resolveCwd(raw.cwd, 'cwd');
+      if (resolved.real === undefined) {
+        throw new RequestError('forbidden-cwd', resolved.error ?? 'cwd rejected');
+      }
+      if (frame.type === 'fs-search') {
+        if (typeof raw.query !== 'string') throw new RequestError('bad-request', 'fs-search requires a string query');
+        if (raw.limit !== undefined && typeof raw.limit !== 'number') {
+          throw new RequestError('bad-request', 'limit must be a number');
+        }
+        const { items, truncated } = await searchFiles(resolved.real, raw.query, clampLimit(raw.limit));
+        sendFrame(state.socket, { type: 'fs-results', reqId, items, truncated });
+        return;
+      }
+      const op = raw.op;
+      if (!op || typeof op !== 'object' || typeof (op as { kind?: unknown }).kind !== 'string') {
+        throw new RequestError('bad-request', 'git requires an op with a kind');
+      }
+      const result = await runGitOp(resolved.real, op as GitOp);
+      sendFrame(state.socket, { type: 'git-result', reqId, result });
+    } catch (error) {
+      const known = error instanceof RequestError;
+      sendFrame(state.socket, {
+        type: 'request-error',
+        reqId,
+        code: known ? error.code : 'bad-request',
+        message: known ? error.message : `Request failed: ${(error as Error).message}`,
+      });
+    }
   }
 
   private liveConnectionCount(): number {

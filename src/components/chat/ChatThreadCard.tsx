@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { formatDistanceToNow } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -11,11 +11,13 @@ import type { ChatRunStatus } from '../../services/chat/types';
 interface ChatThreadCardProps {
   thread: ChatThreadSummary;
   status?: ChatRunStatus;
+  /** Highlighted as the open thread in the two-pane layout. */
+  selected?: boolean;
   onPress: () => void;
   onLongPress: () => void;
 }
 
-function ChatThreadCardImpl({ thread, status = 'idle', onPress, onLongPress }: ChatThreadCardProps) {
+function ChatThreadCardImpl({ thread, status = 'idle', selected = false, onPress, onLongPress }: ChatThreadCardProps) {
   const { colors, spacing } = useTokens();
   const { t } = useTranslation();
   const isAgent = thread.backend === 'agent';
@@ -42,6 +44,7 @@ function ChatThreadCardImpl({ thread, status = 'idle', onPress, onLongPress }: C
   return (
     <TouchableOpacity
       testID={`chat-thread-card.${thread.id}`}
+      accessibilityState={{ selected }}
       activeOpacity={0.6}
       onPress={onPress}
       onLongPress={onLongPress}
@@ -50,8 +53,9 @@ function ChatThreadCardImpl({ thread, status = 'idle', onPress, onLongPress }: C
         gap: spacing[3],
         paddingHorizontal: spacing[4],
         paddingVertical: spacing[3],
-        borderBottomWidth: 1,
-        borderBottomColor: `${colors.border}80`,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: colors.border,
+        backgroundColor: selected ? `${colors.primary}1A` : 'transparent',
       }}
     >
       <View style={{ width: 24, alignItems: 'center', paddingTop: 2 }}>{renderGlyph()}</View>
@@ -71,28 +75,28 @@ function ChatThreadCardImpl({ thread, status = 'idle', onPress, onLongPress }: C
 
         <View className="flex-row items-center mt-1.5" style={{ gap: spacing[2] }}>
           {status === 'running' ? (
-            <View testID="chat-thread-card.status-badge" className="rounded-sm px-2 py-0.5" style={{ backgroundColor: `${colors.primary}20` }}>
+            <View testID="chat-thread-card.status-badge" className="rounded-full px-2 py-0.5" style={{ backgroundColor: `${colors.primary}20` }}>
               <Text className="text-xs font-semibold" style={{ color: colors.primary }}>
                 {t('chat.statusWorking')}
               </Text>
             </View>
           ) : null}
           {status === 'awaiting-permission' ? (
-            <View testID="chat-thread-card.status-badge" className="rounded-sm px-2 py-0.5" style={{ backgroundColor: `${colors.warning}25` }}>
+            <View testID="chat-thread-card.status-badge" className="rounded-full px-2 py-0.5" style={{ backgroundColor: `${colors.warning}25` }}>
               <Text className="text-xs font-semibold" style={{ color: colors.warning }}>
                 {t('chat.statusNeedsYou')}
               </Text>
             </View>
           ) : null}
           {status === 'error' ? (
-            <View testID="chat-thread-card.status-badge" className="rounded-sm px-2 py-0.5" style={{ backgroundColor: `${colors.error}20` }}>
+            <View testID="chat-thread-card.status-badge" className="rounded-full px-2 py-0.5" style={{ backgroundColor: `${colors.error}20` }}>
               <Text className="text-xs font-semibold" style={{ color: colors.error }}>
                 {t('chat.statusError')}
               </Text>
             </View>
           ) : null}
           {badgeLabel ? (
-            <View testID="chat-thread-card.agent-badge" className="rounded-sm px-2 py-0.5" style={{ backgroundColor: `${colors.accent}20` }}>
+            <View testID="chat-thread-card.agent-badge" className="rounded-full px-2 py-0.5" style={{ backgroundColor: `${colors.accent}20` }}>
               <Text className="text-xs font-semibold text-accent" numberOfLines={1}>
                 {badgeLabel}
               </Text>

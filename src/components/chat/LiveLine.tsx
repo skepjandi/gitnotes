@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import Animated from 'react-native-reanimated';
 import { useTokens } from '../../contexts/ThemeContext';
 import type { ChatRunStatus } from '../../services/chat/types';
+import { CHAT_TYPE, MONO_FONT } from './chatStyle';
+import { useChatTransitions } from './motion/transitions';
 
 export interface LiveLineProps {
   status: ChatRunStatus;
@@ -17,8 +20,9 @@ export interface LiveLineProps {
 
 /** The single line that stays at the foot of the transcript while a turn runs. */
 export function LiveLine({ status, statusLine, actor, startedAt, onStop }: LiveLineProps) {
-  const { colors, spacing, type } = useTokens();
+  const { colors, spacing } = useTokens();
   const { t } = useTranslation();
+  const { entering } = useChatTransitions();
   const active = status === 'running' || status === 'awaiting-permission';
   const [elapsedMs, setElapsedMs] = useState(() => Math.max(0, Date.now() - startedAt));
 
@@ -51,15 +55,17 @@ export function LiveLine({ status, statusLine, actor, startedAt, onStop }: LiveL
           backgroundColor: waiting ? colors.warning : colors.accent,
         }}
       />
-      <Text testID="chat.status.line" style={{ flexShrink: 1, color: colors.textSecondary, fontSize: type.sm }} numberOfLines={1}>
-        {label}
-      </Text>
+      <Animated.View key={label} entering={entering} style={{ flexShrink: 1 }}>
+        <Text testID="chat.status.line" style={{ ...CHAT_TYPE.status, color: colors.textSecondary }} numberOfLines={1}>
+          {label}
+        </Text>
+      </Animated.View>
       <Text
         style={{
           color: colors.textSecondary,
-          fontSize: type.xs,
+          ...CHAT_TYPE.caption,
           fontVariant: ['tabular-nums'],
-          fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: undefined }),
+          fontFamily: MONO_FONT,
         }}
       >
         {t('chat.live.seconds', { count: seconds })}
@@ -74,7 +80,7 @@ export function LiveLine({ status, statusLine, actor, startedAt, onStop }: LiveL
         style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
       >
         <Ionicons name="stop-circle-outline" size={18} color={colors.textSecondary} />
-        <Text style={{ color: colors.textSecondary, fontSize: type.xs }}>{t('chat.live.stop')}</Text>
+        <Text style={{ ...CHAT_TYPE.caption, color: colors.textSecondary }}>{t('chat.live.stop')}</Text>
       </Pressable>
     </View>
   );

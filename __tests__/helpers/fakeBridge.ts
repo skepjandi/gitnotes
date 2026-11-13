@@ -3,6 +3,7 @@ import { WebSocket as WsSocket, WebSocketServer } from 'ws';
 import type {
   AgentInfo,
   BridgeErrorCode,
+  BridgeFeature,
   ClientFrame,
   JsonRpcMessage,
   ServerFrame,
@@ -29,7 +30,16 @@ export interface FakeBridgeOptions {
   replayMaxFrames?: number;
   agentLoadSession?: boolean;
   agentAuthRequired?: boolean;
+  /** `ready.features`; omitted like a bridge that predates optional features. */
+  features?: BridgeFeature[];
+  agentPromptCapabilities?: { image?: boolean; embeddedContext?: boolean };
+  /** Raw ACP `configOptions` the agent reports from `session/new` and `session/load`. */
+  agentConfigOptions?: Array<Record<string, unknown>>;
 }
+
+export type RequestFrame = Extract<ClientFrame, { reqId: string }>;
+/** Answers a request/response frame; `null` replies `unsupported`. */
+export type RequestHandler = (frame: RequestFrame) => Omit<Extract<ServerFrame, { reqId: string }>, 'reqId'> | null;
 
 export interface PermissionOptionSpec {
   optionId: string;
@@ -76,6 +86,7 @@ interface StoredSession {
   id: string;
   cwd: string;
   modeId: string;
+  configValues: Map<string, string | boolean>;
   history: Array<{ role: 'user' | 'agent'; text: string }>;
 }
 
@@ -191,6 +202,13 @@ export class FakeAgentConnection {
     this.emit({ jsonrpc: '2.0', method: 'session/update', params: { sessionId, update } });
   }
 
+  private configOptions(session: StoredSession): Array<Record<string, unknown>> {
+    return (this.bridge.agentConfigOptions ?? []).map((option) => ({
+      ...option,
+      currentValue: session.configValues.get(String(option.id)) ?? option.currentValue,
+    }));
+  }
+
   private modes(session: StoredSession) {
     return {
       currentModeId: session.modeId,
@@ -207,7 +225,7 @@ export class FakeAgentConnection {
       case 'initialize':
         this.respond(message, {
           protocolVersion: 1,
-          agentCapabilities: { loadSession: this.bridge.agentLoadSession, promptCapabilities: {} },
+          agentCapabilities: { loadSession: this.bridge.agentLoadSession, promptCapabilities: this.bridge.agentPromptCapabilities ?? {} },
           authMethods: this.bridge.agentAuthRequired ? [{ id: 'login', name: 'Log in' }] : [],
           agentInfo: { name: 'fake-agent', version: '0.0.1' },
         });
@@ -221,10 +239,15 @@ export class FakeAgentConnection {
           id: `sess_${this.id}_${this.nextSessionNumber++}`,
           cwd: String(params.cwd ?? ''),
           modeId: 'default',
+          configValues: new Map(),
           history: [],
         };
         this.bridge.sessions.set(session.id, session);
-        this.respond(message, { sessionId: session.id, modes: this.modes(session) });
+        this.respond(message, {
+          sessionId: session.id,
+          modes: this.modes(session),
+          ...(this.bridge.agentConfigOptions ? { configOptions: this.configOptions(session) } : {}),
+        });
         return;
       }
       case 'session/load': {
@@ -239,7 +262,10 @@ export class FakeAgentConnection {
             content: { type: 'text', text: entry.text },
           });
         }
-        this.respond(message, { modes: this.modes(session) });
+        this.respond(message, {
+          modes: this.modes(session),
+          ...(this.bridge.agentConfigOptions ? { configOptions: this.configOptions(session) } : {}),
+        });
         return;
       }
       case 'session/set_mode': {
@@ -251,6 +277,16 @@ export class FakeAgentConnection {
         session.modeId = String(params.modeId);
         this.respond(message, {});
         this.notifyUpdate(session.id, { sessionUpdate: 'current_mode_update', currentModeId: session.modeId });
+        return;
+      }
+      case 'session/set_config_option': {
+        const session = this.bridge.sessions.get(String(params.sessionId));
+        if (!session || this.bridge.rejectConfigOptions) {
+          this.respondError(message, -32602, 'Cannot set config option');
+          return;
+        }
+        session.configValues.set(String(params.configId), params.value as string | boolean);
+        this.respond(message, this.bridge.agentConfigOptions && !this.bridge.omitConfigOptionsInSetResponse ? { configOptions: this.configOptions(session) } : {});
         return;
       }
       case 'session/cancel':
@@ -336,6 +372,11 @@ export class FakeBridge {
   readonly sessions = new Map<string, StoredSession>();
   readonly sockets = new Set<WsSocket>();
   promptHandler: PromptHandler | null = null;
+  requestHandler: RequestHandler | null = null;
+  /** Request/response frames received, in order. */
+  readonly requestFrames: RequestFrame[] = [];
+  rejectConfigOptions = false;
+  omitConfigOptionsInSetResponse = false;
   socketsAccepted = 0;
   /** Immediately cuts every new socket (a network that is still down). */
   rejectNewSockets = false;
@@ -365,6 +406,14 @@ export class FakeBridge {
 
   get agentLoadSession(): boolean {
     return this.options.agentLoadSession ?? true;
+  }
+
+  get agentPromptCapabilities(): FakeBridgeOptions['agentPromptCapabilities'] {
+    return this.options.agentPromptCapabilities;
+  }
+
+  get agentConfigOptions(): FakeBridgeOptions['agentConfigOptions'] {
+    return this.options.agentConfigOptions;
   }
 
   get agentAuthRequired(): boolean {
@@ -435,6 +484,7 @@ export class FakeBridge {
           hostname: 'fake-host',
           agents: this.options.agents ?? DEFAULT_AGENTS,
           roots: this.options.roots ?? ['/work'],
+          ...(this.options.features ? { features: this.options.features } : {}),
         });
         return;
       }
@@ -491,6 +541,19 @@ export class FakeBridge {
         });
         for (const replayed of frames) this.send(socket, { type: 'rpc', seq: replayed.seq, message: replayed.message });
         return connection;
+      }
+      case 'fs-search':
+      case 'git':
+      case 'ports': {
+        this.requestFrames.push(frame);
+        const reply = this.requestHandler?.(frame) ?? null;
+        this.send(
+          socket,
+          reply
+            ? ({ ...reply, reqId: frame.reqId } as ServerFrame)
+            : { type: 'request-error', reqId: frame.reqId, code: 'unsupported', message: 'Not supported' },
+        );
+        return bound;
       }
       case 'rpc':
         if (!bound) {

@@ -6,6 +6,7 @@
 export const ACP_PROTOCOL_VERSION = 1;
 
 export const JSON_RPC_METHOD_NOT_FOUND = -32601;
+export const JSON_RPC_INVALID_PARAMS = -32602;
 export const JSON_RPC_INTERNAL_ERROR = -32603;
 export const ACP_AUTH_REQUIRED = -32000;
 
@@ -66,6 +67,7 @@ export type AcpSessionUpdate =
   | ({ sessionUpdate: 'tool_call_update' } & AcpToolCallFields)
   | { sessionUpdate: 'plan'; entries: AcpPlanEntry[] }
   | { sessionUpdate: 'current_mode_update'; currentModeId: string }
+  | { sessionUpdate: 'config_option_update'; configOptions: unknown }
   | {
       sessionUpdate: 'available_commands_update';
       availableCommands: { name: string; description?: string; input?: { hint?: string } | null }[];
@@ -121,10 +123,13 @@ export interface AcpInitializeResult {
 export interface AcpNewSessionResult {
   sessionId: string;
   modes?: AcpSessionModeState | null;
+  /** Raw; parsed by `parseConfigOptions`. */
+  configOptions?: unknown;
 }
 
 export interface AcpLoadSessionResult {
   modes?: AcpSessionModeState | null;
+  configOptions?: unknown;
 }
 
 export interface AcpPromptResult {
@@ -133,4 +138,5 @@ export interface AcpPromptResult {
 
 export type AcpPromptBlock =
   | { type: 'text'; text: string }
+  | { type: 'image'; data: string; mimeType: string }
   | { type: 'resource'; resource: { uri: string; mimeType?: string; text: string } };

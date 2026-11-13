@@ -271,9 +271,17 @@ jest.mock('react-native-reanimated', () => {
     return result;
   }
 
+  const layoutAnimation: Record<string, unknown> = {};
+  for (const method of ['duration', 'delay', 'springify', 'reduceMotion', 'easing']) layoutAnimation[method] = () => layoutAnimation;
+
   return {
     __esModule: true,
     default: { View: RealView, createAnimatedComponent: (c: unknown) => c },
+    FadeIn: layoutAnimation,
+    FadeOut: layoutAnimation,
+    LinearTransition: layoutAnimation,
+    ReduceMotion: { System: 'system', Always: 'always', Never: 'never' },
+    useReducedMotion: () => false,
     View: RealView,
     useSharedValue,
     useAnimatedStyle: (cb: () => Record<string, unknown>) => cb(),
@@ -536,6 +544,7 @@ jest.mock('react-native-gesture-handler', () => {
     activeOffsetX: () => mockGesture(),
     activeOffsetY: () => mockGesture(),
     failOffsetY: () => mockGesture(),
+    numberOfTaps: () => mockGesture(),
     onBegin: () => mockGesture(),
     onStart: () => mockGesture(),
     onUpdate: () => mockGesture(),
@@ -549,8 +558,11 @@ jest.mock('react-native-gesture-handler', () => {
       Tap: mockGesture,
       Fling: mockGesture,
       LongPress: mockGesture,
+      Pinch: mockGesture,
+      Rotation: mockGesture,
       Native: mockGesture,
       native: mockGesture,
+      Simultaneous: (...gestures: unknown[]) => gestures[0],
     },
     GestureDetector: ({ children }: { children: React.ReactNode }) => children,
     GestureHandlerRootView: View,

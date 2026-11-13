@@ -292,6 +292,45 @@
       "chooseWorkspace": "Choose a folder",
       "workspaceEmpty": "No folders are available. Add a root when starting the bridge.",
       "lastUsed": "Last used"
+    },
+    "guide": {
+      "title": "How it works",
+      "intro": "A small bridge program on your computer lets GitNotes talk to coding agents like Claude Code.",
+      "step1": "Install the bridge on your computer",
+      "step2": "Start it",
+      "step3": "Pair this phone",
+      "step3Body": "Scan the QR code it prints, or paste the pairing link, in Settings > Coding agents.",
+      "reachTitle": "Reaching your computer from your phone",
+      "routes": {
+        "tailscale": {
+          "name": "Tailscale (recommended)",
+          "note": "Run `tailscale serve --bg 7878`. Encrypted, works on iOS and Android, no port forwarding."
+        },
+        "lan": {
+          "name": "Local network",
+          "note": "Start the bridge with --host 0.0.0.0. iOS only; Android release builds block cleartext."
+        },
+        "tunnel": {
+          "name": "Cloudflare Tunnel",
+          "note": "Public endpoint; the token is the only gate."
+        }
+      },
+      "diagnosticsTitle": "Check connection",
+      "check": "Check connection",
+      "reachable": "Bridge reachable",
+      "unreachable": "Bridge not reachable",
+      "protocolOk": "Protocol version {{version}} matches",
+      "protocolMismatch": "Protocol version does not match (app speaks {{expected}})",
+      "bridgeVersion": "Bridge version {{version}}",
+      "features": {
+        "fs-search": "File search (@ mentions)",
+        "git": "Review (git status, diff, commit)",
+        "ports": "Listening ports"
+      },
+      "updateHint": "This bridge is missing some features. Update gitnotes-bridge on your computer.",
+      "tryDemo": "Try the demo agent",
+      "pickerHint": "Install the bridge and pair your computer",
+      "nudge": "Chat with coding agents on your computer. How it works"
     }
   },
   "chat": {
@@ -479,8 +518,66 @@
       "state_awaiting": "Awaiting approval",
       "state_idle": "Idle",
       "elapsed": "Elapsed",
-      "messages": "Messages"
-    }
+      "messages": "Messages",
+      "openInReview": "Open in Review",
+      "reviewChanges": "Review changes",
+      "agents": "Subagents",
+      "background": "Background",
+      "ports": "Listening ports",
+      "copyPort": "Copy port {{port}}",
+      "noOutput": "No output yet",
+      "subagent_pending": "Pending",
+      "subagent_awaiting-approval": "Awaiting approval",
+      "subagent_running": "Running",
+      "subagent_completed": "Done",
+      "subagent_failed": "Failed",
+      "subagent_rejected": "Rejected"
+    },
+    "attachNotes": "Attach notes",
+    "config": {
+      "effortTitle": "Effort",
+      "modelTitle": "Model",
+      "options": "Options"
+    },
+    "elicitation": {
+      "decline": "Decline",
+      "needsYou": "Needs you",
+      "open": "Open",
+      "openConfirmTitle": "Open {{host}}?",
+      "submit": "Submit",
+      "unsafeUrl": "Unsafe link",
+      "urlWarning": "Only open links you trust. The agent asked for this URL.",
+      "error": {
+        "required": "This field is required",
+        "number": "Enter a number",
+        "integer": "Enter a whole number",
+        "min": "Enter {{min}} or more",
+        "max": "Enter {{max}} or less"
+      }
+    },
+    "images": {
+      "camera": "Camera",
+      "library": "Photos",
+      "remove": "Remove image",
+      "permissionDenied": "Camera permission denied",
+      "pickFailed": "Could not add that image"
+    },
+    "loadEarlier_one": "Show {{count}} earlier message",
+    "loadEarlier_other": "Show {{count}} earlier messages",
+    "rateLimited": "The provider is rate limiting requests. Wait a moment, then retry.",
+    "splitPlaceholderTitle": "Select a chat",
+    "splitPlaceholderSubtitle": "Pick a conversation from the list, or start a new one.",
+    "step": {
+      "ran": "Ran",
+      "edited": "Edited",
+      "read": "Read",
+      "searched": "Searched",
+      "deleted": "Deleted",
+      "moved": "Moved",
+      "fetched": "Fetched"
+    },
+    "tooManyImages": "You can attach at most {{max}} images to one message.",
+    "imageTooLarge": "{{name}} is larger than {{max}} MB"
   },
   "explore": {
     "title": "Explore",
@@ -632,7 +729,6 @@
     "useApi": "Use API",
     "clone": "Clone",
     "cloneModeDescription": "Clone (local working tree)",
-
     "cloneWriteThroughHint": "Saves commit and push immediately when online. Offline changes queue and push automatically when you're back.",
     "download": "Download",
     "syncFrequently": "Sync frequently",
@@ -702,7 +798,6 @@
     "lfsDoneTitle": "LFS downloads complete",
     "lfsDoneBody": "Downloaded {{count}} file(s) for {{name}}.",
     "lfsFailedTitle": "Some LFS downloads failed",
-
     "switch": "Switch",
     "unpushedCommitsTitle": "Unpushed Commits",
     "unpushedCommitsBody": "{{name}} on branch \"{{branch}}\" has unpushed local commits. Please push your changes.",
@@ -992,8 +1087,8 @@
         "failed": "Sign-in Failed"
       },
       "message": {
-      "successSimple": "Your GitHub account is connected. Setting up your notes…",
-      "successQuickSetup": "Your GitHub account is connected. Continue setting up your notes…",
+        "successSimple": "Your GitHub account is connected. Setting up your notes…",
+        "successQuickSetup": "Your GitHub account is connected. Continue setting up your notes…",
         "success": "Your GitHub account is now connected.",
         "denied": "GitHub sign-in was cancelled or denied.",
         "freeTierLimit": "You have reached the maximum number of accounts on the Free plan. Upgrade to Pro to add more accounts.",
@@ -1392,7 +1487,6 @@
       "floatingGitButton": "Tap to stage, commit, or push. Hold for quick sync across all repos.",
       "crdtMerge": "Merges edits made on several devices automatically instead of asking you to resolve conflicts. Adds a .gitnotes/crdt file next to each note you save.",
       "cloneMode": "Clone mode syncs through a local git working tree. Requires more storage but works fully offline with LFS support.",
-
       "lfsFiles": "Large files tracked by Git LFS are downloaded on demand. Download pending files to view them offline.",
       "templatesRepo": "Connect a GitHub repository to store and sync your custom note templates.",
       "clearData": "Permanently deletes all notes, todos, and canvases from this device. Your files in GitHub are not affected.",
@@ -1732,5 +1826,29 @@
       "customCssHint": "Added after the theme styles and applied to every page.",
       "previewHint": "Fonts come from each visitor's device, so the site loads fast and works offline."
     }
+  },
+  "review": {
+    "binary": "Binary file not shown",
+    "renamed": "Renamed from {{from}} to {{to}}",
+    "noChanges": "No changes to show",
+    "noNewline": "No newline at end of file",
+    "moreLines": "{{count}} more lines not shown",
+    "truncated": "Diff truncated",
+    "stage": "Stage",
+    "unstage": "Unstage",
+    "stageAll": "Stage all",
+    "unstageAll": "Unstage all",
+    "section_staged": "Staged",
+    "section_changes": "Changes",
+    "section_untracked": "Untracked",
+    "detached": "Detached HEAD",
+    "notARepo": "Not a git repository",
+    "notARepoHint": "This workspace folder isn't inside a git repository.",
+    "unsupported": "Update gitnotes-bridge",
+    "unsupportedHint": "This bridge is too old to support Review. Update gitnotes-bridge on your computer.",
+    "loadFailed": "Couldn't load changes",
+    "clean": "Working tree clean",
+    "commitPlaceholder": "Commit message",
+    "commit": "Commit ({{count}})"
   }
 }

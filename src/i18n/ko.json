@@ -326,7 +326,6 @@
     "useApi": "API 사용",
     "clone": "클론",
     "cloneModeDescription": "클론(로컬 작업 트리)",
-
     "cloneWriteThroughHint": "온라인일 때 즉시 저장 후 푸시합니다. 오프라인 변경 사항은 대기열에 추가되며, 다시 온라인 상태가 되면 자동으로 푸시됩니다.",
     "download": "다운로드",
     "syncFrequently": "자주 동기화",
@@ -396,7 +395,6 @@
     "lfsDoneTitle": "LFS 다운로드 완료",
     "lfsDoneBody": "{{name}}의 파일 {{count}}개를 다운로드했습니다.",
     "lfsFailedTitle": "일부 LFS 다운로드가 실패했습니다",
-
     "switch": "전환",
     "unpushedCommitsTitle": "푸시되지 않은 커밋",
     "unpushedCommitsBody": "{{name}} 저장소의 \"{{branch}}\" 브랜치에 푸시되지 않은 로컬 커밋이 있습니다. 변경 사항을 푸시하세요.",
@@ -527,6 +525,45 @@
       "chooseWorkspace": "폴더 선택",
       "workspaceEmpty": "사용 가능한 폴더가 없습니다. 브리지를 시작할 때 루트를 추가하세요.",
       "lastUsed": "마지막 사용"
+    },
+    "guide": {
+      "title": "작동 방식",
+      "intro": "컴퓨터의 작은 브리지 프로그램으로 GitNotes가 Claude Code 같은 코딩 에이전트와 대화할 수 있습니다.",
+      "step1": "컴퓨터에 브리지 설치",
+      "step2": "실행",
+      "step3": "이 휴대폰 페어링",
+      "step3Body": "출력된 QR 코드를 스캔하거나 페어링 링크를 설정 > 코딩 에이전트에 붙여넣으세요.",
+      "reachTitle": "휴대폰에서 컴퓨터에 연결하기",
+      "routes": {
+        "tailscale": {
+          "name": "Tailscale (권장)",
+          "note": "`tailscale serve --bg 7878`을 실행하세요. 암호화되며 iOS와 Android에서 동작하고 포트 포워딩이 필요 없습니다."
+        },
+        "lan": {
+          "name": "로컬 네트워크",
+          "note": "--host 0.0.0.0으로 브리지를 시작하세요. iOS 전용이며 Android 릴리스 빌드는 평문 통신을 차단합니다."
+        },
+        "tunnel": {
+          "name": "Cloudflare Tunnel",
+          "note": "공개 엔드포인트이며 토큰이 유일한 보호 수단입니다."
+        }
+      },
+      "diagnosticsTitle": "연결 확인",
+      "check": "연결 확인",
+      "reachable": "브리지에 연결됨",
+      "unreachable": "브리지에 연결할 수 없음",
+      "protocolOk": "프로토콜 버전 {{version}}이(가) 일치합니다",
+      "protocolMismatch": "프로토콜 버전이 일치하지 않습니다(앱은 {{expected}})",
+      "bridgeVersion": "브리지 버전 {{version}}",
+      "features": {
+        "fs-search": "파일 검색(@ 멘션)",
+        "git": "리뷰(git 상태, diff, 커밋)",
+        "ports": "수신 대기 포트"
+      },
+      "updateHint": "이 브리지에 일부 기능이 없습니다. 컴퓨터에서 gitnotes-bridge를 업데이트하세요.",
+      "tryDemo": "데모 에이전트 체험",
+      "pickerHint": "브리지를 설치하고 컴퓨터를 페어링하세요",
+      "nudge": "컴퓨터의 코딩 에이전트와 채팅하세요. 작동 방식 보기"
     }
   },
   "chat": {
@@ -714,8 +751,66 @@
       "state_awaiting": "승인 대기 중",
       "state_idle": "유휴",
       "elapsed": "경과 시간",
-      "messages": "메시지"
-    }
+      "messages": "메시지",
+      "openInReview": "리뷰에서 열기",
+      "reviewChanges": "변경 사항 리뷰",
+      "agents": "서브에이전트",
+      "background": "백그라운드",
+      "ports": "수신 대기 포트",
+      "copyPort": "포트 {{port}} 복사",
+      "noOutput": "아직 출력이 없습니다",
+      "subagent_pending": "대기 중",
+      "subagent_awaiting-approval": "승인 대기 중",
+      "subagent_running": "실행 중",
+      "subagent_completed": "완료",
+      "subagent_failed": "실패",
+      "subagent_rejected": "거부됨"
+    },
+    "attachNotes": "노트 첨부",
+    "config": {
+      "effortTitle": "추론 강도",
+      "modelTitle": "모델",
+      "options": "옵션"
+    },
+    "elicitation": {
+      "decline": "거절",
+      "needsYou": "확인 필요",
+      "open": "열기",
+      "openConfirmTitle": "{{host}}을(를) 열까요?",
+      "submit": "제출",
+      "unsafeUrl": "안전하지 않은 링크",
+      "urlWarning": "신뢰할 수 있는 링크만 여세요. 에이전트가 이 URL을 요청했습니다.",
+      "error": {
+        "required": "필수 항목입니다",
+        "number": "숫자를 입력하세요",
+        "integer": "정수를 입력하세요",
+        "min": "{{min}} 이상을 입력하세요",
+        "max": "{{max}} 이하를 입력하세요"
+      }
+    },
+    "images": {
+      "camera": "카메라",
+      "library": "사진",
+      "remove": "이미지 제거",
+      "permissionDenied": "카메라 권한이 거부되었습니다",
+      "pickFailed": "이미지를 추가하지 못했습니다"
+    },
+    "loadEarlier_one": "이전 메시지 {{count}}개 보기",
+    "loadEarlier_other": "이전 메시지 {{count}}개 보기",
+    "rateLimited": "제공업체가 요청을 제한하고 있습니다. 잠시 후 다시 시도하세요.",
+    "splitPlaceholderTitle": "채팅을 선택하세요",
+    "splitPlaceholderSubtitle": "목록에서 대화를 고르거나 새로 시작하세요.",
+    "step": {
+      "ran": "실행",
+      "edited": "편집",
+      "read": "읽기",
+      "searched": "검색",
+      "deleted": "삭제",
+      "moved": "이동",
+      "fetched": "가져옴"
+    },
+    "tooManyImages": "메시지 하나에 이미지를 최대 {{max}}개까지 첨부할 수 있습니다.",
+    "imageTooLarge": "{{name}}이(가) {{max}}MB보다 큽니다"
   },
   "errors": {
     "somethingWrong": "문제가 발생했습니다",
@@ -799,7 +894,6 @@
       "backgroundSync": "백그라운드 동기화는 앱이 활성 상태가 아니더라도 실행되어 노트가 최신 상태로 유지됩니다.",
       "floatingGitButton": "탭하여 스테이지, 커밋, 푸시하세요. 길게 누르면 모든 저장소를 빠르게 동기화합니다.",
       "cloneMode": "Clone 모드는 로컬 git 작업 트리를 통해 동기화합니다. 더 많은 저장소가 필요하지만 LFS 지원으로 완전히 오프라인에서 작동합니다.",
-
       "lfsFiles": "Git LFS로 추적되는 대용량 파일은 주문형으로 다운로드됩니다. 오프라인에서 보려면 보류 중 파일을 다운로드하세요.",
       "templatesRepo": "사용자 정의 노트 템플릿을 저장하고 동기화하려면 GitHub 리포지토리를 연결하세요.",
       "clearData": "이 장치에서 모든 노트, 할 일, 캔버스를 영구적으로 삭제합니다. GitHub의 파일은 영향을 받지 않습니다.",
@@ -1023,8 +1117,8 @@
         "failed": "로그인 실패"
       },
       "message": {
-      "successSimple": "GitHub 계정이 연결되었습니다. 노트를 설정하는 중…",
-      "successQuickSetup": "GitHub 계정이 연결되었습니다. 노트 설정을 계속하세요…",
+        "successSimple": "GitHub 계정이 연결되었습니다. 노트를 설정하는 중…",
+        "successQuickSetup": "GitHub 계정이 연결되었습니다. 노트 설정을 계속하세요…",
         "success": "GitHub 계정이 연결되었습니다.",
         "denied": "GitHub 로그인이 취소되거나 거부되었습니다.",
         "freeTierLimit": "무료 플랜에서 허용된 최대 계정 수에 도달했습니다. 더 많은 계정을 추가하려면 Pro로 업그레이드하세요.",
@@ -1550,5 +1644,29 @@
       "customCssHint": "테마 스타일 뒤에 추가되며 모든 페이지에 적용됩니다.",
       "previewHint": "글꼴은 각 방문자의 기기 글꼴을 사용하므로 사이트가 빠르게 로드되고 오프라인에서도 작동합니다."
     }
+  },
+  "review": {
+    "binary": "바이너리 파일은 표시되지 않습니다",
+    "renamed": "{{from}}에서 {{to}}(으)로 이름 변경",
+    "noChanges": "표시할 변경 사항이 없습니다",
+    "noNewline": "파일 끝에 줄바꿈이 없습니다",
+    "moreLines": "{{count}}줄이 더 있지만 표시되지 않습니다",
+    "truncated": "diff가 잘렸습니다",
+    "stage": "스테이지",
+    "unstage": "스테이지 해제",
+    "stageAll": "모두 스테이지",
+    "unstageAll": "모두 스테이지 해제",
+    "section_staged": "스테이지됨",
+    "section_changes": "변경 사항",
+    "section_untracked": "추적 안 됨",
+    "detached": "분리된 HEAD",
+    "notARepo": "git 저장소가 아닙니다",
+    "notARepoHint": "이 작업 폴더는 git 저장소 안에 있지 않습니다.",
+    "unsupported": "gitnotes-bridge 업데이트",
+    "unsupportedHint": "이 브리지는 너무 오래되어 리뷰를 지원하지 않습니다. 컴퓨터에서 gitnotes-bridge를 업데이트하세요.",
+    "loadFailed": "변경 사항을 불러오지 못했습니다",
+    "clean": "작업 트리가 깨끗합니다",
+    "commitPlaceholder": "커밋 메시지",
+    "commit": "커밋 ({{count}})"
   }
 }

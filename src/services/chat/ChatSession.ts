@@ -1,8 +1,10 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { AIContextItem } from '../../models/AIProvider';
-import type { ChatMessage, ChatThread, ThreadBackend } from '../../models/Chat';
+import type { AgentConfigOption, ChatMessage, ChatThread, ImageAttachment, ThreadBackend } from '../../models/Chat';
+import { withConfigValue } from '../agent/acpConfig';
 import { deriveChatTitleFromText, isDefaultChatTitle } from '../../utils/chatThreadSummary';
 import { chatT } from './copy';
+import { MAX_IMAGES_PER_MESSAGE } from './imageStorage';
 import { applyChatEvent, findToolMessage, settleInterruptedTools, type ReducerDeps } from './reducer';
 import type { ThreadStorage } from './storage/threadStorage';
 import type {
@@ -10,6 +12,9 @@ import type {
   ChatEvent,
   ChatSessionActions,
   ChatSessionState,
+  DistributiveOmit,
+  ElicitationRequest,
+  ElicitationResult,
   PermissionDecision,
   PermissionRequest,
   QueuedPrompt,
@@ -37,7 +42,7 @@ export const DEFAULT_SESSION_TIMING = {
   abortGraceMs: 1000,
 } as const;
 
-type TurnSpec = { kind: 'prompt'; userText: string; contexts: AIContextItem[] } | { kind: 'resume' };
+type TurnSpec = { kind: 'prompt'; userText: string; contexts: AIContextItem[]; images: ImageAttachment[] } | { kind: 'resume' };
 
 interface TurnHandle {
   token: number;
@@ -60,6 +65,7 @@ const INITIAL_STATE: ChatSessionState = {
   streamStartedAt: 0,
   statusLine: null,
   pendingPermissions: [],
+  pendingElicitations: [],
   retryable: false,
   queuedPrompts: [],
 };
@@ -80,9 +86,16 @@ function foldAgentState(
   if (event.modeId !== undefined) next.modeId = event.modeId;
   if (event.availableModes !== undefined) next.availableModes = event.availableModes;
   if (event.availableCommands !== undefined) next.availableCommands = event.availableCommands;
+  if (event.configOptions !== undefined) next.configOptions = event.configOptions;
+  if (event.supportsImages !== undefined) next.supportsImages = event.supportsImages;
+  if (event.supportsEmbeddedContext !== undefined) next.supportsEmbeddedContext = event.supportsEmbeddedContext;
   if (event.pendingPromptId === null) delete next.pendingPromptId;
   else if (event.pendingPromptId !== undefined) next.pendingPromptId = event.pendingPromptId;
   return next;
+}
+
+function configOptionsOf(backend: ThreadBackend | undefined): AgentConfigOption[] {
+  return backend?.type === 'agent' || backend?.type === 'demo' ? (backend.configOptions ?? []) : [];
 }
 
 function withoutPendingPrompt<T extends ThreadBackend | undefined>(backend: T): T {
@@ -105,6 +118,7 @@ export class ChatSession implements ChatSessionActions {
   private disposed = false;
 
   private readonly permissionResolvers = new Map<string, (decision: PermissionDecision) => void>();
+  private readonly elicitationResolvers = new Map<string, (result: ElicitationResult) => void>();
 
   private pendingDelta: PendingDelta | null = null;
   private flushTimer: ReturnType<typeof setTimeout> | undefined;
@@ -163,7 +177,7 @@ export class ChatSession implements ChatSessionActions {
     this.abortTurn();
     this.clearTimers();
     this.pendingDelta = null;
-    this.store.setState({ queuedPrompts: [] });
+    this.store.setState({ queuedPrompts: [], pendingElicitations: [] });
   }
 
   private async load(): Promise<void> {
@@ -201,15 +215,24 @@ export class ChatSession implements ChatSessionActions {
 
   // ---------------------------------------------------------------- actions
 
-  send = async (text: string, contexts: AIContextItem[]): Promise<void> => {
+  send = async (text: string, contexts: AIContextItem[], images: ImageAttachment[] = []): Promise<void> => {
     const thread = this.state.thread;
     const trimmed = text.trim();
     if (!thread || !trimmed) return;
+    if (images.length > MAX_IMAGES_PER_MESSAGE) {
+      this.store.setState({
+        error: chatT('chat.tooManyImages', {
+          max: MAX_IMAGES_PER_MESSAGE,
+          defaultValue: `You can attach at most ${MAX_IMAGES_PER_MESSAGE} images to one message.`,
+        }),
+      });
+      return;
+    }
     if (this.busy) {
       this.store.setState({
         queuedPrompts: [
           ...this.state.queuedPrompts,
-          { id: this.deps.newId(), text: trimmed, contexts, state: 'queued' },
+          { id: this.deps.newId(), text: trimmed, contexts, images, state: 'queued' },
         ],
       });
       return;
@@ -221,8 +244,9 @@ export class ChatSession implements ChatSessionActions {
       content: trimmed,
       timestamp: this.deps.now(),
       attachedContexts: contexts,
+      ...(images.length > 0 ? { attachedImages: images } : {}),
     };
-    await this.startPrompt(this.withMessages(thread, [...thread.messages, userMessage]), trimmed, contexts);
+    await this.startPrompt(this.withMessages(thread, [...thread.messages, userMessage]), trimmed, contexts, images);
   };
 
   stop = (): void => {
@@ -270,11 +294,13 @@ export class ChatSession implements ChatSessionActions {
       content: trimmed,
       timestamp: this.deps.now(),
       attachedContexts: original.attachedContexts ?? [],
+      ...(original.attachedImages ? { attachedImages: original.attachedImages } : {}),
     };
     await this.startPrompt(
       this.withMessages(thread, [...thread.messages.slice(0, index), edited]),
       trimmed,
       edited.attachedContexts ?? [],
+      edited.attachedImages ?? [],
     );
   };
 
@@ -290,6 +316,7 @@ export class ChatSession implements ChatSessionActions {
       this.withMessages(thread, thread.messages.slice(0, index + 1)),
       prompt.content,
       prompt.attachedContexts ?? [],
+      prompt.attachedImages ?? [],
     );
   };
 
@@ -307,11 +334,51 @@ export class ChatSession implements ChatSessionActions {
 
     this.store.setState({
       pendingPermissions: remaining,
-      status: remaining.length > 0 ? 'awaiting-permission' : 'running',
+      status: remaining.length + this.state.pendingElicitations.length > 0 ? 'awaiting-permission' : 'running',
       thread: thread ? this.withToolStatus(thread, request?.toolCallId, rejected ? 'rejected' : 'running') : thread,
     });
     resolve(decision);
   };
+
+  resolveElicitation = (requestId: string, result: ElicitationResult): void => {
+    const resolve = this.elicitationResolvers.get(requestId);
+    if (!resolve) return;
+    this.flushDelta();
+    this.elicitationResolvers.delete(requestId);
+    const remaining = this.state.pendingElicitations.filter((request) => request.id !== requestId);
+    this.store.setState({
+      pendingElicitations: remaining,
+      status: remaining.length + this.state.pendingPermissions.length > 0 ? 'awaiting-permission' : 'running',
+    });
+    resolve(result);
+  };
+
+  setConfigOption = async (configId: string, value: string | boolean): Promise<void> => {
+    const thread = this.state.thread;
+    const previous = configOptionsOf(thread?.backend);
+    if (!thread || !previous.some((option) => option.id === configId)) return;
+    this.applyConfigOptions(withConfigValue(previous, configId, value));
+
+    let updated: AgentConfigOption[];
+    try {
+      const setter = this.deps.resolveBackend(thread).setConfigOption;
+      if (!setter) throw new Error(chatT('chat.failedToSend'));
+      updated = await setter(thread, configId, value);
+    } catch (error) {
+      const original = previous.find((option) => option.id === configId);
+      if (original) this.applyConfigOptions(withConfigValue(configOptionsOf(this.state.thread?.backend), configId, original.currentValue));
+      this.store.setState({ error: error instanceof Error ? error.message : chatT('chat.failedToSend') });
+      return;
+    }
+    this.applyConfigOptions(updated);
+  };
+
+  private applyConfigOptions(configOptions: AgentConfigOption[]): void {
+    const thread = this.state.thread;
+    if (thread?.backend?.type !== 'agent' && thread?.backend?.type !== 'demo') return;
+    this.store.setState({ thread: { ...thread, backend: { ...thread.backend, configOptions } } });
+    void this.persist();
+  }
 
   setMode = async (modeId: string): Promise<void> => {
     const thread = this.state.thread;
@@ -359,6 +426,7 @@ export class ChatSession implements ChatSessionActions {
       streamStartedAt: this.deps.now(),
       statusLine: null,
       pendingPermissions: [],
+      pendingElicitations: [],
     });
     return { token: ++this.turnToken, controller, queued };
   }
@@ -368,11 +436,12 @@ export class ChatSession implements ChatSessionActions {
     thread: ChatThread,
     userText: string,
     contexts: AIContextItem[],
+    images: ImageAttachment[],
     queued?: TurnHandle['queued'],
   ): Promise<void> {
     const handle = this.beginTurn(thread, queued);
     await this.persist();
-    await this.runTurn(handle, { kind: 'prompt', userText, contexts });
+    await this.runTurn(handle, { kind: 'prompt', userText, contexts, images });
   }
 
   private async runTurn(handle: TurnHandle, spec: TurnSpec): Promise<void> {
@@ -387,6 +456,7 @@ export class ChatSession implements ChatSessionActions {
           thread,
           signal: controller.signal,
           requestPermission: (request: Omit<PermissionRequest, 'id'>) => this.requestPermission(handle, request),
+          requestElicitation: (request: DistributiveOmit<ElicitationRequest, 'id'>) => this.requestElicitation(handle, request),
           reportStatus: (status: string | null) => {
             if (token === this.turnToken) this.store.setState({ statusLine: status });
           },
@@ -396,7 +466,7 @@ export class ChatSession implements ChatSessionActions {
           if (!backend.resume) throw new Error(chatT('chat.threadNotAvailable'));
           events = backend.resume(base);
         } else {
-          events = backend.run({ ...base, userText: spec.userText, contexts: spec.contexts });
+          events = backend.run({ ...base, userText: spec.userText, contexts: spec.contexts, images: spec.images });
         }
         for await (const event of this.untilAborted(events, controller.signal)) {
           if (token !== this.turnToken) break;
@@ -444,6 +514,7 @@ export class ChatSession implements ChatSessionActions {
       statusLine: null,
       streamStartedAt: 0,
       pendingPermissions: [],
+      pendingElicitations: [],
     });
     await this.persist();
     if (!aborted && !failed) await this.drainQueue();
@@ -461,12 +532,14 @@ export class ChatSession implements ChatSessionActions {
       content: next.text,
       timestamp: this.deps.now(),
       attachedContexts: next.contexts,
+      ...(next.images.length > 0 ? { attachedImages: next.images } : {}),
     };
     this.store.setState({ queuedPrompts: this.state.queuedPrompts.slice(1) });
     await this.startPrompt(
       this.withMessages(thread, [...thread.messages, userMessage]),
       next.text,
       next.contexts,
+      next.images,
       { prompt: next, messageId: userMessage.id },
     );
   }
@@ -594,15 +667,39 @@ export class ChatSession implements ChatSessionActions {
     });
   }
 
+  private requestElicitation(handle: TurnHandle, request: DistributiveOmit<ElicitationRequest, 'id'>): Promise<ElicitationResult> {
+    if (handle.controller.signal.aborted || handle.token !== this.turnToken) {
+      return Promise.resolve({ action: 'cancel' });
+    }
+    this.flushDelta();
+    const id = this.deps.newId();
+    return new Promise<ElicitationResult>((resolve) => {
+      this.elicitationResolvers.set(id, resolve);
+      this.store.setState({
+        pendingElicitations: [...this.state.pendingElicitations, { ...request, id } as ElicitationRequest],
+        status: 'awaiting-permission',
+      });
+    });
+  }
+
   private rejectAllPending(): void {
-    if (this.permissionResolvers.size === 0 && this.state.pendingPermissions.length === 0) return;
-    const resolvers = [...this.permissionResolvers.values()];
+    const hasPending =
+      this.permissionResolvers.size > 0 ||
+      this.state.pendingPermissions.length > 0 ||
+      this.elicitationResolvers.size > 0 ||
+      this.state.pendingElicitations.length > 0;
+    if (!hasPending) return;
+    const permissionResolvers = [...this.permissionResolvers.values()];
+    const elicitationResolvers = [...this.elicitationResolvers.values()];
     this.permissionResolvers.clear();
+    this.elicitationResolvers.clear();
     this.store.setState({
       pendingPermissions: [],
+      pendingElicitations: [],
       status: this.state.status === 'awaiting-permission' ? 'running' : this.state.status,
     });
-    for (const resolve of resolvers) resolve({ optionId: null });
+    for (const resolve of permissionResolvers) resolve({ optionId: null });
+    for (const resolve of elicitationResolvers) resolve({ action: 'cancel' });
   }
 
   // ------------------------------------------------------------ persistence

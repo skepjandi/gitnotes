@@ -526,6 +526,45 @@
       "chooseWorkspace": "フォルダを選択",
       "workspaceEmpty": "利用できるフォルダがありません。ブリッジの起動時にルートを追加してください。",
       "lastUsed": "最後に使用"
+    },
+    "guide": {
+      "title": "仕組み",
+      "intro": "パソコン上の小さなブリッジプログラムにより、GitNotesからClaude Codeなどのコーディングエージェントと会話できます。",
+      "step1": "パソコンにブリッジをインストール",
+      "step2": "起動する",
+      "step3": "このスマートフォンをペアリング",
+      "step3Body": "表示されるQRコードをスキャンするか、ペアリングリンクを「設定 > コーディングエージェント」に貼り付けます。",
+      "reachTitle": "スマートフォンからパソコンに接続する",
+      "routes": {
+        "tailscale": {
+          "name": "Tailscale（推奨）",
+          "note": "`tailscale serve --bg 7878`を実行します。暗号化され、iOSとAndroidで動作し、ポート転送は不要です。"
+        },
+        "lan": {
+          "name": "ローカルネットワーク",
+          "note": "--host 0.0.0.0 でブリッジを起動します。iOSのみ。Androidのリリースビルドは非暗号化通信をブロックします。"
+        },
+        "tunnel": {
+          "name": "Cloudflare Tunnel",
+          "note": "公開エンドポイントです。トークンが唯一の防御になります。"
+        }
+      },
+      "diagnosticsTitle": "接続を確認",
+      "check": "接続を確認",
+      "reachable": "ブリッジに接続できます",
+      "unreachable": "ブリッジに接続できません",
+      "protocolOk": "プロトコルバージョン{{version}}が一致しています",
+      "protocolMismatch": "プロトコルバージョンが一致しません（アプリは{{expected}}）",
+      "bridgeVersion": "ブリッジのバージョン {{version}}",
+      "features": {
+        "fs-search": "ファイル検索（@メンション）",
+        "git": "レビュー（gitステータス、差分、コミット）",
+        "ports": "待ち受けポート"
+      },
+      "updateHint": "このブリッジには一部の機能がありません。パソコンのgitnotes-bridgeを更新してください。",
+      "tryDemo": "デモエージェントを試す",
+      "pickerHint": "ブリッジをインストールしてパソコンをペアリング",
+      "nudge": "パソコンのコーディングエージェントとチャット。仕組みを見る"
     }
   },
   "chat": {
@@ -713,8 +752,66 @@
       "state_awaiting": "承認待ち",
       "state_idle": "待機中",
       "elapsed": "経過時間",
-      "messages": "メッセージ"
-    }
+      "messages": "メッセージ",
+      "openInReview": "レビューで開く",
+      "reviewChanges": "変更をレビュー",
+      "agents": "サブエージェント",
+      "background": "バックグラウンド",
+      "ports": "待ち受けポート",
+      "copyPort": "ポート{{port}}をコピー",
+      "noOutput": "まだ出力はありません",
+      "subagent_pending": "保留中",
+      "subagent_awaiting-approval": "承認待ち",
+      "subagent_running": "実行中",
+      "subagent_completed": "完了",
+      "subagent_failed": "失敗",
+      "subagent_rejected": "却下"
+    },
+    "attachNotes": "ノートを添付",
+    "config": {
+      "effortTitle": "推論の強さ",
+      "modelTitle": "モデル",
+      "options": "オプション"
+    },
+    "elicitation": {
+      "decline": "拒否",
+      "needsYou": "対応が必要",
+      "open": "開く",
+      "openConfirmTitle": "{{host}}を開きますか？",
+      "submit": "送信",
+      "unsafeUrl": "安全でないリンク",
+      "urlWarning": "信頼できるリンクだけを開いてください。このURLはエージェントが要求しました。",
+      "error": {
+        "required": "この項目は必須です",
+        "number": "数値を入力してください",
+        "integer": "整数を入力してください",
+        "min": "{{min}}以上を入力してください",
+        "max": "{{max}}以下を入力してください"
+      }
+    },
+    "images": {
+      "camera": "カメラ",
+      "library": "写真",
+      "remove": "画像を削除",
+      "permissionDenied": "カメラの許可が拒否されました",
+      "pickFailed": "画像を追加できませんでした"
+    },
+    "loadEarlier_one": "以前のメッセージを{{count}}件表示",
+    "loadEarlier_other": "以前のメッセージを{{count}}件表示",
+    "rateLimited": "プロバイダーがリクエストを制限しています。しばらく待ってから再試行してください。",
+    "splitPlaceholderTitle": "チャットを選択",
+    "splitPlaceholderSubtitle": "一覧から会話を選ぶか、新しく始めてください。",
+    "step": {
+      "ran": "実行",
+      "edited": "編集",
+      "read": "読み取り",
+      "searched": "検索",
+      "deleted": "削除",
+      "moved": "移動",
+      "fetched": "取得"
+    },
+    "tooManyImages": "1つのメッセージに添付できる画像は最大{{max}}枚です。",
+    "imageTooLarge": "{{name}}は{{max}} MBを超えています"
   },
   "errors": {
     "somethingWrong": "問題が発生しました",
@@ -1021,8 +1118,8 @@
         "failed": "サインインに失敗しました"
       },
       "message": {
-      "successSimple": "GitHubアカウントに接続しました。ノートを設定しています…",
-      "successQuickSetup": "GitHubアカウントに接続しました。ノートの設定を続けてください…",
+        "successSimple": "GitHubアカウントに接続しました。ノートを設定しています…",
+        "successQuickSetup": "GitHubアカウントに接続しました。ノートの設定を続けてください…",
         "success": "GitHubアカウントに接続しました。",
         "denied": "GitHubのサインインがキャンセルまたは拒否されました。",
         "freeTierLimit": "無料プランで許可されているアカウント数の上限に達しました。Proにアップグレードしてアカウントを追加してください。",
@@ -1548,5 +1645,29 @@
       "customCssHint": "テーマのスタイルの後に追加され、すべてのページに適用されます。",
       "previewHint": "フォントは訪問者のデバイスのものを使うため、サイトは高速に読み込まれオフラインでも動作します。"
     }
+  },
+  "review": {
+    "binary": "バイナリファイルは表示されません",
+    "renamed": "{{from}}から{{to}}に名前変更",
+    "noChanges": "表示する変更はありません",
+    "noNewline": "ファイル末尾に改行がありません",
+    "moreLines": "さらに{{count}}行は表示されていません",
+    "truncated": "差分は省略されました",
+    "stage": "ステージ",
+    "unstage": "ステージ解除",
+    "stageAll": "すべてステージ",
+    "unstageAll": "すべてステージ解除",
+    "section_staged": "ステージ済み",
+    "section_changes": "変更",
+    "section_untracked": "未追跡",
+    "detached": "HEAD分離状態",
+    "notARepo": "gitリポジトリではありません",
+    "notARepoHint": "このワークスペースフォルダはgitリポジトリ内にありません。",
+    "unsupported": "gitnotes-bridgeを更新",
+    "unsupportedHint": "このブリッジは古く、レビューに対応していません。パソコンのgitnotes-bridgeを更新してください。",
+    "loadFailed": "変更を読み込めませんでした",
+    "clean": "作業ツリーはクリーンです",
+    "commitPlaceholder": "コミットメッセージ",
+    "commit": "コミット（{{count}}）"
   }
 }

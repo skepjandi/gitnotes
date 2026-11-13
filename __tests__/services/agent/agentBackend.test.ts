@@ -145,20 +145,6 @@ describe('agentBackend', () => {
       });
     });
 
-    it('lists attached notes after the user text', async () => {
-      const input = runInput(agentThread(paired.id), { text: 'review these' });
-      input.contexts = [
-        { type: 'file', owner: 'o', repo: 'r', path: 'notes/a.md', name: 'a.md' },
-        { type: 'folder', owner: 'o', repo: 'r', path: 'notes', name: 'notes' },
-      ];
-      await collect(agentBackend.run(input));
-
-      const prompt = bridge.lastConnection.prompts()[0]?.params as { prompt: Array<{ type: string; text: string }> };
-      expect(prompt.prompt).toHaveLength(2);
-      expect(prompt.prompt[1]?.text).toContain('- a.md (notes/a.md)');
-      expect(prompt.prompt[1]?.text).toContain('- notes (notes)');
-    });
-
     it('reuses the agent process and session for consecutive turns', async () => {
       const first = await collect(agentBackend.run(runInput(agentThread(paired.id), { text: 'one' })));
       const backend = foldBackend(requireBackend(agentThread(paired.id)), first);

@@ -122,6 +122,10 @@ export class AgentConnection {
     });
   }
 
+  get pid(): number | undefined {
+    return this.child.pid;
+  }
+
   get headSeq(): number {
     return this.nextSeq - 1;
   }

@@ -14,7 +14,8 @@ describe('createDemoThread', () => {
   it('creates a device-local demo thread and registers it', async () => {
     const thread = await createDemoThread();
 
-    expect(thread.backend).toEqual({ type: 'demo' });
+    expect(thread.backend).toMatchObject({ type: 'demo' });
+    expect((thread.backend as { configOptions?: unknown[] }).configOptions?.length).toBeGreaterThan(0);
     expect(thread.title).toBe('chat.demoTitle');
     expect(mockSave).toHaveBeenCalledWith(thread);
     expect(mockSeed).toHaveBeenCalledWith(thread);

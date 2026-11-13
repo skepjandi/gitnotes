@@ -1,18 +1,22 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecyclingState } from '@shopify/flash-list';
 import { useTranslation } from 'react-i18next';
-import { useTheme, useTokens } from '../../contexts/ThemeContext';
+import Animated from 'react-native-reanimated';
+import { useTokens } from '../../contexts/ThemeContext';
 import type { ChatMessage, ToolStatus } from '../../models/Chat';
 import type { RootStackParamList } from '../../navigation/types';
+import { HapticService } from '../../utils/haptics';
+import { CARD_RADIUS, CHAT_TYPE, CONTINUOUS_CORNERS, HAIRLINE, MONO_FONT as MONO } from './chatStyle';
+import { useChatTransitions } from './motion/transitions';
 import { ToolDiffView } from './ToolDiffView';
 import {
   NOTE_TOOL_NAMES,
   TOOL_STATUS_LABEL_KEYS,
-  formatToolCallLabel,
+  describeToolStep,
   parseNoteToolResult,
   resolveToolStatus,
   stringifyArgs,
@@ -21,8 +25,6 @@ import {
   truncateText,
   type NoteToolResult,
 } from './toolPresentation';
-
-const MONO = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
 
 export interface ToolCallCardProps {
   message: ChatMessage;
@@ -45,7 +47,7 @@ function NoteResultChip({ result }: { result: NoteToolResult }) {
         paddingHorizontal: spacing[2],
         paddingVertical: spacing[1],
         borderRadius: 8,
-        backgroundColor: pressed ? 'rgba(0,0,0,0.08)' : 'rgba(0,0,0,0.05)',
+        backgroundColor: pressed ? `${colors.shadow}14` : `${colors.shadow}0D`,
       })}
     >
       <Ionicons name="document-text-outline" size={16} color={colors.primary} style={{ marginRight: spacing[1] }} />
@@ -74,7 +76,7 @@ function MonoBlock({ testID, label, text, resetKey }: MonoBlockProps) {
       <Text style={{ color: colors.textSecondary, fontSize: type.xs, fontWeight: '600', marginBottom: spacing[1] }}>
         {label}
       </Text>
-      <View style={{ borderRadius: 8, padding: spacing[2], backgroundColor: 'rgba(0,0,0,0.05)' }}>
+      <View style={{ borderRadius: 8, padding: spacing[2], backgroundColor: `${colors.shadow}0D` }}>
         <Text testID={testID} selectable style={{ color: colors.text, fontSize: type.xs, lineHeight: 16, fontFamily: MONO }}>
           {view.text}
         </Text>
@@ -97,37 +99,41 @@ function MonoBlock({ testID, label, text, resetKey }: MonoBlockProps) {
 }
 
 function StatusBadge({ status }: { status: ToolStatus }) {
-  const { colors, type } = useTokens();
+  const { colors } = useTokens();
   const { t } = useTranslation();
   const tint =
-    status === 'completed' ? colors.success
+    status === 'completed' ? colors.textSecondary
     : status === 'failed' ? colors.error
     : status === 'awaiting-approval' ? colors.warning
     : status === 'running' ? colors.primary
     : colors.textSecondary;
 
   return (
-    <View testID={`chat-tool.status.${status}`} style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 0 }}>
+    <View
+      testID={`chat-tool.status.${status}`}
+      accessible
+      accessibilityLabel={t(TOOL_STATUS_LABEL_KEYS[status])}
+      style={{ flexShrink: 0 }}
+    >
       {status === 'running' ? (
         <ActivityIndicator size="small" color={tint} style={{ transform: [{ scale: 0.7 }] }} />
       ) : (
         <Ionicons name={TOOL_STATUS_ICONS[status]} size={14} color={tint} />
       )}
-      <Text style={{ color: tint, fontSize: type.xs, fontWeight: '600', marginLeft: 3 }} numberOfLines={1}>
-        {t(TOOL_STATUS_LABEL_KEYS[status])}
-      </Text>
     </View>
   );
 }
 
 function ToolCallCardImpl({ message, isStreaming }: ToolCallCardProps) {
   const { colors, spacing, type } = useTokens();
-  const { isDark } = useTheme();
   const { t } = useTranslation();
+  const { entering, exiting, layout } = useChatTransitions();
   const [expanded, setExpanded] = useRecyclingState(false, [message.id]);
 
   const status = resolveToolStatus(message, isStreaming);
-  const title = message.toolTitle?.trim() || formatToolCallLabel(message.toolCallName);
+  const step = useMemo(() => describeToolStep(message), [message]);
+  const verbLabel = step.verb ? t(`chat.step.${step.verb}`) : null;
+  const title = verbLabel ? `${verbLabel} ${step.detail}` : step.detail;
   const argsText = useMemo(() => stringifyArgs(message.toolCallArgs), [message.toolCallArgs]);
   const noteResult = useMemo(
     () =>
@@ -141,18 +147,25 @@ function ToolCallCardImpl({ message, isStreaming }: ToolCallCardProps) {
   const locations = message.toolLocations;
   const hasDetails = Boolean(argsText || result || noteResult || diffs?.length || locations?.length);
 
+  const toggle = () => {
+    void HapticService.selection();
+    setExpanded((current) => !current);
+  };
+
   return (
-    <View
+    <Animated.View
+      layout={layout}
       testID="chat-tool.card"
       style={{
         alignSelf: 'flex-start',
         width: '92%',
-        marginVertical: spacing[1],
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: expanded ? (isDark ? '#4a4a4f' : '#d8dbe5') : colors.border,
-        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(99,102,241,0.04)',
+        marginVertical: 2,
+        borderRadius: CARD_RADIUS,
+        borderWidth: HAIRLINE,
+        borderColor: colors.border,
+        backgroundColor: colors.surface,
         overflow: 'hidden',
+        ...CONTINUOUS_CORNERS,
       }}
     >
       <Pressable
@@ -160,37 +173,50 @@ function ToolCallCardImpl({ message, isStreaming }: ToolCallCardProps) {
         accessibilityRole="button"
         accessibilityLabel={`${title}, ${t(TOOL_STATUS_LABEL_KEYS[status])}`}
         accessibilityState={{ expanded, disabled: !hasDetails }}
-        onPress={hasDetails ? () => setExpanded((current) => !current) : undefined}
+        onPress={hasDetails ? toggle : undefined}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          minHeight: 44,
+          minHeight: 40,
           paddingHorizontal: spacing[3],
           gap: spacing[2],
         }}
       >
-        <Ionicons name={TOOL_KIND_ICONS[message.toolKind ?? 'other']} size={16} color={colors.primary} />
+        <Ionicons name={TOOL_KIND_ICONS[message.toolKind ?? 'other']} size={15} color={colors.textSecondary} />
+        {verbLabel ? (
+          <Text style={{ ...CHAT_TYPE.status, color: colors.textSecondary, fontWeight: '600', flexShrink: 0 }}>
+            {verbLabel}
+          </Text>
+        ) : null}
         <Text
           testID="chat-tool.title"
-          style={{ flex: 1, minWidth: 0, color: colors.text, fontSize: type.sm, fontWeight: '600' }}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            color: verbLabel ? colors.text : colors.textSecondary,
+            ...CHAT_TYPE.status,
+            fontFamily: step.monospace ? MONO : undefined,
+          }}
           numberOfLines={1}
           ellipsizeMode="middle"
         >
-          {title}
+          {step.detail}
         </Text>
         <StatusBadge status={status} />
         {hasDetails ? (
-          <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={14} color={colors.textSecondary} />
+          <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={13} color={colors.textSecondary} />
         ) : null}
       </Pressable>
       {expanded && hasDetails ? (
-        <View
+        <Animated.View
+          entering={entering}
+          exiting={exiting}
           style={{
             paddingHorizontal: spacing[3],
             paddingTop: spacing[1],
             paddingBottom: spacing[3],
-            borderTopWidth: 1,
-            borderTopColor: isDark ? '#3a3a3f' : '#e5e7eb',
+            borderTopWidth: HAIRLINE,
+            borderTopColor: colors.border,
           }}
         >
           {locations && locations.length > 0 ? (
@@ -224,9 +250,9 @@ function ToolCallCardImpl({ message, isStreaming }: ToolCallCardProps) {
           ) : result ? (
             <MonoBlock testID="chat-tool.result" label={t('chat.toolDetails.result')} text={result} resetKey={message.id} />
           ) : null}
-        </View>
+        </Animated.View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 

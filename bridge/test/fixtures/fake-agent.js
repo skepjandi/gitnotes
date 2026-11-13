@@ -4,6 +4,8 @@
  * answers `initialize`, streams numbered notifications, asks the client for
  * permission, and can write raw bytes to exercise the line decoder.
  */
+import { spawn } from 'node:child_process';
+import { createServer } from 'node:net';
 import { createInterface } from 'node:readline';
 
 const write = (message) => {
@@ -71,6 +73,33 @@ const handle = (message) => {
           process.stdout.write(part);
         }, index * 10);
       });
+      break;
+    }
+    case 'fake/listen': {
+      const server = createServer();
+      server.listen(0, '127.0.0.1', () => {
+        write({ jsonrpc: '2.0', id, result: { port: server.address().port, pid: process.pid } });
+      });
+      break;
+    }
+    case 'fake/listen-child': {
+      const child = spawn(
+        process.execPath,
+        [
+          '-e',
+          "const s=require('node:net').createServer();s.listen(0,'127.0.0.1',()=>console.log(s.address().port));",
+        ],
+        { stdio: ['ignore', 'pipe', 'inherit'] },
+      );
+      child.stdout.once('data', (chunk) => {
+        write({
+          jsonrpc: '2.0',
+          id,
+          result: { port: Number(String(chunk).trim()), pid: child.pid },
+        });
+      });
+      process.on('exit', () => child.kill());
+      process.on('SIGTERM', () => process.exit(0));
       break;
     }
     case 'fake/stderr':

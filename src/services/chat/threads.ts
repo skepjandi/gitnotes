@@ -3,6 +3,7 @@ import { useAIStore } from '../../stores/aiStore';
 import { useChatStore } from '../../stores/chatStore';
 import { DEFAULT_CHAT_TITLE } from '../../utils/chatThreadSummary';
 import { chatT } from './copy';
+import { DEMO_CONFIG_OPTIONS } from './backends/demoScript';
 import { seedChatSession } from './sessions';
 import { localThreadStorage } from './storage/localThreadStorage';
 import type { ChatThreadApi, CreateAgentThreadInput } from './types';
@@ -70,7 +71,7 @@ export const createDemoThread: ChatThreadApi['createDemoThread'] = async () => {
     repoName: '',
     branch: '',
     filePath: '',
-    backend: { type: 'demo' },
+    backend: { type: 'demo', configOptions: DEMO_CONFIG_OPTIONS },
   };
   await localThreadStorage.save(thread);
   seedChatSession(thread);

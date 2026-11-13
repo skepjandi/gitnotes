@@ -326,7 +326,6 @@
     "useApi": "Utiliser l'API",
     "clone": "Cloner",
     "cloneModeDescription": "Clone (arborescence de travail locale)",
-
     "cloneWriteThroughHint": "Enregistre et pousse immédiatement en ligne. Les modifications hors ligne se mettent en file d'attente et sont poussées automatiquement à votre retour.",
     "download": "Télécharger",
     "syncFrequently": "Synchroniser fréquemment",
@@ -396,7 +395,6 @@
     "lfsDoneTitle": "Téléchargements LFS terminés",
     "lfsDoneBody": "{{count}} fichier(s) téléchargé(s) pour {{name}}.",
     "lfsFailedTitle": "Certains téléchargements LFS ont échoué",
-
     "switch": "Changer",
     "unpushedCommitsTitle": "Commits non envoyés",
     "unpushedCommitsBody": "{{name}} sur la branche \"{{branch}}\" a des commits locaux non envoyés. Veuillez envoyer vos modifications.",
@@ -527,6 +525,45 @@
       "chooseWorkspace": "Choisissez un dossier",
       "workspaceEmpty": "Aucun dossier disponible. Ajoutez une racine au lancement du bridge.",
       "lastUsed": "Dernier utilisé"
+    },
+    "guide": {
+      "title": "Comment ça marche",
+      "intro": "Un petit programme passerelle sur votre ordinateur permet à GitNotes de dialoguer avec des agents de code comme Claude Code.",
+      "step1": "Installez la passerelle sur votre ordinateur",
+      "step2": "Démarrez-la",
+      "step3": "Associez ce téléphone",
+      "step3Body": "Scannez le code QR affiché, ou collez le lien d’association, dans Réglages > Agents de code.",
+      "reachTitle": "Joindre votre ordinateur depuis votre téléphone",
+      "routes": {
+        "tailscale": {
+          "name": "Tailscale (recommandé)",
+          "note": "Exécutez `tailscale serve --bg 7878`. Chiffré, fonctionne sur iOS et Android, sans redirection de port."
+        },
+        "lan": {
+          "name": "Réseau local",
+          "note": "Démarrez la passerelle avec --host 0.0.0.0. iOS uniquement ; les builds release Android bloquent le trafic non chiffré."
+        },
+        "tunnel": {
+          "name": "Cloudflare Tunnel",
+          "note": "Point d’accès public ; le jeton est la seule protection."
+        }
+      },
+      "diagnosticsTitle": "Vérifier la connexion",
+      "check": "Vérifier la connexion",
+      "reachable": "Passerelle joignable",
+      "unreachable": "Passerelle injoignable",
+      "protocolOk": "La version de protocole {{version}} correspond",
+      "protocolMismatch": "La version de protocole ne correspond pas (l’app utilise {{expected}})",
+      "bridgeVersion": "Version de la passerelle {{version}}",
+      "features": {
+        "fs-search": "Recherche de fichiers (mentions @)",
+        "git": "Revue (statut git, diff, commit)",
+        "ports": "Ports à l’écoute"
+      },
+      "updateHint": "Cette passerelle manque de certaines fonctions. Mettez à jour gitnotes-bridge sur votre ordinateur.",
+      "tryDemo": "Essayer l’agent de démonstration",
+      "pickerHint": "Installez la passerelle et associez votre ordinateur",
+      "nudge": "Discutez avec des agents de code sur votre ordinateur. Comment ça marche"
     }
   },
   "chat": {
@@ -714,8 +751,66 @@
       "state_awaiting": "En attente d’approbation",
       "state_idle": "Inactif",
       "elapsed": "Écoulé",
-      "messages": "Messages"
-    }
+      "messages": "Messages",
+      "openInReview": "Ouvrir dans la revue",
+      "reviewChanges": "Examiner les modifications",
+      "agents": "Sous-agents",
+      "background": "En arrière-plan",
+      "ports": "Ports à l’écoute",
+      "copyPort": "Copier le port {{port}}",
+      "noOutput": "Aucune sortie pour l’instant",
+      "subagent_pending": "En attente",
+      "subagent_awaiting-approval": "En attente d’approbation",
+      "subagent_running": "En cours",
+      "subagent_completed": "Terminé",
+      "subagent_failed": "Échec",
+      "subagent_rejected": "Rejeté"
+    },
+    "attachNotes": "Joindre des notes",
+    "config": {
+      "effortTitle": "Effort",
+      "modelTitle": "Modèle",
+      "options": "Options"
+    },
+    "elicitation": {
+      "decline": "Refuser",
+      "needsYou": "Vous attend",
+      "open": "Ouvrir",
+      "openConfirmTitle": "Ouvrir {{host}} ?",
+      "submit": "Envoyer",
+      "unsafeUrl": "Lien non sécurisé",
+      "urlWarning": "N’ouvrez que des liens de confiance. L’agent a demandé cette URL.",
+      "error": {
+        "required": "Ce champ est obligatoire",
+        "number": "Saisissez un nombre",
+        "integer": "Saisissez un nombre entier",
+        "min": "Saisissez {{min}} ou plus",
+        "max": "Saisissez {{max}} ou moins"
+      }
+    },
+    "images": {
+      "camera": "Appareil photo",
+      "library": "Photos",
+      "remove": "Retirer l’image",
+      "permissionDenied": "Accès à l’appareil photo refusé",
+      "pickFailed": "Impossible d’ajouter cette image"
+    },
+    "loadEarlier_one": "Afficher {{count}} message précédent",
+    "loadEarlier_other": "Afficher {{count}} messages précédents",
+    "rateLimited": "Le fournisseur limite les requêtes. Patientez un instant, puis réessayez.",
+    "splitPlaceholderTitle": "Sélectionnez un chat",
+    "splitPlaceholderSubtitle": "Choisissez une conversation dans la liste ou démarrez-en une nouvelle.",
+    "step": {
+      "ran": "Exécuté",
+      "edited": "Modifié",
+      "read": "Lu",
+      "searched": "Recherché",
+      "deleted": "Supprimé",
+      "moved": "Déplacé",
+      "fetched": "Récupéré"
+    },
+    "tooManyImages": "Vous pouvez joindre au maximum {{max}} images par message.",
+    "imageTooLarge": "{{name}} dépasse {{max}} Mo"
   },
   "errors": {
     "somethingWrong": "Une erreur est survenue",
@@ -799,7 +894,6 @@
       "backgroundSync": "La synchronisation en arrière-plan s'exécute même lorsque l'application n'est pas active, garantissant que vos notes restent à jour.",
       "floatingGitButton": "Touchez pour stage, commit ou push. Maintenez enfoncé pour synchroniser rapidement tous les dépôts.",
       "cloneMode": "Le mode clone synchronise via un arbre de travail git local. Nécessite plus de stockage mais fonctionne entièrement hors ligne avec support LFS.",
-
       "lfsFiles": "Les fichiers volumineux suivis par Git LFS sont téléchargés à la demande. Téléchargez les fichiers en attente pour les voir hors ligne.",
       "templatesRepo": "Connectez un dépôt GitHub pour stocker et synchroniser vos modèles de notes personnalisés.",
       "clearData": "Supprime définitivement toutes les notes, tâches et toiles de cet appareil. Vos fichiers sur GitHub ne sont pas affectés.",
@@ -1023,8 +1117,8 @@
         "failed": "Échec de la Connexion"
       },
       "message": {
-      "successSimple": "Votre compte GitHub est connecté. Configuration de vos notes…",
-      "successQuickSetup": "Votre compte GitHub est connecté. Continuez la configuration de vos notes…",
+        "successSimple": "Votre compte GitHub est connecté. Configuration de vos notes…",
+        "successQuickSetup": "Votre compte GitHub est connecté. Continuez la configuration de vos notes…",
         "success": "Votre compte GitHub est maintenant connecté.",
         "denied": "La connexion à GitHub a été annulée ou refusée.",
         "freeTierLimit": "Vous avez atteint le nombre maximum de comptes sur le plan gratuit. Passez à Pro pour ajouter d'autres comptes.",
@@ -1550,5 +1644,29 @@
       "customCssHint": "Ajouté après les styles du thème et appliqué à toutes les pages.",
       "previewHint": "Les polices viennent de l'appareil de chaque visiteur : le site charge vite et fonctionne hors ligne."
     }
+  },
+  "review": {
+    "binary": "Fichier binaire non affiché",
+    "renamed": "Renommé de {{from}} en {{to}}",
+    "noChanges": "Aucun changement à afficher",
+    "noNewline": "Pas de saut de ligne en fin de fichier",
+    "moreLines": "{{count}} lignes supplémentaires non affichées",
+    "truncated": "Diff tronqué",
+    "stage": "Indexer",
+    "unstage": "Désindexer",
+    "stageAll": "Tout indexer",
+    "unstageAll": "Tout désindexer",
+    "section_staged": "Indexés",
+    "section_changes": "Modifications",
+    "section_untracked": "Non suivis",
+    "detached": "HEAD détachée",
+    "notARepo": "Pas un dépôt git",
+    "notARepoHint": "Ce dossier de travail n'est pas dans un dépôt git.",
+    "unsupported": "Mettez à jour gitnotes-bridge",
+    "unsupportedHint": "Cette passerelle est trop ancienne pour la revue. Mettez à jour gitnotes-bridge sur votre ordinateur.",
+    "loadFailed": "Impossible de charger les modifications",
+    "clean": "Arbre de travail propre",
+    "commitPlaceholder": "Message de commit",
+    "commit": "Commit ({{count}})"
   }
 }

@@ -13,13 +13,22 @@ import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { useTokens } from '../../contexts/ThemeContext';
 import type { ChatMessage } from '../../models/Chat';
-import type { PermissionDecision, PermissionRequest, QueuedPrompt } from '../../services/chat/types';
+import type {
+  ElicitationRequest,
+  ElicitationResult,
+  PermissionDecision,
+  PermissionRequest,
+  QueuedPrompt,
+} from '../../services/chat/types';
 import { ChatMessageBubble, SystemNote } from '../ai/ChatMessageBubble';
+import { ElicitationCard } from './ElicitationCard';
+import { earlierStartKey, HISTORY_PAGE, windowTimeline, type ListRow } from './historyWindow';
+import { RowArrival } from './motion/RowArrival';
 import { PermissionCard } from './PermissionCard';
 import { PlanCard } from './PlanCard';
 import { ThoughtBlock } from './ThoughtBlock';
 import { WorkLine } from './WorkLine';
-import { buildTimeline, type TimelineItem } from './timeline';
+import { buildTimeline } from './timeline';
 
 /** Distance from the bottom beyond which the user counts as "reading history": no auto-follow, show the pill. */
 const JUMP_PILL_DISTANCE = 160;
@@ -32,23 +41,27 @@ export interface ChatTimelineListProps {
   messages: ChatMessage[];
   pendingPermissions: PermissionRequest[];
   queuedPrompts: QueuedPrompt[];
+  pendingElicitations?: ElicitationRequest[];
+  /** Names the asker on elicitation cards. */
+  agentName?: string;
   /** A turn is in flight: the tail message is still being written. */
   isRunning: boolean;
   headerHeight: number;
   empty: ReactElement;
   onLongPress?: (message: ChatMessage) => void;
   onResolvePermission: (requestId: string, decision: PermissionDecision) => void;
+  onResolveElicitation?: (requestId: string, result: ElicitationResult) => void;
   onCancelQueued: (promptId: string) => void;
   onRetryQueued: (promptId: string) => void;
 }
 
-function keyExtractor(item: TimelineItem): string {
+function keyExtractor(item: ListRow): string {
   return item.key;
 }
 
-function getItemType(item: TimelineItem): string {
-  return item.kind;
-}
+const NOOP_RESOLVE_ELICITATION = () => {
+  /* noop */
+};
 
 function TimeDivider({ timestamp }: { timestamp: number }) {
   const { colors, type } = useTokens();
@@ -107,28 +120,63 @@ export function ChatTimelineList({
   messages,
   pendingPermissions,
   queuedPrompts,
+  pendingElicitations,
+  agentName,
   isRunning,
   headerHeight,
   empty,
   onLongPress,
   onResolvePermission,
+  onResolveElicitation = NOOP_RESOLVE_ELICITATION,
   onCancelQueued,
   onRetryQueued,
 }: ChatTimelineListProps) {
   const { colors, spacing, type } = useTokens();
   const { t } = useTranslation();
-  const listRef = useRef<FlashListRef<TimelineItem>>(null);
+  const listRef = useRef<FlashListRef<ListRow>>(null);
   const [awayFromBottom, setAwayFromBottom] = useState(false);
   const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<string>>(new Set());
 
-  const items = useMemo(
-    () => buildTimeline(messages, pendingPermissions, queuedPrompts),
-    [messages, pendingPermissions, queuedPrompts],
+  const [startKey, setStartKey] = useState<string | null>(null);
+  const knownKeys = useRef<Set<string> | null>(null);
+  const arrivedKeys = useRef(new Set<string>());
+
+  const timeline = useMemo(
+    () => buildTimeline(messages, pendingPermissions, queuedPrompts, pendingElicitations),
+    [messages, pendingPermissions, queuedPrompts, pendingElicitations],
+  );
+  const { rows: items, start: windowStart } = useMemo(
+    () => windowTimeline(timeline, startKey),
+    [timeline, startKey],
+  );
+
+  if (knownKeys.current === null) {
+    if (items.length > 0) knownKeys.current = new Set(items.map((item) => item.key));
+  } else {
+    for (const item of items) {
+      if (!knownKeys.current.has(item.key)) {
+        knownKeys.current.add(item.key);
+        arrivedKeys.current.add(item.key);
+      }
+    }
+  }
+
+  const loadEarlier = useCallback(() => {
+    const next = earlierStartKey(timeline, windowStart, HISTORY_PAGE);
+    if (next === null) return;
+    const nextIndex = timeline.findIndex((item) => item.key === next);
+    for (let index = nextIndex; index < windowStart; index += 1) knownKeys.current?.add(timeline[index].key);
+    setStartKey(next);
+  }, [timeline, windowStart]);
+
+  const getItemType = useCallback(
+    (item: ListRow) => (arrivedKeys.current.has(item.key) ? `${item.kind}+arrival` : item.kind),
+    [],
   );
   const lastMessage = messages[messages.length - 1];
   const lastId = lastMessage?.id;
   const lastIsUser = lastMessage?.role === 'user';
-  const needsIndex = items.findIndex((item) => item.kind === 'needs');
+  const needsIndex = items.findIndex((item) => item.kind === 'needs' || item.kind === 'elicitation');
   const needsOffscreen = needsIndex !== -1 && !visibleKeys.has(items[needsIndex].key);
 
   // Sending always jumps to the new user message, even when the user had scrolled up.
@@ -145,11 +193,11 @@ export function ChatTimelineList({
     setAwayFromBottom((previous) => (previous === away ? previous : away));
   }, []);
 
-  const handleViewableChange = useCallback(({ viewableItems }: { viewableItems: ViewToken<TimelineItem>[] }) => {
+  const handleViewableChange = useCallback(({ viewableItems }: { viewableItems: ViewToken<ListRow>[] }) => {
     setVisibleKeys(new Set(viewableItems.flatMap((token) => (token.item ? [token.item.key] : []))));
   }, []);
 
-  const renderItem = useCallback<ListRenderItem<TimelineItem>>(
+  const renderItem = useCallback<ListRenderItem<ListRow>>(
     ({ item }) => {
       const row = (() => {
         switch (item.kind) {
@@ -186,13 +234,51 @@ export function ChatTimelineList({
             );
           case 'needs':
             return <PermissionCard request={item.request} onResolve={onResolvePermission} />;
+          case 'elicitation':
+            return <ElicitationCard request={item.request} agentName={agentName} onResolve={onResolveElicitation} />;
+          case 'earlier':
+            return (
+              <Pressable
+                testID="chat.button.load-earlier"
+                accessibilityRole="button"
+                onPress={loadEarlier}
+                style={{
+                  alignSelf: 'center',
+                  paddingHorizontal: spacing[3],
+                  paddingVertical: spacing[2],
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text style={{ color: colors.accent, fontSize: type.sm, fontWeight: '600' }}>
+                  {t('chat.loadEarlier', { count: item.hidden })}
+                </Text>
+              </Pressable>
+            );
           case 'queued':
             return <QueuedRow prompt={item.prompt} onCancel={onCancelQueued} onRetry={onRetryQueued} />;
         }
       })();
-      return <View style={{ paddingVertical: ROW_GAP / 2 }}>{row}</View>;
+      const padded = <View style={{ paddingVertical: ROW_GAP / 2 }}>{row}</View>;
+      return arrivedKeys.current.has(item.key) ? <RowArrival>{padded}</RowArrival> : padded;
     },
-    [isRunning, lastId, onLongPress, onResolvePermission, onCancelQueued, onRetryQueued],
+    [
+      isRunning,
+      lastId,
+      agentName,
+      loadEarlier,
+      colors.accent,
+      colors.border,
+      spacing,
+      type.sm,
+      t,
+      onLongPress,
+      onResolvePermission,
+      onResolveElicitation,
+      onCancelQueued,
+      onRetryQueued,
+    ],
   );
 
   if (items.length === 0) {

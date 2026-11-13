@@ -4,6 +4,9 @@ import type { AgentBridge } from '../../src/services/agent/types';
 import type {
   ChatEvent,
   ChatRunInput,
+  DistributiveOmit,
+  ElicitationRequest,
+  ElicitationResult,
   PermissionDecision,
   PermissionRequest,
 } from '../../src/services/chat/types';
@@ -48,24 +51,31 @@ export function agentThread(bridgeId: string, backend: Partial<AgentBackendState
 export interface TestRunInput extends ChatRunInput {
   controller: AbortController;
   permissionRequests: Array<Omit<PermissionRequest, 'id'>>;
+  elicitationRequests: Array<DistributiveOmit<ElicitationRequest, 'id'>>;
   statuses: Array<string | null>;
 }
+
+type DecideElicitation = (request: DistributiveOmit<ElicitationRequest, 'id'>) => Promise<ElicitationResult> | ElicitationResult;
 
 type Decide = (request: Omit<PermissionRequest, 'id'>) => Promise<PermissionDecision> | PermissionDecision;
 
 /** `requestPermission` answers with `decide` (default: first option) and resolves `{ optionId: null }` on abort, like the real session. */
-export function runInput(thread: ChatThread, options: { text?: string; decide?: Decide } = {}): TestRunInput {
+export function runInput(thread: ChatThread, options: { text?: string; decide?: Decide; decideElicitation?: DecideElicitation } = {}): TestRunInput {
   const controller = new AbortController();
   const permissionRequests: Array<Omit<PermissionRequest, 'id'>> = [];
+  const elicitationRequests: Array<DistributiveOmit<ElicitationRequest, 'id'>> = [];
   const statuses: Array<string | null> = [];
+  const decideElicitation: DecideElicitation = options.decideElicitation ?? (() => ({ action: 'cancel' }));
   const decide: Decide = options.decide ?? ((request) => ({ optionId: request.options[0]?.id ?? null }));
   return {
     thread,
     userText: options.text ?? 'hello',
     contexts: [],
+    images: [],
     signal: controller.signal,
     controller,
     permissionRequests,
+    elicitationRequests,
     statuses,
     requestPermission: (request) => {
       permissionRequests.push(request);
@@ -73,6 +83,13 @@ export function runInput(thread: ChatThread, options: { text?: string; decide?: 
         controller.signal.addEventListener('abort', () => resolve({ optionId: null }), { once: true });
       });
       return Promise.race([Promise.resolve(decide(request)), aborted]);
+    },
+    requestElicitation: (request) => {
+      elicitationRequests.push(request);
+      const aborted = new Promise<ElicitationResult>((resolve) => {
+        controller.signal.addEventListener('abort', () => resolve({ action: 'cancel' }), { once: true });
+      });
+      return Promise.race([Promise.resolve(decideElicitation(request)), aborted]);
     },
     reportStatus: (status) => {
       statuses.push(status);
@@ -107,6 +124,8 @@ export function foldBackend(backend: AgentBackendState, events: ChatEvent[]): Ag
       if (event.connectionId !== undefined) folded.connectionId = event.connectionId;
       if (event.modeId !== undefined) folded.modeId = event.modeId;
       if (event.availableModes !== undefined) folded.availableModes = event.availableModes;
+      if (event.configOptions !== undefined) folded.configOptions = event.configOptions;
+      if (event.supportsImages !== undefined) folded.supportsImages = event.supportsImages;
       if (typeof event.pendingPromptId === 'number') folded.pendingPromptId = event.pendingPromptId;
     }
     if (event.type === 'turn-end') delete folded.pendingPromptId;

@@ -3,9 +3,15 @@
  * Wire format: bridge/src/protocol.ts. Agent protocol: ACP (https://agentclientprotocol.com).
  */
 
-import type { AgentInfo, BridgeErrorCode, BridgeFeature, WorkspaceInfo } from '../../../bridge/src/protocol';
+import type {
+  AgentInfo,
+  BridgeErrorCode,
+  BridgeFeature,
+  BridgeSessionInfo,
+  WorkspaceInfo,
+} from '../../../bridge/src/protocol';
 
-export type { AgentInfo, WorkspaceInfo };
+export type { AgentInfo, BridgeSessionInfo, WorkspaceInfo };
 
 /** A paired bridge. The token never lives here; it is in secure storage keyed by `id`. */
 export interface AgentBridge {

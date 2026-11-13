@@ -564,6 +564,19 @@
       "tryDemo": "데모 에이전트 체험",
       "pickerHint": "브리지를 설치하고 컴퓨터를 페어링하세요",
       "nudge": "컴퓨터의 코딩 에이전트와 채팅하세요. 작동 방식 보기"
+    },
+    "sessions": {
+      "title": "{{bridge}}의 열린 세션",
+      "continueTitle": "열린 세션 이어가기",
+      "continue": "이어가기",
+      "inUse": "사용 중",
+      "loadFailed": "열린 세션을 불러오지 못했습니다: {{reason}}",
+      "startedNow": "방금 시작됨",
+      "started": {
+        "minutes": "{{count}}분 전 시작",
+        "hours": "{{count}}시간 전 시작",
+        "days": "{{count}}일 전 시작"
+      }
     }
   },
   "chat": {
@@ -810,7 +823,9 @@
       "fetched": "가져옴"
     },
     "tooManyImages": "메시지 하나에 이미지를 최대 {{max}}개까지 첨부할 수 있습니다.",
-    "imageTooLarge": "{{name}}이(가) {{max}}MB보다 큽니다"
+    "imageTooLarge": "{{name}}이(가) {{max}}MB보다 큽니다",
+    "adoptNoSession": "이 세션은 작업 폴더나 세션 ID가 아직 없어 이어갈 수 없습니다.",
+    "adoptedNotice": "{{folder}}에서 열려 있던 {{agent}} 세션을 이어갑니다. 이전 기록은 표시되지 않습니다."
   },
   "errors": {
     "somethingWrong": "문제가 발생했습니다",

@@ -1,5 +1,6 @@
 import type {
   BridgeFeature,
+  BridgeSessionInfo,
   FileMatch,
   GitFileChange,
   GitOp,
@@ -11,7 +12,7 @@ import { BridgeConnection } from './BridgeConnection';
 import { loadBridgeCredentials } from './bridgeApi';
 import { BridgeError } from './types';
 
-export type { BridgeFeature, FileMatch, GitFileChange, ListeningPort };
+export type { BridgeFeature, BridgeSessionInfo, FileMatch, GitFileChange, ListeningPort };
 
 export interface GitStatus {
   branch: string | null;
@@ -49,6 +50,8 @@ export interface BridgeToolsApi {
   gitUnstage(bridgeId: string, cwd: string, paths: string[]): Promise<void>;
   gitCommit(bridgeId: string, cwd: string, message: string): Promise<GitCommit>;
   listPorts(bridgeId: string, connectionId: string): Promise<ListeningPort[]>;
+  /** Agent connections the bridge keeps alive. Rejects with `BridgeError` code `unsupported` on bridges without the `sessions` feature. */
+  listSessions(bridgeId: string): Promise<BridgeSessionInfo[]>;
 }
 
 const IDLE_CLOSE_MS = 20_000;
@@ -185,5 +188,14 @@ export const bridgeTools: BridgeToolsApi = {
   async listPorts(bridgeId, connectionId) {
     const reply = await withLink(bridgeId, (connection) => connection.request('ports', { connectionId }));
     return reply.ports;
+  },
+
+  async listSessions(bridgeId) {
+    const features = await bridgeTools.features(bridgeId);
+    if (!features.includes('sessions')) {
+      throw new BridgeError('unknown', 'This bridge cannot list open sessions', 'unsupported');
+    }
+    const reply = await withLink(bridgeId, (connection) => connection.request('list-sessions', {}));
+    return reply.sessions;
   },
 };

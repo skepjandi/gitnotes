@@ -390,6 +390,7 @@ export class BridgeServer {
       case 'fs-search':
       case 'git':
       case 'ports':
+      case 'list-sessions':
         void this.handleRequest(state, frame);
         return;
       case 'auth':
@@ -571,6 +572,7 @@ export class BridgeServer {
       return;
     }
 
+    connection.observeClientMessage(message);
     if (!message.method && message.id !== undefined && message.id !== null) {
       connection.markAnswered(message.id);
     }
@@ -640,15 +642,22 @@ export class BridgeServer {
 
   private async handleRequest(
     state: SocketState,
-    frame: Extract<ClientFrame, { type: 'fs-search' | 'git' | 'ports' }>,
+    frame: Extract<ClientFrame, { type: 'fs-search' | 'git' | 'ports' | 'list-sessions' }>,
   ): Promise<void> {
     const raw = frame as unknown as Record<string, unknown>;
     const reqId = typeof raw.reqId === 'string' ? raw.reqId : '';
     try {
       if (reqId === '') throw new RequestError('bad-request', `${frame.type} requires a string reqId`);
-      const feature: BridgeFeature = frame.type;
+      const feature: BridgeFeature = frame.type === 'list-sessions' ? 'sessions' : frame.type;
       if (!this.features.includes(feature)) {
         throw new RequestError('unsupported', `This bridge does not support ${feature} on this host`);
+      }
+      if (frame.type === 'list-sessions') {
+        const sessions = [...this.connections.values()]
+          .filter((connection) => !connection.exited)
+          .map((connection) => connection.toSessionInfo());
+        sendFrame(state.socket, { type: 'sessions-result', reqId, sessions });
+        return;
       }
       if (frame.type === 'ports') {
         if (typeof raw.connectionId !== 'string') {

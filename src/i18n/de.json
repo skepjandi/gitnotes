@@ -564,6 +564,19 @@
       "tryDemo": "Demo-Agent ausprobieren",
       "pickerHint": "Installiere die Bridge und koppele deinen Computer",
       "nudge": "Chatte mit Coding-Agenten auf deinem Computer. So funktioniert es"
+    },
+    "sessions": {
+      "title": "Offene Sitzungen auf {{bridge}}",
+      "continueTitle": "Offene Sitzung fortsetzen",
+      "continue": "Fortsetzen",
+      "inUse": "In Verwendung",
+      "loadFailed": "Offene Sitzungen konnten nicht geladen werden: {{reason}}",
+      "startedNow": "Gerade gestartet",
+      "started": {
+        "minutes": "Vor {{count}} Min. gestartet",
+        "hours": "Vor {{count}} Std. gestartet",
+        "days": "Vor {{count}} T. gestartet"
+      }
     }
   },
   "chat": {
@@ -810,7 +823,9 @@
       "fetched": "Abgerufen:"
     },
     "tooManyImages": "Du kannst höchstens {{max}} Bilder an eine Nachricht anhängen.",
-    "imageTooLarge": "{{name}} ist größer als {{max}} MB"
+    "imageTooLarge": "{{name}} ist größer als {{max}} MB",
+    "adoptNoSession": "Diese Sitzung hat noch keinen Arbeitsordner oder keine Sitzungs-ID und kann nicht fortgesetzt werden.",
+    "adoptedNotice": "Fortgesetzt aus einer offenen {{agent}}-Sitzung in {{folder}}. Frühere Verläufe werden nicht angezeigt."
   },
   "errors": {
     "somethingWrong": "Etwas ist schiefgelaufen",

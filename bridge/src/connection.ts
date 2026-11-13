@@ -2,7 +2,7 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { WebSocket } from 'ws';
 import type { AgentDefinition } from './agents.js';
 import { NdjsonDecoder } from './ndjson.js';
-import type { JsonRpcMessage, ServerFrame } from './protocol.js';
+import type { BridgeSessionInfo, JsonRpcMessage, ServerFrame } from './protocol.js';
 
 export const DEFAULT_REPLAY_MAX_FRAMES = 5000;
 export const DEFAULT_REPLAY_MAX_BYTES = 32 * 1024 * 1024;
@@ -59,6 +59,7 @@ export class AgentConnection {
   private readonly decoder = new NdjsonDecoder();
   private readonly frames: ReplayFrame[] = [];
   private readonly pendingRequests = new Set<string>();
+  private readonly pendingSessionRequests = new Map<string, string | null>();
   private readonly maxFrames: number;
   private readonly maxBytes: number;
   private readonly now: () => number;
@@ -73,6 +74,8 @@ export class AgentConnection {
   private exitCode: number | null = null;
   private exitSignal: string | null = null;
   private hasExited = false;
+  private currentSessionId: string | null = null;
+  private currentCwd: string | null = null;
 
   private constructor(child: ChildProcess, options: AgentConnectionOptions) {
     this.child = child;
@@ -140,6 +143,63 @@ export class AgentConnection {
 
   get isAttached(): boolean {
     return this.attachedSocket !== null;
+  }
+
+  get sessionId(): string | null {
+    return this.currentSessionId;
+  }
+
+  get cwd(): string | null {
+    return this.currentCwd;
+  }
+
+  toSessionInfo(): BridgeSessionInfo {
+    return {
+      connectionId: this.id,
+      agentId: this.agentId,
+      agentName: this.agentName,
+      cwd: this.currentCwd,
+      sessionId: this.currentSessionId,
+      startedAt: this.startedAt,
+      headSeq: this.headSeq,
+      attached: this.isAttached,
+    };
+  }
+
+  /** Learns the ACP session from client -> agent `session/*` requests; `session/new` completes on its response. */
+  observeClientMessage(message: JsonRpcMessage): void {
+    if (!isRequest(message)) return;
+    const params = message.params;
+    const record = params && typeof params === 'object' ? (params as Record<string, unknown>) : {};
+    const cwd = typeof record.cwd === 'string' ? record.cwd : null;
+    if (message.method === 'session/new' || message.method === 'session/fork') {
+      this.pendingSessionRequests.set(requestKey(message.id), cwd);
+      while (this.pendingSessionRequests.size > MAX_TRACKED_REQUESTS) {
+        const oldest = this.pendingSessionRequests.keys().next();
+        if (oldest.done) break;
+        this.pendingSessionRequests.delete(oldest.value);
+      }
+      return;
+    }
+    if (message.method === 'session/load' || message.method === 'session/resume') {
+      if (typeof record.sessionId !== 'string' || record.sessionId.length === 0) return;
+      this.currentSessionId = record.sessionId;
+      if (cwd !== null) this.currentCwd = cwd;
+    }
+  }
+
+  private observeAgentResponse(message: JsonRpcMessage): void {
+    if (message.method !== undefined || message.id === undefined || message.id === null) return;
+    const key = requestKey(message.id);
+    if (!this.pendingSessionRequests.has(key)) return;
+    const cwd = this.pendingSessionRequests.get(key) ?? null;
+    this.pendingSessionRequests.delete(key);
+    const result = message.result;
+    if (!result || typeof result !== 'object') return;
+    const sessionId = (result as { sessionId?: unknown }).sessionId;
+    if (typeof sessionId !== 'string' || sessionId.length === 0) return;
+    this.currentSessionId = sessionId;
+    if (cwd !== null) this.currentCwd = cwd;
   }
 
   attach(socket: WebSocket): void {
@@ -261,7 +321,9 @@ export class AgentConnection {
       this.pushLog(`agent stdout: ${line.slice(0, 500)}`);
       return;
     }
-    this.emitFrame(parsed as JsonRpcMessage);
+    const message = parsed as JsonRpcMessage;
+    this.observeAgentResponse(message);
+    this.emitFrame(message);
   }
 
   private handleStderr(chunk: string): void {

@@ -32,7 +32,9 @@ type ReplyFor<K extends RequestFrame['type']> = K extends 'fs-search'
   ? Extract<ReplyFrame, { type: 'fs-results' }>
   : K extends 'git'
     ? Extract<ReplyFrame, { type: 'git-result' }>
-    : Extract<ReplyFrame, { type: 'ports-result' }>;
+    : K extends 'list-sessions'
+      ? Extract<ReplyFrame, { type: 'sessions-result' }>
+      : Extract<ReplyFrame, { type: 'ports-result' }>;
 
 export type BridgeLinkState = 'idle' | 'connecting' | 'ready' | 'reconnecting' | 'closed';
 
@@ -73,7 +75,7 @@ interface Waiter {
 }
 
 type RequestFrame = Extract<ClientFrame, { reqId: string }>;
-type ReplyFrame = Extract<ServerFrame, { type: 'fs-results' | 'git-result' | 'ports-result' }>;
+type ReplyFrame = Extract<ServerFrame, { type: 'fs-results' | 'git-result' | 'ports-result' | 'sessions-result' }>;
 
 interface PendingRequest {
   resolve(frame: ReplyFrame): void;
@@ -506,7 +508,9 @@ export class BridgeConnection {
   }
 
   private settleRequest(frame: ServerFrame): boolean {
-    if (frame.type !== 'fs-results' && frame.type !== 'git-result' && frame.type !== 'ports-result' && frame.type !== 'request-error') {
+    if (frame.type !== 'fs-results' && frame.type !== 'git-result' && frame.type !== 'ports-result' &&
+      frame.type !== 'sessions-result' &&
+      frame.type !== 'request-error') {
       return false;
     }
     const pending = this.requests.get(frame.reqId);

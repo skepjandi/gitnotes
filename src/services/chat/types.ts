@@ -11,6 +11,7 @@
  */
 
 import type { AIContextItem } from '../../models/AIProvider';
+import type { AgentBridge, BridgeSessionInfo } from '../agent/types';
 import type {
   AgentCommand,
   AgentConfigOption,
@@ -251,4 +252,11 @@ export interface ChatThreadApi {
   createAgentThread(input: CreateAgentThreadInput): Promise<ChatThread>;
   /** Scripted walkthrough thread that works without any bridge. */
   createDemoThread(): Promise<ChatThread>;
+  /**
+   * Continues an agent connection the bridge keeps alive: returns the local thread already bound to
+   * `session.connectionId`, else creates a device-local one attached to it. Rejects when the session has no cwd or id yet.
+   */
+  adoptAgentSession(bridge: AgentBridge, session: BridgeSessionInfo): Promise<ChatThread>;
+  /** `connectionId -> threadId` for the local agent threads bound to `bridgeId`. */
+  findAgentThreadIdsByConnection(bridgeId: string): Promise<Map<string, string>>;
 }

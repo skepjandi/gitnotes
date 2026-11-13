@@ -18,7 +18,7 @@ describe('bridgeTools', () => {
     useAgentBridgeStore.setState({ bridges: [] });
   });
 
-  async function pair(features?: ('fs-search' | 'git' | 'ports')[]) {
+  async function pair(features?: ('fs-search' | 'git' | 'ports' | 'sessions')[]) {
     bridge = await FakeBridge.start({ features: features as never });
     return pairFakeBridge(bridge);
   }
@@ -110,6 +110,34 @@ describe('bridgeTools', () => {
       frame.type === 'ports' ? { type: 'ports-result', ports: [{ port: 3000, process: 'node' }] } : null;
 
     await expect(bridgeTools.listPorts(paired.id, 'conn-1')).resolves.toEqual([{ port: 3000, process: 'node' }]);
+  });
+
+  it('lists the open sessions of a bridge', async () => {
+    const paired = await pair(['sessions']);
+    const sessions = [
+      {
+        connectionId: 'c1',
+        agentId: 'claude',
+        agentName: 'Claude Code',
+        cwd: '/work/app',
+        sessionId: 's1',
+        startedAt: 1000,
+        headSeq: 12,
+        attached: false,
+      },
+    ];
+    (bridge as FakeBridge).requestHandler = (frame: RequestFrame) =>
+      frame.type === 'list-sessions' ? { type: 'sessions-result', sessions } : null;
+
+    await expect(bridgeTools.listSessions(paired.id)).resolves.toEqual(sessions);
+    expect((bridge as FakeBridge).requestFrames[0]).toMatchObject({ type: 'list-sessions' });
+  });
+
+  it('rejects listSessions as unsupported without asking a bridge that lacks the feature', async () => {
+    const paired = await pair(['git']);
+
+    await expect(bridgeTools.listSessions(paired.id)).rejects.toMatchObject({ name: 'BridgeError', code: 'unsupported' });
+    expect((bridge as FakeBridge).requestFrames).toHaveLength(0);
   });
 
   it('maps a bridge failure to a BridgeError with the bridge code', async () => {

@@ -564,6 +564,19 @@
       "tryDemo": "Probar el agente de demostración",
       "pickerHint": "Instala el puente y vincula tu ordenador",
       "nudge": "Chatea con agentes de código en tu ordenador. Cómo funciona"
+    },
+    "sessions": {
+      "title": "Sesiones abiertas en {{bridge}}",
+      "continueTitle": "Continuar una sesión abierta",
+      "continue": "Continuar",
+      "inUse": "En uso",
+      "loadFailed": "No se pudieron cargar las sesiones abiertas: {{reason}}",
+      "startedNow": "Iniciada ahora mismo",
+      "started": {
+        "minutes": "Iniciada hace {{count}} min",
+        "hours": "Iniciada hace {{count}} h",
+        "days": "Iniciada hace {{count}} d"
+      }
     }
   },
   "chat": {
@@ -810,7 +823,9 @@
       "fetched": "Obtuvo"
     },
     "tooManyImages": "Puedes adjuntar como máximo {{max}} imágenes por mensaje.",
-    "imageTooLarge": "{{name}} supera los {{max}} MB"
+    "imageTooLarge": "{{name}} supera los {{max}} MB",
+    "adoptNoSession": "Esta sesión aún no tiene carpeta de trabajo ni id de sesión, así que no se puede continuar.",
+    "adoptedNotice": "Continuada desde una sesión abierta de {{agent}} en {{folder}}. El historial anterior no se muestra."
   },
   "errors": {
     "somethingWrong": "Algo salió mal",

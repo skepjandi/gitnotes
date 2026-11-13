@@ -9,12 +9,19 @@ const mockListBridgeAgents = jest.fn();
 const mockListWorkspaces = jest.fn();
 const mockCreateAgentThread = jest.fn();
 const mockCreateDemoThread = jest.fn();
+const mockListSessions = jest.fn();
+const mockAdoptAgentSession = jest.fn();
 
 jest.mock('@/services/agent/bridgeApi', () => ({
   listBridgeAgents: (...args: unknown[]) => mockListBridgeAgents(...args),
   listWorkspaces: (...args: unknown[]) => mockListWorkspaces(...args),
 }));
+jest.mock('@/services/agent/bridgeTools', () => ({
+  bridgeTools: { listSessions: (...args: unknown[]) => mockListSessions(...args) },
+}));
 jest.mock('@/services/chat', () => ({
+  adoptAgentSession: (...args: unknown[]) => mockAdoptAgentSession(...args),
+  findAgentThreadIdsByConnection: () => Promise.resolve(new Map()),
   createAgentThread: (...args: unknown[]) => mockCreateAgentThread(...args),
   createDemoThread: () => mockCreateDemoThread(),
 }));
@@ -42,6 +49,7 @@ describe('NewChatPicker', () => {
     mockListBridgeAgents.mockResolvedValue({ hostname: 'dev', bridgeVersion: '1', agents, roots: ['/code'] });
     mockListWorkspaces.mockResolvedValue(workspaces);
     mockCreateAgentThread.mockResolvedValue({ id: 'thread-9' });
+    mockListSessions.mockResolvedValue([]);
     useAgentBridgeStore.setState({ bridges: [bridge], setLastWorkspace: jest.fn() });
   });
 
@@ -52,6 +60,35 @@ describe('NewChatPicker', () => {
 
     expect(onSelectModel).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(getByTestId('new-chat-picker.agent.b1.claude')).toBeTruthy());
+  });
+
+  it('lists open sessions first and continues one', async () => {
+    mockListSessions.mockResolvedValue([
+      {
+        connectionId: 'c1',
+        agentId: 'claude',
+        agentName: 'Claude Code',
+        cwd: '/code/app',
+        sessionId: 's1',
+        startedAt: Date.now(),
+        headSeq: 2,
+        attached: false,
+      },
+    ]);
+    mockAdoptAgentSession.mockResolvedValue({ id: 'thread-adopted' });
+    const { findByTestId, onAgentThreadCreated } = renderPicker();
+
+    fireEvent.press(await findByTestId('open-sessions.row.c1'));
+
+    await waitFor(() => expect(onAgentThreadCreated).toHaveBeenCalledWith('thread-adopted'));
+    expect(mockAdoptAgentSession).toHaveBeenCalledWith(bridge, expect.objectContaining({ connectionId: 'c1' }));
+  });
+
+  it('shows no open-sessions group when the bridge has none', async () => {
+    const { findByTestId, queryByTestId } = renderPicker();
+
+    await findByTestId('new-chat-picker.agent.b1.claude');
+    expect(queryByTestId('open-sessions.b1')).toBeNull();
   });
 
   it('creates a demo thread without any bridge and reports it', async () => {

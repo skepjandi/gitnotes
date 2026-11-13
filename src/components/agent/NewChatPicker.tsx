@@ -11,6 +11,7 @@ import { HapticService } from '../../utils/haptics';
 import { Button, Modal } from '../ui';
 import { BridgeSetupGuide } from '../chat/setup/BridgeSetupGuide';
 import { bridgeErrorMessage } from './bridgeErrors';
+import { OpenSessionsList } from './OpenSessionsList';
 import { folderName } from './format';
 
 type Loadable<T> = { status: 'loading' } | { status: 'ready'; value: T } | { status: 'error'; error: unknown };
@@ -222,6 +223,15 @@ export function NewChatPicker({ visible, onClose, onSelectModel, onAgentThreadCr
         subtitle={t('agents.picker.aiModelHint')}
         onPress={handleSelectModel}
       />
+      {bridges.map((bridge) => (
+        <OpenSessionsList
+          key={`sessions-${bridge.id}`}
+          bridge={bridge}
+          embedded
+          refreshToken={reloadToken}
+          onOpenThread={onAgentThreadCreated}
+        />
+      ))}
       {bridges.map((bridge) => {
         const state = agentsByBridge[bridge.id] ?? { status: 'loading' as const };
         return (

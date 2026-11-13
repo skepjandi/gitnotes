@@ -10,6 +10,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 
 ## 2026-11-14
 
+### feat(chat): see and continue open agent sessions on a paired bridge
+
+**What:** The bridge now remembers the ACP session (`sessionId`, `cwd`) of every agent process it keeps alive and answers a new `list-sessions` request (feature `sessions`, `gitnotes-bridge` 0.3.0). Agent bridges shows an "Open sessions" list under each paired computer (refreshed on focus, pull-to-refresh and "Check connection"), and the new-chat picker shows the same sessions under "Continue an open session". Tapping one attaches the existing agent process to a device-local thread — including sessions with no local thread (reinstalled app, deleted thread). History from before the adoption is not shown; sessions another phone is attached to are marked "in use".
+
+**Needs a bridge update:** open sessions require `gitnotes-bridge` >= 0.3.0; older bridges simply show no list.
+
 ### feat(chat): agent chat parity — config menus, questions, images, notes, @ mentions, Review, mission control, setup guide
 
 **What:** Agent chats gained ACP session config options (model, reasoning effort, mode) with a live model chip; ACP elicitation questions (form and URL) as inline cards; image attachments for agents that accept them; attached notes now reach the agent as embedded resources instead of just names; `@` file mentions; an "Earlier" history window; selectable replies; a Review screen (git status, diff, stage, commit); mission control sections for subagents, background commands and listening ports; fade/haptic motion; a two-pane thread list on wide screens; and a "How it works" guide with bridge diagnostics. `gitnotes-bridge` 0.2.0 adds `fs-search`, `git` and `ports` request frames advertised through `ready.features`; older bridges keep working and hide the matching UI.

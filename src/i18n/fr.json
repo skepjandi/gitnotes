@@ -564,6 +564,19 @@
       "tryDemo": "Essayer l’agent de démonstration",
       "pickerHint": "Installez la passerelle et associez votre ordinateur",
       "nudge": "Discutez avec des agents de code sur votre ordinateur. Comment ça marche"
+    },
+    "sessions": {
+      "title": "Sessions ouvertes sur {{bridge}}",
+      "continueTitle": "Reprendre une session ouverte",
+      "continue": "Reprendre",
+      "inUse": "Utilisée",
+      "loadFailed": "Impossible de charger les sessions ouvertes : {{reason}}",
+      "startedNow": "Démarrée à l’instant",
+      "started": {
+        "minutes": "Démarrée il y a {{count}} min",
+        "hours": "Démarrée il y a {{count}} h",
+        "days": "Démarrée il y a {{count}} j"
+      }
     }
   },
   "chat": {
@@ -810,7 +823,9 @@
       "fetched": "Récupéré"
     },
     "tooManyImages": "Vous pouvez joindre au maximum {{max}} images par message.",
-    "imageTooLarge": "{{name}} dépasse {{max}} Mo"
+    "imageTooLarge": "{{name}} dépasse {{max}} Mo",
+    "adoptNoSession": "Cette session n'a pas encore de dossier de travail ni d'identifiant, elle ne peut pas être reprise.",
+    "adoptedNotice": "Reprise d’une session {{agent}} ouverte dans {{folder}}. L’historique précédent n’est pas affiché."
   },
   "errors": {
     "somethingWrong": "Une erreur est survenue",

@@ -38,6 +38,7 @@ Key properties:
 - **Secure by default.** Binds `127.0.0.1`, token auth (32 random bytes), failed-auth back-off, `cwd` containment to configured roots. Roots are a guard rail, **not a sandbox** — the agent's own permission prompts (relayed to the phone) and the token are the security boundary.
 - **Any ACP agent.** Presets: `claude` (`@agentclientprotocol/claude-agent-acp`), `opencode` (`opencode acp`), `pi` (`pi-acp`), `codex` (`@agentclientprotocol/codex-acp`), `gemini` (`gemini --acp`); more via `~/.gitnotes-bridge/config.json`.
 - **Request/response frames (bridge >= 0.2.0).** Besides the agent socket the bridge answers `fs-search` (`@` file mentions, gitignore-aware), `git` (status, diff, stage, unstage, commit; never push, never amend) and `ports` (listening TCP ports of the agent's process tree). They carry a client `reqId`, work on unbound sockets, validate `cwd` against the roots and are advertised in `ready.features`; an older bridge omits them and the app hides the matching UI (`unsupported`). Protocol version stays 1.
+- **Open sessions (bridge >= 0.3.0).** `AgentConnection` records the ACP `sessionId` and `cwd` from the `session/new` response and `session/load` / `session/resume` requests it already forwards, and `list-sessions` answers `sessions-result` with a `BridgeSessionInfo` (`connectionId`, `agentId`, `agentName`, `cwd`, `sessionId`, `startedAt`, `headSeq`, `attached`) for every live connection. Advertised as the `sessions` feature (always present).
 
 ### Reaching the bridge from a phone
 
@@ -54,7 +55,8 @@ Key properties:
 - `src/services/agent/BridgeConnection.ts` — WebSocket, auth, heartbeat (20s ping / 10s pong timeout), backoff reconnect + `resume`.
 - `src/services/agent/AcpClient.ts`, `acpMapper.ts` — JSON-RPC ACP client and `session/update → ChatEvent` mapping. Advertises no `fs`/`terminal` client capabilities; agents use their own tools on the host.
 - `src/screens/AgentBridgesScreen.tsx` — manage bridges; new-chat picker lets users choose a model or an agent + workspace. `BridgeSetupGuide` (How it works + connection diagnostics) opens from here and from the picker.
-- `src/services/agent/bridgeTools.ts` — `fs-search` / `git` / `ports` calls over one reused authenticated socket per bridge (`BridgeConnection.request`, 10 s timeout); features cached per bridge.
+- `src/services/agent/bridgeTools.ts` — `fs-search` / `git` / `ports` calls over one reused authenticated socket per bridge (`BridgeConnection.request`, 10 s timeout); features cached per bridge. `listSessions(bridgeId)` rejects `unsupported` when the bridge lacks the `sessions` feature.
+- `src/components/agent/OpenSessionsList.tsx` — "Open sessions" per bridge on `AgentBridgesScreen` and "Continue an open session" in `NewChatPicker`. Rows with no `cwd`/`sessionId` yet are hidden; unsupported or unreachable bridges render nothing; other failures show a small inline error. Tapping calls `adoptAgentSession(bridge, session)` (`services/chat/threads.ts`), which returns the local thread already bound to `session.connectionId` or creates a device-local agent thread with `{ sessionId, connectionId, lastSeq: headSeq }` and a leading system note that earlier history is not shown, then opens `ChatScreen`.
 
 ## Agent chat capabilities
 

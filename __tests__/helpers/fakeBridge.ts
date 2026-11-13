@@ -544,7 +544,8 @@ export class FakeBridge {
       }
       case 'fs-search':
       case 'git':
-      case 'ports': {
+      case 'ports':
+      case 'list-sessions': {
         this.requestFrames.push(frame);
         const reply = this.requestHandler?.(frame) ?? null;
         this.send(

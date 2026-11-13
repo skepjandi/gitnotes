@@ -565,6 +565,19 @@
       "tryDemo": "デモエージェントを試す",
       "pickerHint": "ブリッジをインストールしてパソコンをペアリング",
       "nudge": "パソコンのコーディングエージェントとチャット。仕組みを見る"
+    },
+    "sessions": {
+      "title": "{{bridge}}の開いているセッション",
+      "continueTitle": "開いているセッションを続ける",
+      "continue": "続ける",
+      "inUse": "使用中",
+      "loadFailed": "開いているセッションを読み込めませんでした：{{reason}}",
+      "startedNow": "たった今開始",
+      "started": {
+        "minutes": "{{count}}分前に開始",
+        "hours": "{{count}}時間前に開始",
+        "days": "{{count}}日前に開始"
+      }
     }
   },
   "chat": {
@@ -811,7 +824,9 @@
       "fetched": "取得"
     },
     "tooManyImages": "1つのメッセージに添付できる画像は最大{{max}}枚です。",
-    "imageTooLarge": "{{name}}は{{max}} MBを超えています"
+    "imageTooLarge": "{{name}}は{{max}} MBを超えています",
+    "adoptNoSession": "このセッションには作業フォルダまたはセッションIDがまだないため、続けられません。",
+    "adoptedNotice": "{{folder}}で開いていた{{agent}}セッションから続けています。以前の履歴は表示されません。"
   },
   "errors": {
     "somethingWrong": "問題が発生しました",

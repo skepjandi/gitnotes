@@ -331,6 +331,19 @@
       "tryDemo": "Try the demo agent",
       "pickerHint": "Install the bridge and pair your computer",
       "nudge": "Chat with coding agents on your computer. How it works"
+    },
+    "sessions": {
+      "title": "Open sessions on {{bridge}}",
+      "continueTitle": "Continue an open session",
+      "continue": "Continue",
+      "inUse": "In use",
+      "loadFailed": "Couldn't load open sessions: {{reason}}",
+      "startedNow": "Started just now",
+      "started": {
+        "minutes": "Started {{count}} min ago",
+        "hours": "Started {{count}} h ago",
+        "days": "Started {{count}} d ago"
+      }
     }
   },
   "chat": {
@@ -577,7 +590,9 @@
       "fetched": "Fetched"
     },
     "tooManyImages": "You can attach at most {{max}} images to one message.",
-    "imageTooLarge": "{{name}} is larger than {{max}} MB"
+    "imageTooLarge": "{{name}} is larger than {{max}} MB",
+    "adoptNoSession": "This session has no working folder or session id yet, so it can't be continued.",
+    "adoptedNotice": "Continued from an open {{agent}} session in {{folder}}. Earlier history isn't shown."
   },
   "explore": {
     "title": "Explore",

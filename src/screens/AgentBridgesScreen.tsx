@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, Text, View } from 'react-native';
+import { Alert, Linking, Platform, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { AddBridgeModal } from '../components/agent/AddBridgeModal';
 import { bridgeErrorMessage } from '../components/agent/bridgeErrors';
 import { bridgeHost } from '../components/agent/format';
+import { OpenSessionsList } from '../components/agent/OpenSessionsList';
 import { BRIDGE_INSTALL_COMMAND, BRIDGE_README_URL, BridgeSetupGuide } from '../components/chat/setup/BridgeSetupGuide';
 import { TextPromptModal } from '../components/chat/TextPromptModal';
 import ContextMenu from '../components/ContextMenu';
@@ -49,6 +50,7 @@ export default function AgentBridgesScreen() {
   const [renaming, setRenaming] = useState<AgentBridge | null>(null);
   const [copied, setCopied] = useState(false);
   const [checkToken, setCheckToken] = useState(0);
+  const [focusToken, setFocusToken] = useState(0);
   const [guideVisible, setGuideVisible] = useState(false);
 
   const params = route.params;
@@ -77,6 +79,7 @@ export default function AgentBridgesScreen() {
   useFocusEffect(
     useCallback(() => {
       const controller = new AbortController();
+      setFocusToken((token) => token + 1);
       setStatuses(Object.fromEntries(bridges.map((bridge) => [bridge.id, { state: 'checking' } as const])));
       for (const bridge of bridges) {
         void (async () => {
@@ -98,6 +101,11 @@ export default function AgentBridgesScreen() {
     // `checkToken` is a refresh trigger (retry button / bridge saved), not a value the probe reads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [bridges, checkToken]),
+  );
+
+  const handleOpenThread = useCallback(
+    (threadId: string) => navigation.navigate('ChatScreen', { threadId }),
+    [navigation],
   );
 
   const handleCopyCommand = useCallback(async () => {
@@ -180,6 +188,13 @@ export default function AgentBridgesScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={[]}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={bridges.some((bridge) => statuses[bridge.id]?.state === 'checking')}
+            onRefresh={() => setCheckToken((token) => token + 1)}
+            tintColor={colors.textSecondary}
+          />
+        }
         contentContainerStyle={{ paddingTop: headerHeight + spacing[3], paddingHorizontal: spacing[4], paddingBottom: spacing[8], gap: spacing[4] }}
       >
         {bridges.length === 0 ? (
@@ -232,6 +247,15 @@ export default function AgentBridgesScreen() {
             })}
           </Group>
         )}
+
+        {bridges.map((bridge) => (
+          <OpenSessionsList
+            key={bridge.id}
+            bridge={bridge}
+            refreshToken={focusToken + checkToken}
+            onOpenThread={handleOpenThread}
+          />
+        ))}
 
         <Group title={t('agents.help.title')} footer={t('agents.help.footer')}>
           <GroupRow>

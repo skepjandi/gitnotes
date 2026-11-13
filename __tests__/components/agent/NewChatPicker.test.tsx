@@ -8,6 +8,7 @@ import { useAgentBridgeStore } from '@/stores/agentBridgeStore';
 const mockListBridgeAgents = jest.fn();
 const mockListWorkspaces = jest.fn();
 const mockCreateAgentThread = jest.fn();
+const mockCreateDemoThread = jest.fn();
 
 jest.mock('@/services/agent/bridgeApi', () => ({
   listBridgeAgents: (...args: unknown[]) => mockListBridgeAgents(...args),
@@ -15,6 +16,7 @@ jest.mock('@/services/agent/bridgeApi', () => ({
 }));
 jest.mock('@/services/chat', () => ({
   createAgentThread: (...args: unknown[]) => mockCreateAgentThread(...args),
+  createDemoThread: () => mockCreateDemoThread(),
 }));
 
 const bridge = { id: 'b1', name: 'Dev box', url: 'wss://dev.example.net', addedAt: 1 };
@@ -50,6 +52,17 @@ describe('NewChatPicker', () => {
 
     expect(onSelectModel).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(getByTestId('new-chat-picker.agent.b1.claude')).toBeTruthy());
+  });
+
+  it('creates a demo thread without any bridge and reports it', async () => {
+    useAgentBridgeStore.setState({ bridges: [] });
+    mockCreateDemoThread.mockResolvedValue({ id: 'demo-1' });
+    const { getByTestId, onAgentThreadCreated } = renderPicker();
+
+    fireEvent.press(getByTestId('new-chat-picker.demo'));
+
+    await waitFor(() => expect(onAgentThreadCreated).toHaveBeenCalledWith('demo-1'));
+    expect(mockListBridgeAgents).not.toHaveBeenCalled();
   });
 
   it('lists agents per bridge and disables the ones that are not installed on the host', async () => {

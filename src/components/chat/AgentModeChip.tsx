@@ -34,7 +34,7 @@ export function AgentModeChip({ modes, currentModeId, onSelect, disabled }: Agen
   );
 
   return (
-    <View style={{ flexDirection: 'row', paddingHorizontal: spacing[3], paddingTop: spacing[2] }}>
+    <View style={{ flexDirection: 'row' }}>
       <Pressable
         testID="chat-mode.chip"
         accessibilityRole="button"
@@ -46,7 +46,7 @@ export function AgentModeChip({ modes, currentModeId, onSelect, disabled }: Agen
           alignItems: 'center',
           gap: spacing[1],
           paddingHorizontal: spacing[3],
-          paddingVertical: spacing[1] + 2,
+          paddingVertical: spacing[1],
           borderRadius: 999,
           borderWidth: 1,
           borderColor: colors.border,

@@ -19,9 +19,9 @@ export function configuredRepoStorage(): RepoThreadStorage | null {
   return new RepoThreadStorage({ owner: chatRepoOwner, repo: chatRepoName, branch: chatRepoBranch || 'main' });
 }
 
-/** Where a thread is (or will be) stored. Agent threads never leave the device. */
+/** Where a thread is (or will be) stored. Agent and demo threads never leave the device. */
 export function storageForThread(thread: ChatThread): ThreadStorage {
-  if (thread.backend?.type === 'agent') return localThreadStorage;
+  if (thread.backend?.type === 'agent' || thread.backend?.type === 'demo') return localThreadStorage;
   return new RepoThreadStorage({
     owner: thread.repoOwner,
     repo: thread.repoName,

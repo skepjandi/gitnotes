@@ -102,7 +102,8 @@ export function buildThreadSummary(thread: ChatThread): ChatThreadSummary {
     messageCount: thread.messages.length,
     ...(preview ? { preview } : {}),
     ...(thread.backend?.type === 'agent'
-      ? { backend: 'agent' as const, agentName: thread.backend.agentName }
+      ? { backend: 'agent' as const, agentName: thread.backend.agentName, cwd: thread.backend.cwd }
       : {}),
+    ...(thread.backend?.type === 'demo' ? { backend: 'demo' as const } : {}),
   };
 }

@@ -30,6 +30,11 @@ export function getChatSession(threadId: string): ChatSession {
   return session;
 }
 
+/** The live session for a thread, or undefined when none exists; never creates one. */
+export function peekChatSession(threadId: string): ChatSession | undefined {
+  return sessions.get(threadId);
+}
+
 /** Registers a freshly created thread so its session never has to load it. */
 export function seedChatSession(thread: ChatThread): ChatSession {
   const session = getChatSession(thread.id);

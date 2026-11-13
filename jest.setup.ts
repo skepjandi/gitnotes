@@ -81,11 +81,13 @@ jest.mock('react-i18next', () => {
 
   return {
     useTranslation: () => ({
-      t: (key: string, params?: Record<string, string>) => {
-        const value = resolve(en, key);
+      t: (key: string, params?: Record<string, string | number>) => {
+        const pluralKey = typeof params?.count === 'number' ? `${key}_${params.count === 1 ? 'one' : 'other'}` : null;
+        const pluralValue = pluralKey ? resolve(en, pluralKey) : pluralKey;
+        const value = pluralValue && pluralValue !== pluralKey ? pluralValue : resolve(en, key);
         if (!params) return value;
         return Object.entries(params).reduce(
-          (str, [k, v]) => str.replace(`{{${k}}}`, v),
+          (str, [k, v]) => str.replace(`{{${k}}}`, String(v)),
           value,
         );
       },

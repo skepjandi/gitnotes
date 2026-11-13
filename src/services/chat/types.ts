@@ -12,6 +12,7 @@
 
 import type { AIContextItem } from '../../models/AIProvider';
 import type {
+  AgentCommand,
   AgentMode,
   ChatMessage,
   ChatThread,
@@ -49,6 +50,7 @@ export type ChatEventBody =
       pendingPromptId?: number | null;
       modeId?: string;
       availableModes?: AgentMode[];
+      availableCommands?: AgentCommand[];
     }
   /** Terminal event of a turn. */
   | { type: 'turn-end'; stopReason: string };
@@ -94,7 +96,7 @@ export interface ChatRunInput {
 }
 
 export interface ChatBackend {
-  readonly type: 'model' | 'agent';
+  readonly type: 'model' | 'agent' | 'demo';
   /**
    * Run one assistant turn. Must end with exactly one `turn-end` event unless it
    * throws. On abort, stop promptly and emit `turn-end` with stopReason `cancelled`.
@@ -128,6 +130,17 @@ export interface ChatSessionState {
   pendingPermissions: PermissionRequest[];
   /** Last user input, kept so `retry()` can re-run after a failure. */
   retryable: boolean;
+  /** Prompts typed while a turn was running; they run one at a time, oldest first, once the turn ends. */
+  queuedPrompts: QueuedPrompt[];
+}
+
+export type QueuedPromptState = 'queued' | 'sending' | 'failed';
+
+export interface QueuedPrompt {
+  id: string;
+  text: string;
+  contexts: AIContextItem[];
+  state: QueuedPromptState;
 }
 
 export interface ChatSessionActions {
@@ -141,6 +154,10 @@ export interface ChatSessionActions {
   resolvePermission(requestId: string, decision: PermissionDecision): void;
   setMode(modeId: string): Promise<void>;
   dismissError(): void;
+  /** Drop a queued prompt that has not been sent yet (or a failed one). */
+  cancelQueued(promptId: string): void;
+  /** Put a failed queued prompt back at the head of the queue. */
+  retryQueued(promptId: string): void;
 }
 
 export type { ChatMessage };
@@ -173,4 +190,6 @@ export interface ChatThreadApi {
   createModelThread(): Promise<ChatThread>;
   /** Device-local thread driven by an agent behind a bridge. */
   createAgentThread(input: CreateAgentThreadInput): Promise<ChatThread>;
+  /** Scripted walkthrough thread that works without any bridge. */
+  createDemoThread(): Promise<ChatThread>;
 }

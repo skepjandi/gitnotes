@@ -8,6 +8,14 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-11-14
+
+### feat(chat): Togo-style chat overhaul — folded work lines, inline approvals, live line, queued prompts, mission control, demo agent
+
+**What:** Rebuilt the chat surface after the way Togo presents coding agents. Prompts are trailing raised bubbles and replies are unboxed markdown; consecutive tool calls fold into one expandable work line; approvals appear inline where the agent asked, with a "Needs you" jump pill; a single live line replaces the old strip and status text; the composer is a raised container with attach, voice, mode chip, agent slash-command palette and send/stop. Prompts typed during a turn are queued with retry/cancel. A mission control sheet (side inspector on wide screens) summarises approvals, plan, changed files, activity and status. The chat list shows live per-thread status, search, and sections. A scripted demo agent works without a bridge.
+
+**Not ported:** Togo's SSH/tmux terminal, helper, push relay, Live Activities and Apple Watch app, and its 16 native harness adapters (GitNotēs reaches agents through ACP via `gitnotes-bridge`).
+
 ## 2026-11-09
 
 ### feat(store): App Store product page header and search results creative assets

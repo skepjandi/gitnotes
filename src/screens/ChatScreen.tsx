@@ -1,22 +1,23 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Text, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Text, View, useWindowDimensions } from 'react-native';
 import { useRoute, type RouteProp } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useTranslation } from 'react-i18next';
 
 import { ChatHintChips } from '../components/ai/ChatHintChips';
 import { ChatInputBar } from '../components/ai/ChatInputBar';
-import { ChatLoadingStrip } from '../components/ai/ChatLoadingStrip';
 import ContextPickerModal from '../components/ai/ContextPickerModal';
 import { folderName } from '../components/agent/format';
 import { AgentModeChip } from '../components/chat/AgentModeChip';
 import { ChatErrorCard } from '../components/chat/ChatErrorCard';
-import { ChatMessageList } from '../components/chat/ChatMessageList';
+import { ChatTimelineList } from '../components/chat/ChatTimelineList';
+import { LiveLine } from '../components/chat/LiveLine';
 import { MessageActionSheet } from '../components/chat/MessageActionSheet';
-import { PermissionCard } from '../components/chat/PermissionCard';
+import { MissionControlContent, MissionControlSheet, selectMission } from '../components/chat/mission';
 import { TextPromptModal } from '../components/chat/TextPromptModal';
 import VoiceInputModal from '../components/VoiceInputModal';
-import { EmptyState, ScreenHeader, useScreenHeaderHeight } from '../components/ui';
+import { EmptyState, IconButton, ScreenHeader, useScreenHeaderHeight } from '../components/ui';
 import { SafeAreaView } from '../components/ui/SafeAreaView';
 import { useTokens } from '../contexts/ThemeContext';
 import { useProScreenGuard } from '../hooks/useProScreenGuard';
@@ -30,12 +31,17 @@ import { HapticService } from '../utils/haptics';
 
 type ChatScreenRouteProp = RouteProp<RootStackParamList, 'ChatScreen'>;
 
+/** At this width the mission control panel docks beside the transcript instead of opening as a sheet. */
+const SIDE_INSPECTOR_MIN_WIDTH = 900;
+const SIDE_INSPECTOR_WIDTH = 340;
+
 export default function ChatScreen() {
   const { t } = useTranslation();
   const safeBack = useSafeBack();
   const route = useRoute<ChatScreenRouteProp>();
   const { colors, spacing } = useTokens();
   const headerHeight = useScreenHeaderHeight({ subtitle: true });
+  const { width } = useWindowDimensions();
   const { threadId } = route.params;
 
   const session = useChatSession(threadId);
@@ -44,12 +50,15 @@ export default function ChatScreen() {
   const [attachedContexts, setAttachedContexts] = useState<AIContextItem[]>([]);
   const [contextPickerVisible, setContextPickerVisible] = useState(false);
   const [voiceModalVisible, setVoiceModalVisible] = useState(false);
+  const [missionVisible, setMissionVisible] = useState(false);
   const [chatText, setChatText] = useState('');
   const [actionMessage, setActionMessage] = useState<ChatMessage | null>(null);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
 
   const backend = thread?.backend;
   const agent = backend?.type === 'agent' ? backend : null;
+  const isDemo = backend?.type === 'demo';
+  const sideInspector = width >= SIDE_INSPECTOR_MIN_WIDTH;
 
   const selectedModelId = useAIStore((state) => state.selectedModelId);
   const providers = useAIStore((state) => state.providers);
@@ -62,6 +71,19 @@ export default function ChatScreen() {
     }
     return undefined;
   }, [selectedModelId, providers]);
+
+  const mission = useMemo(
+    () =>
+      selectMission({
+        messages,
+        pendingPermissions: session.pendingPermissions,
+        backend,
+        status,
+        streamStartedAt: session.streamStartedAt,
+        now: Date.now(),
+      }),
+    [messages, session.pendingPermissions, backend, status, session.streamStartedAt],
+  );
 
   const handleSend = useCallback(
     (text: string) => {
@@ -113,6 +135,7 @@ export default function ChatScreen() {
 
   const busy = status === 'running' || status === 'awaiting-permission';
   const ready = loadState === 'ready' && thread !== null;
+  const needsYou = session.pendingPermissions.length > 0;
 
   const renderBody = () => {
     if (loadState === 'loading') {
@@ -145,99 +168,136 @@ export default function ChatScreen() {
     const empty = (
       <View className="flex-1 justify-center items-center" style={{ paddingVertical: spacing[6] }}>
         <Text className="text-xl font-bold mb-2 text-text" style={{ marginHorizontal: spacing[4], textAlign: 'center' }}>
-          {agent ? t('chat.agentEmptyTitle', { agent: agent.agentName }) : t('chat.startConversation')}
+          {agent
+            ? t('chat.agentEmptyTitle', { agent: agent.agentName })
+            : isDemo
+              ? t('chat.demoEmptyTitle')
+              : t('chat.startConversation')}
         </Text>
         <Text className="text-md text-center text-text-secondary" style={{ marginHorizontal: spacing[4] }}>
-          {agent ? t('chat.agentEmptyBody', { folder: folderName(agent.cwd) }) : t('chat.emptyStateBody')}
+          {agent
+            ? t('chat.agentEmptyBody', { folder: folderName(agent.cwd) })
+            : isDemo
+              ? t('chat.demoEmptyBody')
+              : t('chat.emptyStateBody')}
         </Text>
-        {agent ? null : <ChatHintChips onPressHint={handleHintPress} />}
+        {agent || isDemo ? null : <ChatHintChips onPressHint={handleHintPress} />}
       </View>
     );
 
     return (
-      <ChatMessageList
+      <ChatTimelineList
         messages={messages}
+        pendingPermissions={session.pendingPermissions}
+        queuedPrompts={session.queuedPrompts}
         isRunning={status === 'running'}
         headerHeight={headerHeight}
         empty={empty}
         onLongPress={handleMessageLongPress}
+        onResolvePermission={session.resolvePermission}
+        onCancelQueued={session.cancelQueued}
+        onRetryQueued={session.retryQueued}
       />
     );
   };
 
   const subtitle = agent
     ? t('chat.agentSubtitle', { agent: agent.agentName, folder: folderName(agent.cwd) })
-    : thread
-      ? t('chat.messageCount', { count: messages.length })
-      : t('chat.loadingConversation');
+    : isDemo
+      ? t('chat.demoSubtitle')
+      : thread
+        ? t('chat.messageCount', { count: messages.length })
+        : t('chat.loadingConversation');
+
+  const modeAccessory =
+    agent?.availableModes && agent.availableModes.length > 0 ? (
+      <AgentModeChip
+        modes={agent.availableModes}
+        currentModeId={agent.modeId}
+        onSelect={(modeId) => void session.setMode(modeId)}
+      />
+    ) : null;
+
+  const missionButton = ready ? (
+    <IconButton
+      testID="chat.button.mission"
+      size="sm"
+      onPress={() => (sideInspector ? setMissionVisible((open) => !open) : setMissionVisible(true))}
+      accessibilityLabel={t('chat.mission.title')}
+    >
+      <Ionicons name="albums-outline" size={18} color={needsYou ? colors.warning : colors.accent} />
+    </IconButton>
+  ) : null;
 
   return (
     <SafeAreaView className="flex-1 bg-bg" edges={['top', 'left', 'right']}>
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
-      >
-        <View className="flex-1">
-          {renderBody()}
+      <View className="flex-1" style={{ flexDirection: 'row' }}>
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+        >
+          <View className="flex-1">
+            {renderBody()}
 
-          {session.pendingPermissions.map((request) => (
-            <PermissionCard key={request.id} request={request} onResolve={session.resolvePermission} />
-          ))}
-
-          {session.statusLine ? (
-            <View
-              testID="chat.status.line"
-              accessibilityLiveRegion="polite"
-              className="flex-row items-center px-4 py-2 gap-2"
-            >
-              <ActivityIndicator size="small" color={colors.textSecondary} />
-              <Text className="text-xs text-text-secondary flex-1">{session.statusLine}</Text>
-            </View>
-          ) : null}
-
-          <ChatErrorCard
-            message={session.error}
-            canRetry={session.retryable && !busy}
-            onRetry={() => void session.retry()}
-            onDismiss={session.dismissError}
-          />
-
-          <ChatLoadingStrip
-            visible={status === 'running'}
-            model={agent ? agent.agentName : activeModel?.model}
-            provider={agent ? undefined : activeModel?.provider}
-            startedAt={session.streamStartedAt}
-            onCancel={session.stop}
-          />
-
-          {agent?.availableModes && agent.availableModes.length > 0 ? (
-            <AgentModeChip
-              modes={agent.availableModes}
-              currentModeId={agent.modeId}
-              onSelect={(modeId) => void session.setMode(modeId)}
+            <ChatErrorCard
+              message={session.error}
+              canRetry={session.retryable && !busy}
+              onRetry={() => void session.retry()}
+              onDismiss={session.dismissError}
             />
-          ) : null}
 
-          <ChatInputBar
-            onSend={handleSend}
-            onAttach={() => setContextPickerVisible(true)}
-            onVoicePress={() => setVoiceModalVisible(true)}
-            attachedContexts={attachedContexts}
-            onRemoveContext={(index) => setAttachedContexts((current) => current.filter((_, i) => i !== index))}
-            isStreaming={busy}
-            onStop={session.stop}
-            disabled={!ready}
-            contextWarning={
-              session.contextBudget?.message
-                ? { level: session.contextBudget.warningLevel, message: session.contextBudget.message }
-                : null
-            }
-            value={chatText}
-            onChangeText={setChatText}
-          />
-        </View>
-      </KeyboardAvoidingView>
+            <LiveLine
+              status={status}
+              statusLine={session.statusLine}
+              actor={agent ? agent.agentName : activeModel?.model}
+              startedAt={session.streamStartedAt}
+              onStop={session.stop}
+            />
+
+            <ChatInputBar
+              onSend={handleSend}
+              onAttach={() => setContextPickerVisible(true)}
+              onVoicePress={() => setVoiceModalVisible(true)}
+              attachedContexts={attachedContexts}
+              onRemoveContext={(index) => setAttachedContexts((current) => current.filter((_, i) => i !== index))}
+              isStreaming={busy}
+              onStop={session.stop}
+              disabled={!ready}
+              contextWarning={
+                session.contextBudget?.message
+                  ? { level: session.contextBudget.warningLevel, message: session.contextBudget.message }
+                  : null
+              }
+              value={chatText}
+              onChangeText={setChatText}
+              commands={agent?.availableCommands}
+              accessory={modeAccessory}
+            />
+          </View>
+        </KeyboardAvoidingView>
+
+        {sideInspector && missionVisible ? (
+          <View
+            testID="chat.mission.panel"
+            style={{
+              width: SIDE_INSPECTOR_WIDTH,
+              borderLeftWidth: 1,
+              borderLeftColor: colors.border,
+              paddingTop: headerHeight,
+            }}
+          >
+            <MissionControlContent mission={mission} onResolvePermission={session.resolvePermission} />
+          </View>
+        ) : null}
+      </View>
+
+      <MissionControlSheet
+        visible={!sideInspector && missionVisible}
+        onClose={() => setMissionVisible(false)}
+        mission={mission}
+        onResolvePermission={session.resolvePermission}
+      />
 
       <MessageActionSheet
         message={actionMessage}
@@ -275,7 +335,12 @@ export default function ChatScreen() {
         }}
       />
 
-      <ScreenHeader title={thread?.title ?? t('chat.title')} subtitle={subtitle} onBack={safeBack} />
+      <ScreenHeader
+        title={thread?.title ?? t('chat.title')}
+        subtitle={subtitle}
+        onBack={safeBack}
+        actions={missionButton}
+      />
     </SafeAreaView>
   );
 }

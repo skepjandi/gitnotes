@@ -33,7 +33,7 @@ interface ChatActions {
 const sortThreadSummaries = (threads: ChatThreadSummary[]): ChatThreadSummary[] =>
   [...threads].sort((a, b) => b.updatedAt - a.updatedAt);
 
-const isAgentSummary = (summary: ChatThreadSummary): boolean => summary.backend === 'agent';
+const isAgentSummary = (summary: ChatThreadSummary): boolean => summary.backend === 'agent' || summary.backend === 'demo';
 
 async function releaseAgentConnectionFor(threadId: string): Promise<void> {
   try {

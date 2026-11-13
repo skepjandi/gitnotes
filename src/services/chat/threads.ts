@@ -57,3 +57,23 @@ export const createAgentThread: ChatThreadApi['createAgentThread'] = async (inpu
   useChatStore.getState().upsertSummary(thread);
   return thread;
 };
+
+export const createDemoThread: ChatThreadApi['createDemoThread'] = async () => {
+  const now = Date.now();
+  const thread: ChatThread = {
+    id: newThreadId(now),
+    title: chatT('chat.demoTitle'),
+    messages: [],
+    createdAt: now,
+    updatedAt: now,
+    repoOwner: '',
+    repoName: '',
+    branch: '',
+    filePath: '',
+    backend: { type: 'demo' },
+  };
+  await localThreadStorage.save(thread);
+  seedChatSession(thread);
+  useChatStore.getState().upsertSummary(thread);
+  return thread;
+};

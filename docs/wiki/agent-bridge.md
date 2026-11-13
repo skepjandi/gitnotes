@@ -22,6 +22,9 @@ ChatScreen ─ useChatSession(threadId)
 - `src/services/chat/reducer.ts` — pure `applyChatEvent`; folds events into `ChatMessage[]`, touching only the tail/owning message.
 - `src/services/chat/ChatSession.ts` — per-thread state machine `idle → running ⇄ awaiting-permission → idle | error`. Streams are never tied to a screen or to a global "active thread", so leaving a chat mid-turn keeps it running and two threads can stream at once.
 - Permissions are one mechanism: a backend awaits `requestPermission(...)`; the UI renders a card. Agent permission requests (ACP `session/request_permission`) and model tool confirmations (`actionMode: 'confirm'`) use it identically.
+- Prompts sent while a turn runs are queued on the session (`queuedPrompts`) and run oldest-first when the turn ends normally. `stop()` keeps the queue but never auto-sends it; a prompt whose turn fails before any output goes back to the head as `failed` (retry/cancel).
+- A third backend, `demoBackend` (`backend: { type: 'demo' }`), replays scripted turns (thought, plan, read, edit with diff, an approval-gated command, streamed text) with no bridge. It is offered as "Explore with a demo agent" in the new-chat picker and is device-local like agent threads.
+- Agents' `available_commands_update` populates `thread.backend.availableCommands`, which feeds the composer's slash-command palette.
 - Persistence is serialised per thread (one promise chain), fixing the old GitHub 409 race between the first user-message save and the reply save.
 
 ## Bridge

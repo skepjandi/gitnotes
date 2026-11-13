@@ -200,11 +200,14 @@ The `NoteHistoryModal` is accessible from both Preview mode (`NoteViewer`) and E
 **Purpose:** Chat with an in-app AI model (with note/repo context) or a coding agent on the user's computer. Driven entirely by `useChatSession(threadId)`; see [Coding Agents & Chat Runtime](./agent-bridge.md).
 
 **Key components:**
-- `ChatMessageList` — FlashList v2 message list; follows the tail only while the user is near the bottom, otherwise shows a "jump to latest" pill
-- `ChatMessageBubble` — markdown text, collapsible `ThoughtBlock`, `ToolCallCard` (status, args, result, diffs), `PlanCard`
-- `PermissionCard` — one card per pending permission (agent `session/request_permission` and model tool confirmations)
-- `AgentModeChip` — agent mode picker (e.g. plan / accept edits)
-- `ChatInputBar`, `MessageActionSheet` (edit & resend, regenerate, copy), `TextPromptModal`, `ContextPickerModal`
+- `ChatTimelineList` — FlashList v2 transcript built by the pure `buildTimeline` (`components/chat/timeline.ts`): prompts, replies, thoughts, plans, notices, timestamp dividers after 30-minute pauses, one folded `WorkLine` per run of consecutive tool calls, open approvals placed right after the work that asked, and queued prompts last. Follows the tail only while the user is near the bottom; "jump to latest" and "Needs you" pills
+- `ChatMessageBubble` — user prompt as a trailing raised bubble, assistant text as unboxed markdown; `ThoughtBlock`, `PlanCard`
+- `WorkLine` — "Ran 2 commands · Edited 1 file" summary that expands to `ToolCallCard` steps (status, args, result, diffs)
+- `PermissionCard` — inline approval/needs-you row (agent `session/request_permission` and model tool confirmations)
+- `LiveLine` — the single status line above the composer while a turn runs (working / waiting for you / connection state, elapsed time, stop)
+- `ChatInputBar` — raised composer: attach, voice, mode chip (`AgentModeChip`), agent slash-command palette (`available_commands_update`), send / stop; sending during a turn queues the prompt (`queuedPrompts` on the session; retry/cancel rows in the timeline)
+- `MissionControlSheet` / `MissionControlContent` (`components/chat/mission/`) — needs-you, plan, changes (diffs aggregated by path), activity and status, derived from the transcript by `selectMission`. Docks as a 340pt side inspector at widths of 900pt and up, bottom sheet otherwise
+- `MessageActionSheet` (edit & resend, regenerate, copy), `TextPromptModal`, `ContextPickerModal`
 
 **Turns survive navigation:** a turn runs in its `ChatSession`, not in the screen; leaving mid-stream keeps it running. Tool rounds are bounded by `MAX_TOOL_ROUNDS` and each tool call by `TOOL_EXECUTION_TIMEOUT_MS`.
 
@@ -221,7 +224,7 @@ The `NoteHistoryModal` is accessible from both Preview mode (`NoteViewer`) and E
 **Purpose:** List all chat threads (model threads from the chat repo and device-local agent threads, with an agent badge).
 
 **Key components:**
-- `ChatThreadCard` — thread preview with last message, timestamp
+- `ChatThreadCard` — flat row with live status (working / needs you / error) from the session registry, preview, agent badge, timestamp; sections come from `threadSections.ts` (Needs you, agents by workspace folder, Chats, Demo) and a search field filters them
 - `ChatThreadContextMenu` — delete, rename thread
 
 ---

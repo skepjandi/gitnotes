@@ -1,6 +1,5 @@
 import React, { Fragment, useMemo } from 'react';
 import { View, Text, Pressable, useColorScheme } from 'react-native';
-import { formatDistanceToNow } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
 import { useMarkdown, type MarkedStyles } from 'react-native-marked';
 import { useTokens, useTheme } from '../../contexts/ThemeContext';
@@ -17,12 +16,11 @@ export interface ChatMessageBubbleProps {
   onLongPress?: (message: ChatMessage) => void;
 }
 
-function SystemNote({ content }: { content: string }) {
+export function SystemNote({ content }: { content: string }) {
+  const { colors, type } = useTokens();
   return (
-    <View className="items-center my-2">
-      <Text className="italic text-sm" style={{ color: '#888' }}>
-        {content}
-      </Text>
+    <View testID="chat-notice" style={{ alignItems: 'center', paddingHorizontal: 24 }}>
+      <Text style={{ color: colors.textSecondary, fontSize: type.sm, textAlign: 'center' }}>{content}</Text>
     </View>
   );
 }
@@ -30,7 +28,7 @@ function SystemNote({ content }: { content: string }) {
 export function TypingDots() {
   const { colors, type } = useTokens();
   return (
-    <View className="self-start flex-row items-center px-2 my-1" style={{ height: type.md * 1.4 }}>
+    <View testID="chat-typing" className="self-start flex-row items-center" style={{ height: type.md * 1.4 }}>
       {[0, 1, 2].map((i) => (
         <View
           key={i}
@@ -47,107 +45,92 @@ export function TypingDots() {
   );
 }
 
-function TextBubble({ message, isStreaming, onLongPress }: ChatMessageBubbleProps) {
+const USER_BUBBLE_RADIUS = 18;
+
+function TextRow({ message, isStreaming, onLongPress }: ChatMessageBubbleProps) {
   const { colors, spacing, type } = useTokens();
   const { isDark } = useTheme();
   const colorScheme = useColorScheme();
 
-  // formatDistanceToNow throws RangeError on a missing/NaN timestamp; never let a
-  // persisted message with an invalid timestamp crash the whole chat render.
-  const timestamp = Number.isFinite(message.timestamp)
-    ? formatDistanceToNow(message.timestamp, { addSuffix: true })
-    : '';
-
   const isUser = message.role === 'user';
-  const textColor = isUser ? '#ffffff' : colors.text;
-
   const { thought: legacyThought, visible: visibleContent } = useMemo(
     () => parseThoughtContent(message.content),
     [message.content],
   );
-  const markdownTheme = useMemo(() => ({
-    colors: {
-      text: textColor,
-      code: textColor,
-      link: colors.primary,
-      border: isDark ? '#444' : '#ddd',
-      background: 'transparent' as const,
-    },
-  }), [textColor, colors.primary, isDark]);
-  const markdownStyles = useMemo<MarkedStyles>(() => ({
-    paragraph: { backgroundColor: 'transparent', marginVertical: 0, paddingVertical: 0 },
-    text: { color: textColor, backgroundColor: 'transparent' },
-    em: { color: textColor },
-    strong: { color: textColor },
-    li: { color: textColor },
-    codespan: { color: textColor, backgroundColor: isDark ? '#1c1c1e' : '#e8e8e8' },
-    code: { backgroundColor: isDark ? '#1c1c1e' : '#e8e8e8' },
-    blockquote: { backgroundColor: 'transparent', borderLeftColor: isDark ? '#444' : '#ddd' },
-  }), [textColor, isDark]);
+  const markdownTheme = useMemo(
+    () => ({
+      colors: {
+        text: colors.text,
+        code: colors.text,
+        link: colors.primary,
+        border: colors.border,
+        background: 'transparent' as const,
+      },
+    }),
+    [colors.text, colors.primary, colors.border],
+  );
+  const codeBackground = isDark ? '#1c1c1e' : '#ececf0';
+  const markdownStyles = useMemo<MarkedStyles>(
+    () => ({
+      paragraph: { backgroundColor: 'transparent', marginVertical: 0, paddingVertical: 2 },
+      text: { color: colors.text, backgroundColor: 'transparent' },
+      em: { color: colors.text },
+      strong: { color: colors.text },
+      li: { color: colors.text },
+      codespan: { color: colors.text, backgroundColor: codeBackground },
+      code: { backgroundColor: codeBackground, borderRadius: 10 },
+      blockquote: { backgroundColor: 'transparent', borderLeftColor: colors.border },
+    }),
+    [colors.text, colors.border, codeBackground],
+  );
   // react-native-marked's <Markdown> wraps output in a FlatList that captures
   // pan gestures even with `scrollEnabled: false`, which deadlocks the outer
-  // list on iOS for long bubbles (see #748). Render via the `useMarkdown` hook
-  // directly into a plain <View> instead: same tokens, no inner virtualized list.
-  const markdownNodes = useMarkdown((!isUser ? visibleContent : message.content) ?? '', {
+  // list on iOS for long rows (see #748). Render via the `useMarkdown` hook
+  // directly into a plain <View>: same tokens, no inner virtualized list.
+  const markdownNodes = useMarkdown(isUser ? '' : (visibleContent ?? ''), {
     theme: markdownTheme,
     styles: markdownStyles,
     colorScheme,
   });
 
-  if (!isUser && isStreaming && !message.content) {
-    return <TypingDots />;
-  }
+  if (!isUser && isStreaming && !message.content) return <TypingDots />;
 
-  return (
-    <View testID="chat.message-bubble.button.long-press">
+  if (isUser) {
+    return (
       <Pressable
         testID="chat-message-bubble.button.long-press"
-        style={{ alignSelf: isUser ? 'flex-end' : 'flex-start', maxWidth: '85%', marginVertical: spacing[1] }}
+        style={{ alignSelf: 'flex-end', maxWidth: '85%' }}
         onLongPress={onLongPress ? () => onLongPress(message) : undefined}
         delayLongPress={350}
         android_ripple={{ color: 'transparent' }}
       >
         <View
           style={{
-            backgroundColor: isUser ? colors.primary : isDark ? '#2c2c2e' : '#f0f0f0',
-            padding: spacing[3],
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
-            borderBottomLeftRadius: isUser ? 16 : 4,
-            borderBottomRightRadius: isUser ? 4 : 16,
+            backgroundColor: colors.elevated,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: USER_BUBBLE_RADIUS,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
           }}
         >
-          {isUser ? (
-            <Text style={{ color: textColor, fontSize: type.md }}>{message.content}</Text>
-          ) : (
-            <View style={{ width: '100%' }}>
-              {legacyThought ? <ThoughtBlock messageId={message.id} text={legacyThought} /> : null}
-              {markdownNodes.map((node, idx) => (
-                <Fragment key={idx}>{node}</Fragment>
-              ))}
-            </View>
-          )}
+          <Text selectable style={{ color: colors.text, fontSize: type.md, lineHeight: type.md * 1.4 }}>
+            {message.content}
+          </Text>
         </View>
-        {isUser && message.attachedContexts && message.attachedContexts.length > 0 && (
-          <View
-            style={{
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              justifyContent: 'flex-end',
-              marginTop: spacing[1],
-              gap: spacing[1],
-            }}
-          >
+        {message.attachedContexts && message.attachedContexts.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: spacing[1], gap: spacing[1] }}>
             {message.attachedContexts.map((ctx, idx) => (
               <View
                 key={`${ctx.type}-${ctx.path}-${idx}`}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  backgroundColor: isDark ? '#2c2c2e' : '#e8e8e8',
+                  borderWidth: 1,
+                  borderColor: colors.border,
                   paddingHorizontal: spacing[2],
                   paddingVertical: 2,
-                  borderRadius: 10,
+                  borderRadius: 999,
                 }}
               >
                 <Ionicons
@@ -167,19 +150,26 @@ function TextBubble({ message, isStreaming, onLongPress }: ChatMessageBubbleProp
               </View>
             ))}
           </View>
-        )}
-        <Text
-          style={{
-            color: colors.textSecondary,
-            fontSize: 10,
-            alignSelf: isUser ? 'flex-end' : 'flex-start',
-            marginTop: spacing[1],
-          }}
-        >
-          {timestamp}
-        </Text>
+        ) : null}
       </Pressable>
-    </View>
+    );
+  }
+
+  return (
+    <Pressable
+      testID="chat-message-bubble.button.long-press"
+      style={{ alignSelf: 'stretch' }}
+      onLongPress={onLongPress ? () => onLongPress(message) : undefined}
+      delayLongPress={350}
+      android_ripple={{ color: 'transparent' }}
+    >
+      <View style={{ width: '100%' }}>
+        {legacyThought ? <ThoughtBlock messageId={message.id} text={legacyThought} /> : null}
+        {markdownNodes.map((node, idx) => (
+          <Fragment key={idx}>{node}</Fragment>
+        ))}
+      </View>
+    </Pressable>
   );
 }
 
@@ -194,7 +184,7 @@ function ChatMessageBubbleImpl({ message, isStreaming, onLongPress }: ChatMessag
     case 'plan':
       return message.plan ? <PlanCard entries={message.plan} /> : null;
     case 'text':
-      return <TextBubble message={message} isStreaming={isStreaming} onLongPress={onLongPress} />;
+      return <TextRow message={message} isStreaming={isStreaming} onLongPress={onLongPress} />;
   }
 }
 

@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { View, ActivityIndicator, Alert, FlatList, RefreshControl } from 'react-native';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { View, Text, TextInput, ActivityIndicator, Alert, SectionList, RefreshControl } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import { githubActivity } from '../stores/githubActivityStore';
 import { useTokens } from '../contexts/ThemeContext';
 import { RootStackParamList } from '../navigation/types';
 import { ChatThreadSummary } from '../models/Chat';
+import type { ChatRunStatus } from '../services/chat/types';
 import { ScreenHeader, Button, EmptyState, useScreenHeaderHeight, useTabBarHeight } from '../components/ui';
 import { SafeAreaView } from '../components/ui/SafeAreaView';
 import { SwipeableListItem } from '../components/list/SwipeableListItem';
@@ -18,12 +19,44 @@ import { BulkActionBar } from '../components/list/BulkActionBar';
 import { ChatThreadCard } from '../components/chat/ChatThreadCard';
 import { ChatThreadContextMenu } from '../components/chat/ChatThreadContextMenu';
 import { TextPromptModal } from '../components/chat/TextPromptModal';
+import { buildThreadSections, type ThreadSection, type ThreadStatusMap } from '../components/chat/threadSections';
+import { peekChatSession } from '../services/chat/sessions';
 import { HapticService } from '../utils/haptics';
 import { useTranslation } from 'react-i18next';
 import { useProScreenGuard } from '../hooks/useProScreenGuard';
 import { useSafeBack } from '../hooks/useSafeBack';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+function useThreadStatuses(threads: ChatThreadSummary[]): ThreadStatusMap {
+  const [statuses, setStatuses] = useState<ThreadStatusMap>({});
+
+  useEffect(() => {
+    const snapshot = (): ThreadStatusMap => {
+      const next: Record<string, ChatRunStatus> = {};
+      for (const thread of threads) {
+        const status = peekChatSession(thread.id)?.store.getState().status;
+        if (status && status !== 'idle') next[thread.id] = status;
+      }
+      return next;
+    };
+    const sync = () =>
+      setStatuses((previous) => {
+        const next = snapshot();
+        const keys = Object.keys(next);
+        const unchanged = keys.length === Object.keys(previous).length && keys.every((key) => previous[key] === next[key]);
+        return unchanged ? previous : next;
+      });
+    sync();
+    const unsubscribes = threads.flatMap((thread) => {
+      const session = peekChatSession(thread.id);
+      return session ? [session.store.subscribe(sync)] : [];
+    });
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
+  }, [threads]);
+
+  return statuses;
+}
 
 export default function ChatThreadListScreen() {
   const { t } = useTranslation();
@@ -48,6 +81,10 @@ export default function ChatThreadListScreen() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [longPressedThread, setLongPressedThread] = useState<ChatThreadSummary | null>(null);
   const [renamingThread, setRenamingThread] = useState<ChatThreadSummary | null>(null);
+
+  const [query, setQuery] = useState('');
+  const statuses = useThreadStatuses(threads);
+  const sections = useMemo(() => buildThreadSections(threads, statuses, query), [threads, statuses, query]);
 
   const selectionMode = selectedIds.size > 0;
   const isFocused = useIsFocused();
@@ -179,12 +216,51 @@ export default function ChatThreadListScreen() {
       >
         <ChatThreadCard
           thread={item}
+          status={statuses[item.id]}
           onPress={() => handleThreadPress(item.id)}
           onLongPress={() => handleThreadLongPress(item)}
         />
       </SwipeableListItem>
     ),
-    [selectedIds, selectionMode, toggleSelected, handleThreadPress, handleThreadLongPress],
+    [selectedIds, selectionMode, statuses, toggleSelected, handleThreadPress, handleThreadLongPress],
+  );
+
+  const sectionTitle = useCallback(
+    (section: ThreadSection): string => {
+      switch (section.kind) {
+        case 'needs-you':
+          return t('chat.sectionNeedsYou');
+        case 'workspace':
+          return section.title || t('chat.sectionAgents');
+        case 'demo':
+          return t('chat.sectionDemo');
+        default:
+          return t('chat.sectionChats');
+      }
+    },
+    [t],
+  );
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: ThreadSection }) => (
+      <Text
+        testID={`chat-thread-list.section.${section.key}`}
+        style={{
+          color: section.kind === 'needs-you' ? colors.warning : colors.textSecondary,
+          backgroundColor: colors.background,
+          fontSize: 12,
+          fontWeight: '600',
+          textTransform: 'uppercase',
+          letterSpacing: 0.6,
+          paddingHorizontal: spacing[4],
+          paddingTop: spacing[4],
+          paddingBottom: spacing[1],
+        }}
+      >
+        {sectionTitle(section)}
+      </Text>
+    ),
+    [colors.background, colors.textSecondary, colors.warning, sectionTitle, spacing],
   );
 
   const blocked = useProScreenGuard(() => useAIHubStore.getState().closeChatRepoPicker());
@@ -225,11 +301,33 @@ export default function ChatThreadListScreen() {
           />
         </View>
 
-        <FlatList
-          data={threads}
+        <View className="px-4 pb-2">
+          <View
+            className="flex-row items-center rounded-md px-3"
+            style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
+          >
+            <Ionicons name="search" size={16} color={colors.textSecondary} />
+            <TextInput
+              testID="chat-thread-list.input.search"
+              value={query}
+              onChangeText={setQuery}
+              placeholder={t('chat.searchPlaceholder')}
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+              style={{ flex: 1, color: colors.text, paddingVertical: spacing[2], paddingHorizontal: spacing[2] }}
+            />
+          </View>
+        </View>
+
+        <SectionList
+          sections={sections}
           renderItem={renderThread}
+          renderSectionHeader={renderSectionHeader}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 12, paddingBottom: spacing[6] }}
+          stickySectionHeadersEnabled={false}
+          contentContainerStyle={{ paddingBottom: spacing[6] }}
           refreshControl={
             <RefreshControl
               refreshing={isPullRefreshing}
@@ -239,7 +337,6 @@ export default function ChatThreadListScreen() {
             />
           }
           ListEmptyComponent={renderEmptyState}
-          ItemSeparatorComponent={() => <View style={{ height: spacing[3] }} />}
         />
       </View>
 

@@ -31,7 +31,7 @@ export function ChatThreadContextMenu({
         visible={visible}
         onClose={onClose}
         title={thread?.title || t('common.untitled')}
-        headerIcon="chatbubble"
+        headerIcon={thread?.backend === 'agent' ? 'terminal' : thread?.backend === 'demo' ? 'sparkles' : 'chatbubble'}
         bottomSheet={bottomSheet}
         sections={
           thread

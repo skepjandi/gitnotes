@@ -23,6 +23,7 @@ jest.mock('react-native-marked', () => {
     useMarkdown: (content: string) => [ReactRuntime.createElement(ReactNative.Text, { key: 'markdown' }, content)],
   };
 });
+jest.mock('@shopify/flash-list', () => jest.requireActual('../helpers/flashListRows'));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
 
 const userMessage: ChatMessage = { id: 'u1', role: 'user', content: 'fix the bug', timestamp: 1, kind: 'text' };
@@ -55,10 +56,13 @@ function session(overrides: Partial<UseChatSessionResult> = {}): UseChatSessionR
     streamStartedAt: 0,
     statusLine: null,
     pendingPermissions: [],
+    queuedPrompts: [],
     retryable: false,
     contextBudget: null,
     send: jest.fn(async () => undefined),
     stop: jest.fn(),
+    cancelQueued: jest.fn(),
+    retryQueued: jest.fn(),
     retry: jest.fn(async () => undefined),
     editAndResend: jest.fn(async () => undefined),
     regenerate: jest.fn(async () => undefined),

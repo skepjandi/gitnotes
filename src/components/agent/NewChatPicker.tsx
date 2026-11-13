@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useTokens } from '../../contexts/ThemeContext';
 import { listBridgeAgents, listWorkspaces } from '../../services/agent/bridgeApi';
 import type { AgentBridge, AgentInfo, WorkspaceInfo } from '../../services/agent/types';
-import { createAgentThread } from '../../services/chat';
+import { createAgentThread, createDemoThread } from '../../services/chat';
 import { useAgentBridgeStore } from '../../stores/agentBridgeStore';
 import { HapticService } from '../../utils/haptics';
 import { Button, Modal } from '../ui';
@@ -195,6 +195,22 @@ export function NewChatPicker({ visible, onClose, onSelectModel, onAgentThreadCr
     [creating, onAgentThreadCreated, setLastWorkspace, t],
   );
 
+  const handleSelectDemo = useCallback(async () => {
+    if (creating) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const thread = await createDemoThread();
+      HapticService.success();
+      onAgentThreadCreated(thread.id);
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : t('chat.createFailed'));
+      HapticService.error();
+    } finally {
+      setCreating(false);
+    }
+  }, [creating, onAgentThreadCreated, t]);
+
   const renderChoose = () => (
     <>
       <PickerRow
@@ -240,6 +256,15 @@ export function NewChatPicker({ visible, onClose, onSelectModel, onAgentThreadCr
           </View>
         );
       })}
+      <SectionLabel>{t('chat.demoSection')}</SectionLabel>
+      <PickerRow
+        testID="new-chat-picker.demo"
+        icon="rocket-outline"
+        title={t('chat.demoAgent')}
+        subtitle={t('chat.demoAgentSubtitle')}
+        disabled={creating}
+        onPress={() => void handleSelectDemo()}
+      />
     </>
   );
 

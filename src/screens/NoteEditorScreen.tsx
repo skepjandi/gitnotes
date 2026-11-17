@@ -70,6 +70,7 @@ function NoteEditorScreenInner() {
   const [showCanvasPicker, setShowCanvasPicker] = React.useState(false);
   const [showFolderDialog, setShowFolderDialog] = React.useState(false);
   const [showHistory, setShowHistory] = React.useState(false);
+  const [openSearchOnEdit, setOpenSearchOnEdit] = React.useState(false);
 
   const document = useNoteEditorDocument({
     noteId,
@@ -164,7 +165,8 @@ function NoteEditorScreenInner() {
           onBack={safeBack}
           onToggleToc={() => preview.setShowToc(true)}
           onToggleSpeak={preview.handleToggleSpeak}
-          onEdit={() => document.setIsEditing(true)}
+          onEdit={() => { setOpenSearchOnEdit(false); document.setIsEditing(true); }}
+          onSearch={() => { setOpenSearchOnEdit(true); document.setIsEditing(true); }}
           onCloseToc={() => preview.setShowToc(false)}
           onTocPress={preview.handleTocPress}
           onNavigateToNote={(id) => navigation.navigate('NoteEditor', { noteId: id })}
@@ -240,6 +242,7 @@ function NoteEditorScreenInner() {
                   navigation.navigate('CanvasEditor', {});
                 }}
                 onContentChange={document.handleContentChange}
+                autoOpenSearch={openSearchOnEdit}
               />
             </View>
             <View className="flex-1">
@@ -281,6 +284,7 @@ function NoteEditorScreenInner() {
               navigation.navigate('CanvasEditor', {});
             }}
             onContentChange={document.handleContentChange}
+            autoOpenSearch={openSearchOnEdit}
           />
         )}
       </KeyboardAvoidingView>

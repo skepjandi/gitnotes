@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useRef } from 'react';
+import { Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme, useTokens } from '../../contexts/ThemeContext';
@@ -28,6 +28,8 @@ interface NoteEditorFormProps {
   onTagsChange: (tags: string[]) => void;
   onEditCanvasJson: (uri: string) => void;
   onContentChange: (value: string) => void;
+  /** Open the in-file search bar as soon as the editor mounts. */
+  autoOpenSearch?: boolean;
 }
 
 export function NoteEditorForm({
@@ -46,15 +48,34 @@ export function NoteEditorForm({
   onTagsChange,
   onEditCanvasJson,
   onContentChange,
+  autoOpenSearch,
 }: NoteEditorFormProps) {
   const { colors } = useTheme();
   const { spacing, type } = useTokens();
   const bodyRef = useRef<MarkdownEditorHandle>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollY = useRef(0);
+  const viewportHeight = useRef(0);
+  const editorTop = useRef(0);
+
+  // Keep the caret line visible: when it falls below the visible area (hidden by
+  // the keyboard / sticky toolbar) scroll just enough to bring it back.
+  const handleCaretBottomChange = useCallback((caretBottom: number) => {
+    const absoluteBottom = editorTop.current + caretBottom + CARET_BOTTOM_MARGIN;
+    const visibleBottom = scrollY.current + viewportHeight.current;
+    if (viewportHeight.current > 0 && absoluteBottom > visibleBottom) {
+      scrollRef.current?.scrollTo({ y: scrollY.current + (absoluteBottom - visibleBottom), animated: false });
+    }
+  }, []);
 
   return (
     <View style={styles.container}>
     <ScrollView
+      ref={scrollRef}
       style={styles.scrollView}
+      scrollEventThrottle={16}
+      onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
+      onLayout={(e) => { viewportHeight.current = e.nativeEvent.layout.height; }}
       contentContainerStyle={[styles.editorContent, { paddingBottom: 120 }]}
       keyboardShouldPersistTaps="handled"
       // Keep the focused body TextInput visible above the keyboard +
@@ -170,6 +191,7 @@ export function NoteEditorForm({
         </View>
       ) : null}
 
+      <View onLayout={(e) => { editorTop.current = e.nativeEvent.layout.y; }}>
       <MarkdownEditor
         ref={bodyRef}
         content={content}
@@ -178,11 +200,14 @@ export function NoteEditorForm({
         inputTestID="note-editor-form.input.content"
         showToolbar={false}
         format={noteFormat}
+        autoOpenSearch={autoOpenSearch}
+        onCaretBottomChange={handleCaretBottomChange}
       />
+      </View>
     </ScrollView>
 
     <View
-      style={[styles.stickyToolbar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}
+      style={[styles.stickyToolbar, { backgroundColor: colors.surface, borderTopColor: colors.border }, Platform.OS === 'android' && styles.stickyToolbarAndroid]}
       testID="note-editor-form.toolbar.sticky"
     >
       <MarkdownToolbar
@@ -194,12 +219,21 @@ export function NoteEditorForm({
   );
 }
 
+// Extra space kept below the caret line when auto-scrolling.
+const CARET_BOTTOM_MARGIN = 24;
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollView: { flex: 1 },
   editorContent: {},
   stickyToolbar: {
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  // Lift the toolbar off the Android gesture/navigation bar so taps don't
+  // collide with the system pill.
+  stickyToolbarAndroid: {
+    paddingTop: 4,
+    paddingBottom: 16,
   },
   gitContextContainer: {},
   titleInput: {

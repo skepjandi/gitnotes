@@ -11,6 +11,9 @@ import type { FormatAction, Selection } from '../utils/markdownFormatting';
 import { useHardWrap } from '../hooks/useHardWrap';
 import type { NoteFormat } from '../models/Note';
 
+const EDITOR_PADDING = 16;
+const EDITOR_LINE_HEIGHT = 24;
+
 function lineRange(text: string, pos: number): { lineStart: number; lineEnd: number } {
   let lineStart = pos;
   while (lineStart > 0 && text[lineStart - 1] !== '\n') lineStart--;
@@ -88,6 +91,13 @@ interface MarkdownEditorProps {
    * (`.md` → markdown, `.org` → org-mode, `.norg` → neorg).
    */
   format?: NoteFormat;
+  /** Open the in-file search bar on mount (used when entering from the viewer's search button). */
+  autoOpenSearch?: boolean;
+  /**
+   * Reports the estimated bottom edge (px, relative to this editor's top) of the
+   * caret line so a parent scroller can keep it above the keyboard / toolbar.
+   */
+  onCaretBottomChange?: (caretBottom: number) => void;
 }
 
 /**
@@ -107,7 +117,7 @@ export interface MarkdownEditorHandle {
   applyFormat: (action: FormatAction) => void;
 }
 
-const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(function MarkdownEditor({ content, onContentChange, placeholder = 'Start writing...', inputTestID, showToolbar = true, format }, ref) {
+const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(function MarkdownEditor({ content, onContentChange, placeholder = 'Start writing...', inputTestID, showToolbar = true, format, autoOpenSearch = false, onCaretBottomChange }, ref) {
   const { colors } = useTheme();
   const inputRef = useRef<TextInput>(null);
   const handleFormatRef = useRef<(action: FormatAction) => void>(null!);
@@ -125,7 +135,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(fun
   const { hardWrapEnabled, toggleHardWrap } = useHardWrap();
   const [cursor, setCursor] = useState<Selection>({ start: 0, end: 0 });
 
-  const [isSearching, setIsSearching] = useState(false);
+  const [isSearching, setIsSearching] = useState(autoOpenSearch);
   const [searchQuery, setSearchQuery] = useState('');
   const [matches, setMatches] = useState<MatchPosition[]>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
@@ -148,6 +158,23 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(fun
     }
     prevPropContentRef.current = content;
   }, [content, reset]);
+
+  const [inputTop, setInputTop] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+
+  useEffect(() => {
+    if (!onCaretBottomChange || contentHeight === 0) return;
+    const length = text.length;
+    const caret = Math.min(cursor.end, length);
+    // At the end of the text the caret line is the last line: exact. Elsewhere
+    // interpolate by character offset (wrapped-line heights are not exposed).
+    const ratio = length === 0 ? 0 : caret / length;
+    const textArea = Math.max(contentHeight - EDITOR_PADDING * 2, 0);
+    const caretBottom = caret >= length
+      ? contentHeight - EDITOR_PADDING
+      : EDITOR_PADDING + Math.max(textArea * ratio, EDITOR_LINE_HEIGHT);
+    onCaretBottomChange(inputTop + caretBottom);
+  }, [cursor.end, text, contentHeight, inputTop, onCaretBottomChange]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -275,6 +302,8 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(fun
         textAlignVertical="top"
         blurOnSubmit={false}
         selection={selection}
+        onLayout={(e) => setInputTop(e.nativeEvent.layout.y)}
+        onContentSizeChange={(e) => setContentHeight(e.nativeEvent.contentSize.height)}
         onSelectionChange={(e) => {
           const { start, end } = e.nativeEvent.selection;
           setCursor({ start, end });

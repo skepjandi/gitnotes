@@ -23,6 +23,8 @@ interface NoteViewerProps {
   onToggleToc: () => void;
   onToggleSpeak: () => void;
   onEdit: () => void;
+  /** Open the editor with the in-file search bar active. */
+  onSearch?: () => void;
   onCloseToc: () => void;
   onTocPress: (entry: TocEntry) => void;
   onNavigateToNote: (id: string) => void;
@@ -62,6 +64,7 @@ export function NoteViewer({
   onToggleToc,
   onToggleSpeak,
   onEdit,
+  onSearch,
   onCloseToc,
   onTocPress,
   onNavigateToNote: _onNavigateToNote,
@@ -120,6 +123,20 @@ export function NoteViewer({
         {!isPdfNote && canSpeak ? (
           <IconButton size="sm" testID="note-viewer.button.toggle-speak" onPress={onToggleSpeak} accessibilityLabel="Read aloud">
             <Ionicons name={isSpeaking ? 'stop-circle' : 'volume-high'} size={18} color={colors.accent} />
+          </IconButton>
+        ) : null}
+
+        {canEdit && onSearch ? (
+          <IconButton
+            size="sm"
+            testID="note-viewer.button.search"
+            onPress={() => {
+              HapticService.light();
+              onSearch();
+            }}
+            accessibilityLabel="Search in note"
+          >
+            <Ionicons name="search" size={18} color={colors.accent} />
           </IconButton>
         ) : null}
 

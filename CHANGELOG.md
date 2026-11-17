@@ -8,6 +8,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-11-17
+
+### chore(release): bump app version to 1.8.4
+
+**What:** Updated the package and Expo app versions to 1.8.4. Includes the editor fixes from [#1875](https://github.com/skepjandi/gitnotes/pull/1875): the caret line stays visible above the keyboard while typing, the Android format toolbar is lifted off the gesture bar, and the note viewer has a search button that opens in-file search.
+
 ## 2026-11-14
 
 ### feat(chat): see and continue open agent sessions on a paired bridge

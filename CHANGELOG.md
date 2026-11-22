@@ -8,6 +8,12 @@ All notable fixes and feature changes to GitNotēs are documented here.
 >
 > **History**: prior fixes (pre-2026-08) lived in single-PR wiki pages. Those pages were retired in [#1047](https://github.com/skepjandi/gitnotes/pull/1047); their full diagnostic content is preserved in git history via `git log -p -- docs/wiki/<file>.md`.
 
+## 2026-11-22
+
+### chore(store): remove store listing assets and generator scripts
+
+**What:** Deleted `assets/store/`, `assets/feature_graphic.png` and `scripts/store-assets/`, and the feature graphic from the README.
+
 ## 2026-11-17
 
 ### chore(release): bump app version to 1.8.4
